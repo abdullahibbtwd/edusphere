@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Roboto+Mono:wght@400;700&family=Playfair+Display:wght@400;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* Light Theme */
+  --bg: #F8FAFF;
+  --surface: #FFFFFF;
+  --text: #0F172A;
+  --muted: #6B7280;
+  --primary: #4F46E5;
+  --primary-400: #6366F1;
+  --accent: #14B8A6;
+  --cta: #F59E0B;
+  --success: #10B981;
+  --danger: #EF4444;
+
+  /* Dark Theme values (for overrides) */
+  --dark-bg: #0B1220;
+  --dark-surface: #0F172A;
+  --dark-text: #E6EEF8;
+  --dark-muted: #94A3B8;
+  --dark-primary: #8B5CF6;
+  --dark-primary-400: #A78BFA;
+  --dark-accent: #2DD4BF;
+  --dark-cta: #F59E0B;
+  --dark-success: #34D399;
+  --dark-danger: #F87171;
+}
+
+.dark {
+  /* Override variables for dark mode */
+  --bg: var(--dark-bg);
+  --surface: var(--dark-surface);
+  --text: var(--dark-text);
+  --muted: var(--dark-muted);
+  --primary: var(--dark-primary);
+  --primary-400: var(--dark-primary-400);
+  --accent: var(--dark-accent);
+  --cta: var(--dark-cta);
+  --success: var(--dark-success);
+  --danger: var(--dark-danger);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  transition: background-color 0.3s, color 0.3s;
+}
+.bg-bg       { background-color: var(--bg) !important; }
+.bg-surface  { background-color: var(--surface) !important; }
+.bg-text     { background-color: var(--text) !important; }
+.bg-muted    { background-color: var(--muted) !important; }
+.bg-primary  { background-color: var(--primary) !important; }
+.bg-primary-400 { background-color: var(--primary-400) !important; }
+.bg-accent   { background-color: var(--accent) !important; }
+.bg-cta      { background-color: var(--cta) !important; }
+.bg-success  { background-color: var(--success) !important; }
+.bg-danger   { background-color: var(--danger) !important; }
+@keyframes scrollLeft {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll {
+  display: flex;
+  animation: scrollLeft 20s linear infinite;
+}
+/* Optional text color helpers */
+.text-bg       { color: var(--bg) !important; }
+.text-surface  { color: var(--surface) !important; }
+.text-text     { color: var(--text) !important; }
+.text-muted    { color: var(--muted) !important; }
+.text-primary  { color: var(--primary) !important; }
+.text-primary-400 { color: var(--primary-400) !important; }
+.text-accent   { color: var(--accent) !important; }
+.text-cta      { color: var(--cta) !important; }
+.text-success  { color: var(--success) !important; }
+.text-danger   { color: var(--danger) !important; }
+.font-poppins {
+  font-family: 'Poppins', sans-serif;
+}
+
+.font-roboto-mono {
+  font-family: 'Roboto Mono', monospace;
+}
+
+.font-playfair {
+  font-family: 'Playfair Display', serif;
+}
