@@ -1,27 +1,28 @@
 import React from "react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 
 const Logo = [
   {
     id: 1,
-    img: "/school.svg",
+    img: "/logo1.png",
   },
   {
     id: 2,
-   img: "/school.svg",
+   img: "/logo2.jpg",
   },
   {
     id: 3,
-   img: "/school.svg",
+   img:  "/logo3.jpg",
   },
   {
     id: 4,
-  img: "/school.svg",
+  img:  "/logo4.png",
   },
   {
     id: 5,
-  img: "/school.svg",
+  img:  "/logo5.jpg",
   },
 ];
 const sliderVariants = {
@@ -39,13 +40,13 @@ const sliderVariants = {
   },
 };
 
-const SponsorCarousel = () => {
+const InfinateCarousel = () => {
   return (
     <div className="max-w-7xl py-4 flex flex-col items-center justify-center mx-auto">
       <p className="md:text-[24px]  font-bold font-poppins text-[12px] text-gray-600 ">
        Join 20+ Schools
       </p>
-      <div className="flex gap-2 lg:gap-3">
+      <div className="flex gap-2 lg:gap-24">
         <motion.div
           initial="initial"
           animate="animate"
@@ -54,7 +55,7 @@ const SponsorCarousel = () => {
         >
           {Logo.map((log) => (
             <div className="p-2" key={log.id}>
-              <img src={log.img} alt="" />
+             <Image width={120} height={120} className="w-full h-full object-cover" src={log.img} alt="" />
             </div>
           ))}
         </motion.div>
@@ -66,7 +67,7 @@ const SponsorCarousel = () => {
         >
           {Logo.map((log) => (
             <div className="p-2" key={log.id}>
-              <img src={log.img} alt="" />
+              <Image width={120} height={120} className="w-full h-full object-cover" src={log.img} alt="" />
             </div>
           ))}
         </motion.div>
@@ -75,4 +76,4 @@ const SponsorCarousel = () => {
   );
 };
 
-export default SponsorCarousel;
+export default InfinateCarousel;

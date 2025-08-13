@@ -1,23 +1,15 @@
 import { motion } from "framer-motion";
 import { FiArrowRight } from "react-icons/fi";
-import SponsorCarousel from "./InfinateScroll";
+import InfinateCarousel from "./InfinateScroll";
 
-const sponsors = [
-  "/school.svg",
-  "/school.svg",
-  "/school.svg",
-  "/school.svg",
-  "/school.svg",
-];
 
 export default function Hero() {
   const navbarHeight = 80;
 
   return (
     <section
-      className="relative flex flex-col items-center justify-center overflow-hidden bg-bg text-text"
-      style={{ height: `calc(100vh - ${navbarHeight}px)` }}
-    >
+      className="relative h-screen flex flex-col items-center justify-center overflow-hidden bg-bg text-text"
+    > 
       {/* Background animation */}
       <motion.div
         className="absolute inset-0 z-0 bg-gradient-to-br from-primary-400/20 via-accent/10 to-cta/10"
@@ -37,14 +29,14 @@ export default function Hero() {
             className="text-4xl md:text-6xl font-bold font-poppins leading-tight"
           >
             Transform Your School{" "}
-            <span className="text-primary">Digitally</span>
+            <span className="text-primary font-roboto-mono ">Digitally</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="mt-4 text-2xl text-muted max-w-lg mx-auto md:mx-0"
+            className="mt-4 font-roboto-mono text-2xl text-muted max-w-lg mx-auto md:mx-0"
           >
             EduSphere is a smart, cloud-based platform that automates everything
             from admissions to analytics. Save time, reduce errors, and focus on
@@ -57,18 +49,12 @@ export default function Hero() {
             transition={{ duration: 1 }}
             className="mt-6 flex gap-4 justify-center md:justify-start"
           >
-            <a
-              href="/get-started"
-              className="bg-primary text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-primary-400 transition-colors"
-            >
-              Get Started <FiArrowRight />
-            </a>
-            <a
-              href="/features"
-              className="border border-primary text-primary px-6 py-3 rounded-xl hover:bg-primary hover:text-white transition-colors"
-            >
+            <button className="bg-primary cursor-pointer text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-primary-400 group transition-colors">
+              Get Started <FiArrowRight  className="text-xl group-hover:translate-x-2 group-hover:-rotate-45 duration-300"/>
+            </button>
+            <button  className="border border-primary text-primary px-6 py-3 rounded-xl hover:bg-primary hover:text-white transition-colors">
               Learn More
-            </a>
+            </button>
           </motion.div>
         </div>
 
@@ -86,7 +72,7 @@ export default function Hero() {
           />
         </motion.div>
       </div>
-        <div className="hidden md:flex"><SponsorCarousel/></div>
+        <div className="hidden md:flex"><InfinateCarousel/></div>
     
     </section>
   );

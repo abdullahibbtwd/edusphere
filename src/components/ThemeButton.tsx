@@ -20,7 +20,7 @@ export default function ThemeButton() {
   return (
     <button
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className="relative w-14 h-8 rounded-full flex items-center px-1 transition-colors duration-500 
+      className="relative cursor-pointer w-14 h-8 rounded-full flex items-center px-1 transition-colors duration-500 
                  bg-primary shadow-lg overflow-hidden"
       title="Toggle Theme"
     >

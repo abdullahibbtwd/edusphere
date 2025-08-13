@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./Provider";
-import Navbar from "@/components/NavBar";
-
 
 export const metadata: Metadata = {
   title: "EduSphere",
@@ -18,7 +16,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <Providers>
-          <Navbar/>
           {children}
         </Providers>
       </body>
