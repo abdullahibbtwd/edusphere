@@ -5,7 +5,7 @@ Designed for schools in **Kano State and beyond**, the platform provides **subdo
 
 ## 🚀 Features
 
-- **Multi-Tenant System** — Each school gets a subdomain (`schoolname.yourdomain.com`) with its own landing page, branding, and data.
+- **Multi-Tenant System** — Each school gets a subdomain (`schoolname.edusphere.com`) with its own landing page, branding, and data.
 - **Role-Based Dashboards**
   - **Super Admin** — Manage all schools, analytics, and platform settings.
   - **School Admin** — Manage teachers, students, classes, subjects, results, timetables, and payments.
