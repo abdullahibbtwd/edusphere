@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { FiArrowRight } from "react-icons/fi";
 import InfinateCarousel from "./InfinateScroll";
+import Image from "next/image";
 
 
 export default function Hero() {
@@ -36,7 +37,7 @@ export default function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="mt-4 font-roboto-mono text-2xl text-muted max-w-lg mx-auto md:mx-0"
+            className="mt-4 font-roboto-mono text-2xl text-text max-w-lg mx-auto md:mx-0"
           >
             EduSphere is a smart, cloud-based platform that automates everything
             from admissions to analytics. Save time, reduce errors, and focus on
@@ -65,7 +66,9 @@ export default function Hero() {
           transition={{ duration: 0.8 }}
           className="flex justify-center md:justify-end"
         >
-          <img
+          <Image
+          width={200}
+          height={200}
             src="/school.svg"
             alt="School Management Illustration"
             className="w-full max-w-md"

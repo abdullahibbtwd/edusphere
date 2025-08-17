@@ -18,7 +18,7 @@ export default function Features() {
           <h2 className="text-4xl md:text-5xl font-bold font-poppins leading-tight">
             Why Choose <span className="text-primary">EduSphere</span>
           </h2>
-          <p className="mt-4 text-lg text-muted max-w-xl mx-auto md:mx-0 leading-relaxed">
+          <p className="mt-4 text-lg text-text max-w-xl mx-auto md:mx-0 leading-relaxed">
             EduSphere is a smart, cloud-based school management platform that gives 
             each school its own branded subdomain and an automated system from 
             admissions to timetable creation, result generation, and performance analytics.
