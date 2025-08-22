@@ -1,17 +1,15 @@
-"use client";
-import React from "react";
-import SideBar from "@/components/SuperAdmin/SideBar"
+import Sidebar from "@/components/Schools/Admin/Sidebar";
 import Navbar from "@/components/SuperAdmin/Navbar";
-const Layout = ({
-  children,
-}: Readonly<{
+
+interface DashboardLayoutProps {
   children: React.ReactNode;
-}>) => {
+}
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="flex min-h-screen bg-bg">
       {/* Sidebar (sticky full height) */}
       <aside className="hidden md:block w-64 bg-surface text-text shadow-lg sticky top-0 h-screen">
-        <SideBar />
+        <Sidebar />
       </aside>
 
       {/* Content area */}
@@ -27,4 +25,3 @@ const Layout = ({
     </div>
   );
 }
-

@@ -12,13 +12,20 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body>
-        <Providers>
+return (
+  <html lang="en" suppressHydrationWarning>
+    <body>
+      <Providers>
+        <div  className="
+            mx-auto 
+            px-4 sm:px-8 md:px-12 lg:px-2 xl:px-2 
+            max-w-full sm:max-w-3xl md:max-w-5xl lg:max-w-7xl xl:max-w-full
+          "
+        >
           {children}
-        </Providers>
-      </body>
-    </html>
-  );
+        </div>
+      </Providers>
+    </body>
+  </html>
+);
 }
