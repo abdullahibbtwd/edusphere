@@ -5,12 +5,11 @@ import Image from "next/image";
 
 
 export default function Hero() {
-  const navbarHeight = 80;
 
   return (
     <section
-      className="relative h-screen flex flex-col items-center justify-center overflow-hidden bg-bg text-text"
-    > 
+  className="relative flex flex-col items-center justify-center overflow-hidden bg-bg text-text"
+>
       {/* Background animation */}
       <motion.div
         className="absolute inset-0 z-0 bg-gradient-to-br from-primary-400/20 via-accent/10 to-cta/10"

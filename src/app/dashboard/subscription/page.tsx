@@ -1,5 +1,5 @@
+import SchoolSubscriptionManagement from '@/components/SuperAdmin/SchoolSubscriptionManagement'
 import React from 'react'
-import SchoolSubscriptionManagement from "@/components/SuperAdmin/SchoolSubscriptionManagement"
 const page = () => {
   return (
     <div>

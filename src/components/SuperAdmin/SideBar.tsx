@@ -22,8 +22,9 @@ export default function Sidebar() {
       initial={{ x: -250 }}
       animate={{ x: 0 }}
       transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-      className="md:h-screen h-[90%] md:mt-0 mt-14 w-max md:w-71  p-4 bg-surface text-text shadow-lg fixed top-0 left-0 flex flex-col"
-    >
+   className="md:h-screen h-[90%] md:mt-0 mt-14 w-max md:w-71 p-4 
+           bg-surface text-text shadow-lg flex flex-col"
+>
       {/* Logo */}
       <div className="md:flex hidden items-center justify-center h-20 border-b border-border">
         <span

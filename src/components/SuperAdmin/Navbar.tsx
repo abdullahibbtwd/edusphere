@@ -16,7 +16,7 @@ export default function Navbar() {
   };
 
   return (
-    <div className="h-16 bg-surface text-text flex items-center justify-between px-6 shadow-sm sticky top-0 z-20">
+    <div className="h-16 bg-surface text-text flex items-center justify-between px-6 sticky top-0 z-20">
       <span className="text-2xl font-bold font-poppins cursor-default">Dashboard</span>
 
       <div className="relative flex gap-2 items-center">
