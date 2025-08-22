@@ -14,8 +14,8 @@ export default function Dashboard() {
       stats: [
         { title: 'Total Schools Registered', value: 120 },
         { title: 'Active Schools', value: 95 },
-        { title: 'Inactive Schools', value: 25 },
-        { title: 'Total Students', value: 4500 },
+        { title: 'Pending Approval', value: 25 },
+        { title: 'Revenue', value: 4500 },
         { title: 'Total Teachers/Staff', value: 320 },
       ],
       userGrowth: [30, 45, 35, 50, 55, 60],
