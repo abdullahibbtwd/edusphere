@@ -1,6 +1,7 @@
 "use client"
 import React from "react";
 import { useRouter, usePathname } from "next/navigation";
+import {motion} from "framer-motion"
 import { FiHome, FiLayers, FiUsers, FiActivity, FiMessageSquare } from "react-icons/fi";
 import { CgProfile } from "react-icons/cg";
 

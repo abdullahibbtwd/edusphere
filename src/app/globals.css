@@ -29,6 +29,14 @@
   --danger: #F87171;
 }
 
+.table-custom tr:nth-child(even) {
+background-color: var(--bg);
+}
+
+
+.table-custom tr:nth-child(odd) {
+background-color: var(--surface);
+}
 .animate-scroll {
   display: flex;
   animation: scrollLeft 20s linear infinite;
