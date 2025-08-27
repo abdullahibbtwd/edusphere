@@ -1,274 +1,179 @@
 "use client";
 
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { useState } from "react";
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  FormControlLabel,
-  FormLabel,
-  Radio,
-  RadioGroup,
-  TextField,
-  Typography,
-  Chip,
-  Stack,
-  IconButton,
-  Paper,
-} from "@mui/material";
-import { useTheme } from "@mui/material/styles";
-import { Add as AddIcon, Close as CloseIcon } from "@mui/icons-material";
 
 export default function AnnouncementsPage() {
-  const theme = useTheme();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [targetRoles, setTargetRoles] = useState<string[]>(["both"]);
+  const [targetRoles, setTargetRoles] = useState("both");
 
-  // Get current user from Convex
-  const currentUser = useQuery(api.users.getCurrentUser);
-  const isAdmin = currentUser?.role === "admin";
-  
-  const announcements = useQuery(api.announcements.get, {
-    role: currentUser?.role || "student",
-  });
-  const createAnnouncement = useMutation(api.announcements.create);
+  // Dummy current user (admin toggle)
+  const currentUser = { name: "Admin User", role: "admin" };
+  const isAdmin = currentUser.role === "admin";
 
-  const handleCreateAnnouncement = async () => {
-    try {
-      await createAnnouncement({
-        title,
-        content,
-        targetRoles,
-      });
-      setOpen(false);
-      setTitle("");
-      setContent("");
-      setTargetRoles(["both"]);
-    } catch (error) {
-      console.error("Error creating announcement:", error);
-    }
-  };
+  // Dummy announcements
+  const [announcements, setAnnouncements] = useState([
+    {
+      id: 1,
+      title: "Welcome Back!",
+      content: "We’re excited to start the new term. Please check your timetable.",
+      targetRoles: ["student"],
+      createdBy: { name: "Principal" },
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 2,
+      title: "Teachers Meeting",
+      content: "There will be a staff meeting this Friday at 2 PM.",
+      targetRoles: ["teacher"],
+      createdBy: { name: "Admin User" },
+      createdAt: new Date().toISOString(),
+    },
+  ]);
 
-  const handleRoleChange = (role: string) => {
-    if (role === "both") {
-      setTargetRoles(["both"]);
-    } else {
-      setTargetRoles([role]);
-    }
+  const handleCreateAnnouncement = () => {
+    const newAnnouncement = {
+      id: Date.now(),
+      title,
+      content,
+      targetRoles: [targetRoles],
+      createdBy: { name: currentUser.name },
+      createdAt: new Date().toISOString(),
+    };
+    setAnnouncements([newAnnouncement, ...announcements]);
+    setOpen(false);
+    setTitle("");
+    setContent("");
+    setTargetRoles("both");
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          p: 3, 
-          mb: 3, 
-          backgroundColor: theme.palette.background.default,
-          borderRadius: 2
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Typography variant="h6" sx={{ fontWeight: 300 }}>
-            Announcements
-          </Typography>
-          {isAdmin && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setOpen(true)}
-              sx={{
-                borderRadius: 2,
-                textTransform: "none",
-                px: 3,
-              }}
-            >
-              New Announcement
-            </Button>
-          )}
-        </Box>
-      </Paper>
-
-      <Stack spacing={2}>
-        {announcements?.map((announcement) => (
-          <Card 
-            key={announcement._id}
-            sx={{
-              borderRadius: 2,
-              boxShadow: theme.shadows[1],
-              '&:hover': {
-                boxShadow: theme.shadows[4],
-                transition: 'box-shadow 0.3s ease-in-out'
-              }
-            }}
+    <div className="p-6 bg-bg min-h-screen font-poppins">
+      {/* Header */}
+      <div className="bg-surface p-4 mb-6 rounded-2xl flex justify-between items-center shadow">
+        <h1 className="text-xl font-semibold text-text">Announcements</h1>
+        {isAdmin && (
+          <button
+            onClick={() => setOpen(true)}
+            className="bg-primary text-white px-4 py-2 rounded-xl hover:bg-primary-400 transition"
           >
-            <CardContent>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  mb: 2,
-                }}
-              >
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {announcement.title}
-                </Typography>
-                <Chip
-                  label={
-                    announcement.targetRoles[0] === "both"
-                      ? "All Users"
-                      : announcement.targetRoles[0]
-                  }
-                  color="primary"
-                  size="small"
-                  sx={{ borderRadius: 1 }}
-                />
-              </Box>
-              <Typography
-                variant="body1"
-                sx={{ 
-                  whiteSpace: "pre-wrap", 
-                  mb: 2,
-                  color: theme.palette.text.secondary
-                }}
-              >
-                {announcement.content}
-              </Typography>
-              <Typography 
-                variant="caption" 
-                color="text.secondary"
-                sx={{ 
-                  display: 'block',
-                  mt: 1
-                }}
-              >
-                Posted by {announcement.createdBy?.name} on{" "}
-                {new Date(announcement.createdAt).toLocaleDateString()}
-              </Typography>
-            </CardContent>
-          </Card>
+            + New Announcement
+          </button>
+        )}
+      </div>
+
+      {/* Announcements List */}
+      <div className="space-y-4">
+        {announcements.map((a) => (
+          <div
+            key={a.id}
+            className="bg-surface p-4 rounded-2xl shadow hover:shadow-lg transition"
+          >
+            <div className="flex justify-between items-start mb-2">
+              <h2 className="text-lg font-bold text-text">{a.title}</h2>
+              <span className="px-3 py-1 text-xs rounded-lg bg-primary text-white">
+                {a.targetRoles[0] === "both"
+                  ? "All Users"
+                  : a.targetRoles[0] === "student"
+                  ? "Students"
+                  : "Teachers"}
+              </span>
+            </div>
+            <p className="text-muted mb-3">{a.content}</p>
+            <p className="text-xs text-muted">
+              Posted by {a.createdBy?.name} on{" "}
+              {new Date(a.createdAt).toLocaleDateString()}
+            </p>
+          </div>
         ))}
-      </Stack>
+      </div>
 
-      <Dialog 
-        open={open} 
-        onClose={() => setOpen(false)} 
-        maxWidth="sm" 
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          pb: 1
-        }}>
-          Create New Announcement
-          <IconButton 
-            onClick={() => setOpen(false)}
-            size="small"
-            sx={{ 
-              color: theme.palette.text.secondary,
-              '&:hover': {
-                color: theme.palette.text.primary,
-              }
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Title"
-            fullWidth
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            sx={{ mb: 2 }}
-            variant="outlined"
-          />
-          <TextField
-            margin="dense"
-            label="Content"
-            fullWidth
-            multiline
-            rows={4}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            sx={{ mb: 2 }}
-            variant="outlined"
-          />
-          <FormControl component="fieldset" sx={{ width: '100%' }}>
-            <FormLabel component="legend">Target Audience</FormLabel>
-            <RadioGroup
-              value={targetRoles[0]}
-              onChange={(e) => handleRoleChange(e.target.value)}
-              sx={{ mt: 1 }}
-            >
-              <FormControlLabel
-                value="both"
-                control={<Radio />}
-                label="All Users"
-              />
-              <FormControlLabel
-                value="student"
-                control={<Radio />}
-                label="Students Only"
-              />
-              <FormControlLabel
-                value="teacher"
-                control={<Radio />}
-                label="Teachers Only"
-              />
-            </RadioGroup>
-          </FormControl>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button 
-            onClick={() => setOpen(false)}
-            sx={{ 
-              textTransform: "none",
-              px: 3
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleCreateAnnouncement}
-            variant="contained"
-            disabled={!title || !content}
-            sx={{ 
-              textTransform: "none",
-              px: 3,
-              borderRadius: 2
-            }}
-          >
-            Create Announcement
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      {/* Modal */}
+      {open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-surface rounded-2xl p-6 w-full max-w-md shadow-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-text">
+                Create New Announcement
+              </h2>
+              <button
+                onClick={() => setOpen(false)}
+                className="text-muted hover:text-text"
+              >
+                ✕
+              </button>
+            </div>
+
+            <input
+              type="text"
+              placeholder="Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full mb-3 p-2 rounded-lg border border-muted bg-bg text-text"
+            />
+
+            <textarea
+              placeholder="Content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="w-full mb-3 p-2 rounded-lg border border-muted bg-bg text-text"
+              rows={4}
+            />
+
+            <div className="mb-4">
+              <label className="block mb-2 text-sm font-medium text-text">
+                Target Audience
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm text-text">
+                  <input
+                    type="radio"
+                    value="both"
+                    checked={targetRoles === "both"}
+                    onChange={(e) => setTargetRoles(e.target.value)}
+                  />
+                  All Users
+                </label>
+                <label className="flex items-center gap-2 text-sm text-text">
+                  <input
+                    type="radio"
+                    value="student"
+                    checked={targetRoles === "student"}
+                    onChange={(e) => setTargetRoles(e.target.value)}
+                  />
+                  Students
+                </label>
+                <label className="flex items-center gap-2 text-sm text-text">
+                  <input
+                    type="radio"
+                    value="teacher"
+                    checked={targetRoles === "teacher"}
+                    onChange={(e) => setTargetRoles(e.target.value)}
+                  />
+                  Teachers
+                </label>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setOpen(false)}
+                className="px-4 py-2 rounded-lg bg-muted text-text"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateAnnouncement}
+                disabled={!title || !content}
+                className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-400 disabled:opacity-50"
+              >
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

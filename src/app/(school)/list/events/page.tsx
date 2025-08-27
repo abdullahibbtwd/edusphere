@@ -1,25 +1,13 @@
 "use client";
 
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { useState } from "react";
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  TextField,
-  Typography,
-  IconButton,
-  Paper,
-} from "@mui/material";
-import { useTheme } from "@mui/material/styles";
-import { Add as AddIcon, Close as CloseIcon } from "@mui/icons-material";
 
 export default function EventsPage() {
-  const theme = useTheme();
+  const [events, setEvents] = useState([
+    { id: 1, title: "Inter-House Sports", description: "Annual inter-house sports competition.", date: "2025-09-05", startTime: "09:00", endTime: "14:00" },
+    { id: 2, title: "Cultural Day", description: "Students showcase different cultures.", date: "2025-09-12", startTime: "10:00", endTime: "15:00" },
+  ]);
+
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -27,210 +15,125 @@ export default function EventsPage() {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
 
-  const currentUser = useQuery(api.users.getCurrentUser);
-  const isAdmin = currentUser?.role === "admin";
-  
-  const events = useQuery(api.events.get);
-  const createEvent = useMutation(api.events.create);
-
-  const handleCreateEvent = async () => {
-    try {
-      await createEvent({
-        title,
-        description,
-        date,
-        startTime,
-        endTime,
-      });
-      setOpen(false);
-      setTitle("");
-      setDescription("");
-      setDate("");
-      setStartTime("");
-      setEndTime("");
-    } catch (error) {
-      console.error("Error creating event:", error);
-    }
+  const handleCreateEvent = () => {
+    const newEvent = {
+      id: Date.now(),
+      title,
+      description,
+      date,
+      startTime,
+      endTime,
+    };
+    setEvents([...events, newEvent]);
+    setOpen(false);
+    setTitle("");
+    setDescription("");
+    setDate("");
+    setStartTime("");
+    setEndTime("");
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          p: 3, 
-          mb: 3, 
-          backgroundColor: theme.palette.background.default,
-          borderRadius: 2
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold">Events</h2>
+        <button
+          onClick={() => setOpen(true)}
+          className="bg-primary text-white px-4 py-2 rounded-lg  transition"
         >
-          <Typography variant="h6" sx={{ fontWeight: 300 }}>
-            Events
-          </Typography>
-          {isAdmin && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setOpen(true)}
-              sx={{
-                borderRadius: 2,
-                textTransform: "none",
-                px: 3,
-              }}
-            >
-              New Event
-            </Button>
-          )}
-        </Box>
-      </Paper>
+          New Event
+        </button>
+      </div>
 
-      <Box sx={{ display: 'grid', gap: 2 }}>
-        {events?.map((event) => (
-          <Paper
-            key={event._id}
-            sx={{
-              p: 2,
-              borderRadius: 2,
-              border: '1px solid',
-              borderColor: 'divider',
-            }}
+      {/* Events List */}
+      <div className="grid gap-4">
+        {events.map((event) => (
+          <div
+            key={event.id}
+            className="p-4 rounded-xl shadow-sm bg-surface"
           >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                {event.title}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {event.date}
-              </Typography>
-            </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">{event.title}</h3>
+              <span className="text-sm ">{event.date}</span>
+            </div>
+            <p className="text-sm ">
               {event.startTime} - {event.endTime}
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              {event.description}
-            </Typography>
-          </Paper>
+            </p>
+            <p className="mt-2 ">{event.description}</p>
+          </div>
         ))}
-      </Box>
+      </div>
 
-      <Dialog 
-        open={open} 
-        onClose={() => setOpen(false)} 
-        maxWidth="sm" 
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          pb: 1
-        }}>
-          Create New Event
-          <IconButton 
-            onClick={() => setOpen(false)}
-            size="small"
-            sx={{ 
-              color: theme.palette.text.secondary,
-              '&:hover': {
-                color: theme.palette.text.primary,
-              }
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Title"
-            fullWidth
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            sx={{ mb: 2 }}
-            variant="outlined"
-          />
-          <TextField
-            margin="dense"
-            label="Description"
-            fullWidth
-            multiline
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            sx={{ mb: 2 }}
-            variant="outlined"
-          />
-          <TextField
-            margin="dense"
-            label="Date"
-            type="date"
-            fullWidth
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            sx={{ mb: 2 }}
-            variant="outlined"
-            InputLabelProps={{ shrink: true }}
-          />
-          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-            <TextField
-              margin="dense"
-              label="Start Time"
-              type="time"
-              fullWidth
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              variant="outlined"
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              margin="dense"
-              label="End Time"
-              type="time"
-              fullWidth
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              variant="outlined"
-              InputLabelProps={{ shrink: true }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button 
-            onClick={() => setOpen(false)}
-            sx={{ 
-              textTransform: "none",
-              px: 3
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleCreateEvent}
-            variant="contained"
-            disabled={!title || !description || !date || !startTime || !endTime}
-            sx={{ 
-              textTransform: "none",
-              px: 3,
-              borderRadius: 2
-            }}
-          >
-            Create Event
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      {/* Modal */}
+      {open && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 bg-opacity-50 z-50">
+          <div className="bg-surface p-6 rounded-xl shadow-lg w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Create New Event</h3>
+              <button
+                onClick={() => setOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <input
+                type="text"
+                placeholder="Title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-blue-400"
+              />
+              <textarea
+                placeholder="Description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-blue-400"
+              />
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-blue-400"
+              />
+              <div className="flex gap-2">
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-1/2 border rounded-lg px-3 py-2 focus:ring focus:ring-blue-400"
+                />
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-1/2 border rounded-lg px-3 py-2 focus:ring focus:ring-blue-400"
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setOpen(false)}
+                className="px-4 py-2 rounded-lg bg-surface"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateEvent}
+                disabled={!title || !description || !date || !startTime || !endTime}
+                className="bg-primary text-white px-4 py-2 rounded-lg  transition disabled:opacity-50"
+              >
+                Create Event
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

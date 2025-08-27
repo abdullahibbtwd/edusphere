@@ -54,6 +54,19 @@ background-color: var(--surface);
 .text-success  { color: var(--success) !important; }
 .text-danger   { color: var(--danger) !important; }
 
+/* For light mode */
+.rbc-today {
+  background-color: var(--accent) !important;  /* or any of your vars: --primary, --cta, etc */
+  color: var(--text) !important;
+  opacity: 0.2; /* optional: make it softer */
+}
+
+/* For dark mode */
+.dark .rbc-today {
+  background-color: var(--primary-400) !important;
+  color: var(--surface) !important;
+  opacity: 0.3;
+}
 /* Background color helpers */
 .bg-bg         { background-color: var(--bg) !important; }
 .bg-surface    { background-color: var(--surface) !important; }

@@ -21,7 +21,7 @@ import {
 
 const menuItems = [
   {
-    title: "School Name",
+    SchoolName: "School Name",
     items: [
       { icon: Home, label: "Home", href: "/admin", visible: ["admin"] },
       { icon: Users, label: "Teachers", href: "/list/teachers", visible: ["admin"] },
@@ -56,13 +56,18 @@ const Sidebar = () => {
   const pathname = usePathname();
 
   return (
-    <div className="mt-2">
+    <div className=" ">
       {menuItems.map((section) => (
-        <div className="flex flex-col gap-2" key={section.title}>
-          <span className="hidden lg:block text-gray-400 font-light my-3">
-            {section.title}
-          </span>
-          <div className="flex flex-col">
+        <div className="flex flex-col gap-2 " key={section.title}>
+         {section.SchoolName ?(
+          <div className="px-3 mt-5">
+            <h2 className="text-lg font-semibold font-italic text-text">{section.SchoolName}</h2>
+          </div>
+         ): <div className="px-3 mt-4">
+            <h2 className="text-sm  text-text">{section.title}</h2>
+          </div>}
+          
+          <div className="flex flex-col gap-1">
             {section.items.map((item) => {
               if (item.visible.includes(role)) {
                 const Icon = item.icon;
