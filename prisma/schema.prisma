@@ -1,0 +1,608 @@
+// schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== CORE MODELS =====
+
+model User {
+  id          String    @id @default(cuid())
+  name        String?
+  email       String    @unique
+  imageUrl    String?
+  clerkUserId String    @unique
+  role        Role      @default(STUDENT)
+  student     Student?
+  teacher     Teacher?
+  studentApplications StudentApplication?
+  announcements Announcement[]
+  events      Event[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("users")
+}
+
+model School {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  subdomain         String   @unique // For schoolname.edusphere.com
+  address           String
+  pmbNumber         String?
+  rcNumber          String?
+  schoolType        SchoolType
+  principalName     String
+  phoneNumber       String
+  email             String
+  website           String?
+  establishmentYear String
+  ownershipType     OwnershipType
+  curriculum        CurriculumType
+  totalStudents     Int?
+  totalTeachers     Int?
+  facilitiesList    String[] // Stored as JSON array
+  accreditation     String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+
+  levels            Level[]
+  classes           Class[]
+  subjects          Subject[]
+  teachers          Teacher[]
+  content           SchoolContent?
+  subscription      SchoolSubscription?
+  facilities        SchoolFacility[]
+  campuses          SchoolCampus[]
+  timetables        Timetable[]
+  examTimetables    ExamTimetable[]
+  announcements     Announcement[]
+  events            Event[]
+  screeningSlots    ScreeningSlot[]
+  applicationBookings ApplicationBooking[]
+  studentApplications StudentApplication[]
+
+  @@map("schools")
+}
+
+// ===== SCHOOL WEBSITE CONTENT =====
+
+model SchoolContent {
+  id          String   @id @default(cuid())
+  schoolId    String   @unique
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  // Hero Section (from Hero.tsx)
+  heroTitle       String   @default("Let's Learn To Explore our Community for better health")
+  heroSubtitle    String?
+  heroImage       String?  // School logo/hero image
+  
+  // School Info (from SchoolManagement.tsx)
+  schoolLogo      String?
+  description     String   @default("Our school is committed to providing a nurturing environment that fosters academic excellence, character development, and lifelong learning.")
+  
+  // Contact Info (from Contact.tsx)
+  contactAddress  String   @default("No.220 Jos road rudun wada lga,kano state")
+  contactPhone    String   @default("99896638")
+  contactEmail    String   @default("info@school.com")
+  
+  // Social Media
+  facebookUrl     String?
+  twitterUrl      String?
+  instagramUrl    String?
+  linkedinUrl     String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("school_contents")
+}
+
+// ===== FACILITIES (from Facilities.tsx) =====
+
+model SchoolFacility {
+  id          String   @id @default(cuid())
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name        String   // e.g., "Library", "Laboratory", "Computer Lab"
+  imageUrl    String?
+  description String?
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("school_facilities")
+}
+
+// ===== CAMPUS IMAGES (from Campus.tsx) =====
+
+model SchoolCampus {
+  id          String   @id @default(cuid())
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  title       String   // e.g., "Outside Campus", "Inside Campus", "School Ground"
+  imageUrl    String?
+  description String?
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("school_campuses")
+}
+
+// ===== SUBSCRIPTION MANAGEMENT =====
+
+model SchoolSubscription {
+  id          String   @id @default(cuid())
+  schoolId    String   @unique
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  planType    SubscriptionPlan @default(FREE)
+  status      SubscriptionStatus @default(ACTIVE)
+  startDate   DateTime @default(now())
+  endDate     DateTime
+  maxStudents Int      @default(500)
+  maxTeachers Int      @default(50)
+  features    String[] // Array of enabled features
+  
+  // Payment info
+  amount      Float    @default(0)
+  currency    String   @default("USD")
+  paymentMethod String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("school_subscriptions")
+}
+
+// ===== SCHOOL APPLICATION =====
+
+model SchoolApplication {
+  id                String   @id @default(cuid())
+  schoolName        String
+  address           String
+  pmbNumber         String?
+  rcNumber          String?
+  schoolType        SchoolType
+  principalName     String
+  phoneNumber       String
+  email             String
+  website           String?
+  establishmentYear String
+  ownershipType     OwnershipType
+  curriculum        CurriculumType
+  totalStudents     Int?
+  totalTeachers     Int?
+  facilities        String[] // Stored as JSON array
+  accreditation     String?
+  additionalInfo    String?
+  status            SchoolApplicationStatus @default(PENDING)
+  submittedBy       String   // User ID
+  submittedAt       DateTime @default(now())
+  reviewedAt        DateTime?
+  reviewedBy        String?  // Admin user ID
+
+  @@map("school_applications")
+}
+
+// ===== EXISTING ACADEMIC MODELS =====
+
+model Level {
+  id            String   @id @default(cuid())
+  name          String   // JSS1, JSS2, JSS3, SS1, SS2, SS3
+  schoolId      String
+  school        School   @relation(fields: [schoolId], references: [id])
+  description   String?
+  isActive      Boolean  @default(true)
+  
+  // Relationships
+  classes       Class[]
+  subjects      Subject[]
+  timetables    Timetable[]
+  examTimetables ExamTimetable[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([name, schoolId])
+
+  @@map("levels")
+}
+
+model Class {
+  id            String   @id @default(cuid())
+  name          String
+  levelId       String
+  level         Level    @relation(fields: [levelId], references: [id])
+  schoolId      String
+  school        School   @relation(fields: [schoolId], references: [id])
+  level1Count   Int      @default(0)
+  level2Count   Int      @default(0)
+  graduateCount Int      @default(0)
+  
+  // Relationships
+  students      Student[]
+  studentApplications StudentApplication[]
+  subjects      Subject[]
+  teachers      Teacher[]
+  timetables    Timetable[]
+  examTimetables ExamTimetable[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([name, levelId, schoolId])
+
+  @@map("classes")
+}
+
+model Subject {
+  id           String   @id @default(cuid())
+  name         String
+  code         String
+  creditUnit   Int
+  term         Term
+  isGeneral    Boolean  @default(false)
+  schoolId     String
+  school       School   @relation(fields: [schoolId], references: [id])
+  
+  // Many-to-many relationships
+  levels       Level[]
+  classes      Class[]
+  teachers     Teacher[]
+  
+  examTimetables ExamTimetable[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("subjects")
+}
+
+model Teacher {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String
+  address      String
+  birthday     String
+  sex          String
+  img          String
+  teacherId    String   @unique
+  schoolId     String
+  school       School   @relation(fields: [schoolId], references: [id])
+  userId       String?  @unique
+  user         User?    @relation(fields: [userId], references: [id])
+  
+  // Many-to-many relationships
+  subjects     Subject[]
+  classes      Class[]
+  
+  examTimetablesAsTeacher ExamTimetable[] @relation("ExamTimetable_Teacher")
+  examTimetablesAsInvigilator ExamTimetable[] @relation("ExamTimetable_Invigilator")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("teachers")
+}
+
+model Student {
+  id                          String   @id @default(cuid())
+  
+  // Personal Information
+  firstName                   String
+  lastName                    String
+  middleName                  String?
+  dob                         String
+  gender                      String
+  email                       String   @unique
+  phone                       String
+  address                     String
+  city                        String
+  state                       String
+  zipCode                     String
+  lga                         String
+  religion                    String
+  
+  // Academic Information
+  classId                     String
+  class                       Class     @relation(fields: [classId], references: [id])
+  className                   String?
+  
+  // Previous Education - Primary School
+  primarySchoolName           String?
+  primarySchoolStartDate      String?
+  primarySchoolEndDate        String?
+  primarySchoolGrade          String?
+  
+  // Previous Education - Junior Secondary School
+  juniorSecondarySchoolName   String?
+  juniorSecondarySchoolStartDate String?
+  juniorSecondarySchoolEndDate   String?
+  juniorSecondarySchoolGrade     String?
+  
+  // Parent/Guardian Information
+  parentName                  String
+  parentRelationship          String
+  parentEmail                 String
+  parentPhone                 String
+  parentOccupation            String?
+  parentAddress               String?
+  
+  // File Storage References
+  profileImagePath            String?
+  primarySchoolCertificatePath String?
+  primarySchoolTestimonialPath String?
+  juniorSecondarySchoolCertificatePath String?
+  juniorSecondarySchoolTestimonialPath String?
+  parentIdCardPath            String?
+  indigeneCertificatePath     String?
+  nationalIdCardPath          String?
+  
+  // Application Status
+  agreeTerms                  Boolean @default(false)
+  status                      ApplicationStatus @default(PROGRESS)
+  applicationNumber           String @unique @default(cuid())
+  applicationDate             DateTime @default(now())
+  
+  // User relation (optional for applications)
+  userId                      String?  @unique
+  user                        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  @@map("students")
+}
+
+// ===== EXISTING ACADEMIC MODELS (KEEP AS IS) =====
+
+model Timetable {
+  id         String   @id @default(cuid())
+  classId    String
+  class      Class    @relation(fields: [classId], references: [id])
+  levelId    String
+  level      Level    @relation(fields: [levelId], references: [id])
+  term       Term
+  schedule   Json     // Stored as JSON array of day schedules
+  schoolId   String
+  school     School   @relation(fields: [schoolId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("timetables")
+}
+
+model ExamTimetable {
+  id           String   @id @default(cuid())
+  subjectId    String
+  subject      Subject  @relation(fields: [subjectId], references: [id])
+  teacherId    String
+  teacher      Teacher  @relation("ExamTimetable_Teacher", fields: [teacherId], references: [id])
+  invigilatorId String?
+  invigilator  Teacher? @relation("ExamTimetable_Invigilator", fields: [invigilatorId], references: [id])
+  examHall     String
+  date         String
+  startTime    String
+  endTime      String
+  term         Term
+  classId      String
+  class        Class    @relation(fields: [classId], references: [id])
+  levelId      String
+  level        Level    @relation(fields: [levelId], references: [id])
+  schoolId     String
+  school       School   @relation(fields: [schoolId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("exam_timetables")
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  targetRoles Role[]   // Stored as JSON array
+  createdBy   String
+  creator     User     @relation(fields: [createdBy], references: [id])
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("announcements")
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  startTime   String
+  endTime     String
+  date        String
+  createdBy   String
+  creator     User     @relation(fields: [createdBy], references: [id])
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("events")
+}
+
+model ScreeningSlot {
+  id         String   @id @default(cuid())
+  date       String
+  startTime  String
+  maxCapacity Int
+  bookingCount Int      @default(0)
+  schoolId   String
+  school     School   @relation(fields: [schoolId], references: [id])
+  bookings   ApplicationBooking[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("screening_slots")
+}
+
+model ApplicationBooking {
+  id      String   @id @default(cuid())
+  name    String
+  email   String
+  slotId  String
+  slot    ScreeningSlot @relation(fields: [slotId], references: [id])
+  schoolId String
+  school  School   @relation(fields: [schoolId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("application_bookings")
+}
+
+// ===== STUDENT APPLICATION MODEL =====
+
+model StudentApplication {
+  id                          String   @id @default(cuid())
+  
+  // Personal Information
+  firstName                   String
+  lastName                    String
+  middleName                  String?
+  dob                         String
+  gender                      String
+  email                       String
+  phone                       String
+  address                     String
+  city                        String
+  state                       String
+  zipCode                     String
+  lga                         String
+  religion                    String
+  
+  // Academic Information
+  classId                     String
+  class                       Class     @relation(fields: [classId], references: [id])
+  className                   String?
+  
+  // Previous Education - Primary School
+  primarySchoolName           String?
+  primarySchoolStartDate      String?
+  primarySchoolEndDate        String?
+  primarySchoolGrade          String?
+  
+  // Previous Education - Junior Secondary School
+  juniorSecondarySchoolName   String?
+  juniorSecondarySchoolStartDate String?
+  juniorSecondarySchoolEndDate   String?
+  juniorSecondarySchoolGrade     String?
+  
+  // Parent/Guardian Information
+  parentName                  String
+  parentRelationship          String
+  parentEmail                 String
+  parentPhone                 String
+  parentOccupation            String?
+  parentAddress               String?
+  
+  // File Storage References
+  profileImagePath            String?
+  primarySchoolCertificatePath String?
+  primarySchoolTestimonialPath String?
+  juniorSecondarySchoolCertificatePath String?
+  juniorSecondarySchoolTestimonialPath String?
+  parentIdCardPath            String?
+  indigeneCertificatePath     String?
+  nationalIdCardPath          String?
+  
+  // Application Status
+  agreeTerms                  Boolean @default(false)
+  status                      ApplicationStatus @default(PROGRESS)
+  applicationNumber           String @unique @default(cuid())
+  applicationDate             DateTime @default(now())
+  
+  // School Information
+  schoolId                    String
+  school                      School   @relation(fields: [schoolId], references: [id])
+  
+  // User relation (optional for applications)
+  userId                      String?  @unique
+  user                        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  @@map("student_applications")
+}
+
+// ===== ENUMS =====
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+
+
+enum Term {
+  FIRST
+  SECOND
+  THIRD
+}
+
+enum ApplicationStatus {
+  ADMITTED
+  PROGRESS
+  REJECTED
+}
+
+enum SchoolApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SchoolType {
+  PUBLIC
+  PRIVATE
+  INTERNATIONAL
+  FAITH_BASED
+}
+
+enum OwnershipType {
+  GOVERNMENT
+  PRIVATE
+  RELIGIOUS
+  COMMUNITY
+}
+
+enum CurriculumType {
+  NATIONAL
+  BRITISH
+  AMERICAN
+  IB
+  MONTESSORI
+  OTHER
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  SUSPENDED
+}

@@ -123,7 +123,7 @@ const StudentPage = () => {
     <div className="flex flex-col bg-surface p-4 m-4 mt-0 flex-1 rounded-2xl shadow">
       {/* Top Section */}
       <div className="flex justify-between items-center">
-        <h1 className="hidden md:block font-semibold text-gray-800 dark:text-gray-100">
+        <h1 className="hidden md:block font-semibold text-text">
           All Students
         </h1>
         <div className="flex flex-col md:flex-row w-full md:w-auto items-center gap-2">

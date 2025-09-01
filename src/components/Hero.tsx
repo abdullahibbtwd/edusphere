@@ -1,11 +1,13 @@
+"use client"
 import { motion } from "framer-motion";
 import { FiArrowRight } from "react-icons/fi";
 import InfinateCarousel from "./InfinateScroll";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 
 export default function Hero() {
-
+  const router = useRouter();
   return (
     <section
   className="relative flex flex-col items-center justify-center overflow-hidden bg-bg text-text"
@@ -49,7 +51,9 @@ export default function Hero() {
             transition={{ duration: 1 }}
             className="mt-6 flex gap-4 justify-center md:justify-start"
           >
-            <button className="bg-primary cursor-pointer text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-primary-400 group transition-colors">
+            <button
+            onClick={()=> router.push('/auth')}
+            className="bg-primary cursor-pointer text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-primary-400 group transition-colors">
               Get Started <FiArrowRight  className="text-xl group-hover:translate-x-2 group-hover:-rotate-45 duration-300"/>
             </button>
             <button  className="border border-primary text-primary px-6 py-3 rounded-xl hover:bg-primary hover:text-white transition-colors">

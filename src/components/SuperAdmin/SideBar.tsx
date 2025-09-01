@@ -2,7 +2,7 @@
 import React from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {motion} from "framer-motion"
-import { FiHome, FiLayers, FiUsers, FiActivity, FiMessageSquare } from "react-icons/fi";
+import { FiHome, FiLayers, FiUsers, FiActivity, FiMessageSquare, FiFileText } from "react-icons/fi";
 import { CgProfile } from "react-icons/cg";
 
 export default function Sidebar() {
@@ -11,6 +11,7 @@ export default function Sidebar() {
 
   const links = [
     { name: "Home", icon: <FiHome />, href: "/dashboard" },
+    { name: "School Applications", icon: <FiFileText />, href: "/dashboard/school-applications" },
     { name: "School & Subscription Management", icon: <FiLayers />, href: "/dashboard/subscription" },
     { name: "User Management", icon: <FiUsers />, href: "/dashboard/users" },
     { name: "System Health & Performance", icon: <FiActivity />, href: "/dashboard/system-health" },

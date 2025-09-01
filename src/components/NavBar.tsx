@@ -62,6 +62,7 @@ export default function Navbar() {
             </div>
             <div className="md:hidden flex items-center gap-4">
               <button
+                onClick={() => router.push('/auth')}
                 className="px-3 py-1.5 text-sm rounded-md bg-primary text-white cursor-pointer hover:scale-105 duration-500 ease-in-out transition-all"
               >
                 Get Started
