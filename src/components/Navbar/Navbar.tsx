@@ -3,7 +3,11 @@ import React from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 
-const Navbar = () => {
+interface NavbarProps {
+  schoolName?: string;
+}
+
+const Navbar = ({ schoolName = "School Name" }: NavbarProps) => {
 
   const router = useRouter();
   const  role = 'admin'; 
@@ -18,8 +22,8 @@ const Navbar = () => {
         >
           {/* Logo Section */}
           <div className="flex px-10 items-center">
-            <h1 className="font-bold text-2xl hidden md:flex">School Name </h1>
-            <h1 className="font-bold text-2xl md:hidden">HCTWD</h1>
+            <h1 className="font-bold text-2xl hidden md:flex">{schoolName}</h1>
+            <h1 className="font-bold text-2xl md:hidden">{schoolName.substring(0, 5)}</h1>
           </div>
 
           <div className="flex gap-4">

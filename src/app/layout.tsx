@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./Provider";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "EduSphere",
@@ -24,6 +25,12 @@ return (
         >
           {children}
         </div>
+        <Toaster 
+          position="top-right"
+          expand={true}
+          richColors={true}
+          closeButton={true}
+        />
       </Providers>
     </body>
   </html>

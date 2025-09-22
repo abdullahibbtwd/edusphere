@@ -1,13 +1,51 @@
 "use client"
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { FaLocationDot } from "react-icons/fa6";
 import { FaPhone } from "react-icons/fa6";
 import { MdOutlineEmail } from "react-icons/md";
 import { motion } from "framer-motion";
 
-const Contact = () => {
+interface ContactData {
+  contactAddress: string;
+  contactPhone: string;
+  contactEmail: string;
+}
+
+const Contact = ({ school }: { school: string }) => {
+  const [contactData, setContactData] = useState<ContactData>({
+    contactAddress: "No.220 Jos road rudun wada lga,kano state",
+    contactPhone: "99896638",
+    contactEmail: "info@school.com"
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchContactData = async () => {
+      try {
+        const response = await fetch(`/api/schools/by-subdomain/${school}`);
+        if (response.ok) {
+          const schoolData = await response.json();
+          if (schoolData.content) {
+            setContactData({
+              contactAddress: schoolData.content.contactAddress || schoolData.address,
+              contactPhone: schoolData.content.contactPhone || schoolData.phoneNumber,
+              contactEmail: schoolData.content.contactEmail || schoolData.email,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching contact data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (school) {
+      fetchContactData();
+    }
+  }, [school]);
   return (
-    <section className="bg-surface py-10">
+    <section className="bg-bg py-10">
       <h1 className="text-3xl text-center pt-3 md:text-4xl font-bold !leading-snug">
         Contact Us
       </h1>
@@ -28,7 +66,7 @@ const Contact = () => {
                 "
             >
               <FaLocationDot />
-              <p>No.220 Jos road rudun wada lga,kano state</p>
+              <p>{loading ? "Loading..." : contactData.contactAddress}</p>
             </motion.div>
             <motion.div
                 initial={{ opacity: 0, y: 50 }}
@@ -40,7 +78,7 @@ const Contact = () => {
                 "
             >
               <FaPhone />
-              <p>99896638</p>
+              <p>{loading ? "Loading..." : contactData.contactPhone}</p>
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 50 }}
@@ -52,7 +90,7 @@ const Contact = () => {
                 "
             >
               <MdOutlineEmail />
-              <p>HAKIMI@info.com</p>
+              <p>{loading ? "Loading..." : contactData.contactEmail}</p>
             </motion.div>
           </div>
         </div>

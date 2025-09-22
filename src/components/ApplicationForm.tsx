@@ -1,5 +1,7 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { useParams } from "next/navigation";
+import generateApplicationPdf from "./ApplicationPdfGenerator";
 
 interface FormData {
   // Personal Information
@@ -56,30 +58,6 @@ interface FormData {
 type Level = { id: string; name: string };
 type SchoolClass = { id: string; name: string; levelId: string };
 
-const levels: Level[] = [
-  { id: "jss1", name: "JSS1" },
-  { id: "jss2", name: "JSS2" },
-  { id: "jss3", name: "JSS3" },
-  { id: "ss1", name: "SS1" },
-  { id: "ss2", name: "SS2" },
-  { id: "ss3", name: "SS3" },
-];
-
-const schoolClasses: SchoolClass[] = [
-  { id: "a", name: "A - Science", levelId: "ss1" },
-  { id: "b", name: "B - Commerce", levelId: "ss1" },
-  { id: "c", name: "C - Arts", levelId: "ss1" },
-  { id: "d", name: "D - Geography", levelId: "ss1" },
-  { id: "a2", name: "A - Science", levelId: "ss2" },
-  { id: "b2", name: "B - Commerce", levelId: "ss2" },
-  { id: "c2", name: "C - Arts", levelId: "ss2" },
-  { id: "d2", name: "D - Geography", levelId: "ss2" },
-  { id: "a3", name: "A - Science", levelId: "ss3" },
-  { id: "b3", name: "B - Commerce", levelId: "ss3" },
-  { id: "c3", name: "C - Arts", levelId: "ss3" },
-  { id: "d3", name: "D - Geography", levelId: "ss3" },
-];
-
 const steps = [
   "Personal Information",
   "Previous Education",
@@ -90,7 +68,13 @@ const steps = [
 ];
 
 export default function ApplicationForm() {
+  const params = useParams();
+  const schoolId = params.school as string;
+  
   const [activeStep, setActiveStep] = useState(0);
+  const [levels, setLevels] = useState<Level[]>([]);
+  const [schoolClasses, setSchoolClasses] = useState<SchoolClass[]>([]);
+  const [loadingLevels, setLoadingLevels] = useState(true);
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
@@ -143,14 +127,64 @@ export default function ApplicationForm() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Fetch levels and classes from database
+  useEffect(() => {
+    const fetchLevelsAndClasses = async () => {
+      try {
+        setLoadingLevels(true);
+        
+        // Fetch levels
+        const levelsResponse = await fetch(`/api/schools/${schoolId}/levels`);
+        const levelsData = await levelsResponse.json();
+        
+        if (levelsResponse.ok) {
+          setLevels(levelsData.levels || []);
+        } else {
+          console.error('Failed to fetch levels:', levelsData.error);
+        }
+        
+        // Fetch classes
+        const classesResponse = await fetch(`/api/schools/${schoolId}/classes`);
+        const classesData = await classesResponse.json();
+        
+        if (classesResponse.ok) {
+          setSchoolClasses(classesData.classes || []);
+        } else {
+          console.error('Failed to fetch classes:', classesData.error);
+        }
+        
+      } catch (error) {
+        console.error('Error fetching levels and classes:', error);
+      } finally {
+        setLoadingLevels(false);
+      }
+    };
+
+    if (schoolId) {
+      fetchLevelsAndClasses();
+    }
+  }, [schoolId]);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type, checked } = e.target as HTMLInputElement;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    
+    setFormData((prev) => {
+      const newData = {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+      
+      // Reset class selection when level changes
+      if (name === "level") {
+        newData.classId = "";
+        newData.className = "";
+      }
+      
+      return newData;
+    });
+    
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: false }));
     }
@@ -228,14 +262,14 @@ export default function ApplicationForm() {
       // TODO: Add file upload logic here before submitting
       // For now, we'll submit without file paths
       
-      const response = await fetch('/api/student-application', {
+      const response = await fetch(`/api/schools/${schoolId}/student-applications`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           ...formData,
-          schoolId: 'temp-school-id', // This should come from context or props
+          schoolId: schoolId,
           // File paths will be added after file upload implementation
         }),
       });
@@ -246,7 +280,22 @@ export default function ApplicationForm() {
         throw new Error(data.error || 'Failed to submit application');
       }
 
-      alert(`✅ Application submitted successfully! Your application number is: ${data.applicationNumber}`);
+      // Generate PDF after successful submission
+      try {
+        const schoolInfo = {
+          name: "Your School Name", // You can make this dynamic
+          address: "School Address",
+          phone: "School Phone",
+          email: "School Email"
+        };
+
+        await generateApplicationPdf(formData, data.applicationNumber, schoolInfo);
+        alert(`✅ Application submitted successfully! Your application number is: ${data.applicationNumber}\n📄 Application PDF has been downloaded.`);
+      } catch (pdfError) {
+        console.error('Error generating PDF:', pdfError);
+        alert(`✅ Application submitted successfully! Your application number is: ${data.applicationNumber}\n⚠️ PDF generation failed, but your application was saved.`);
+      }
+
       // Reset form or redirect
       setFormData({
         firstName: "",
@@ -642,53 +691,65 @@ export default function ApplicationForm() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Level *</label>
-              <select
-                name="level"
-                value={formData.level}
-                onChange={handleChange}
-                className={`w-full p-2 border rounded-lg ${
-                  errors.level ? "border-red-500" : "border-gray-300"
-                }`}
-              >
-                <option value="">Select level</option>
-                {levels.map((lvl) => (
-                  <option key={lvl.id} value={lvl.id}>
-                    {lvl.name}
-                  </option>
-                ))}
-              </select>
+              {loadingLevels ? (
+                <div className="w-full p-2 border border-gray-300 rounded-lg bg-gray-100">
+                  Loading levels...
+                </div>
+              ) : (
+                <select
+                  name="level"
+                  value={formData.level}
+                  onChange={handleChange}
+                  className={`w-full p-2 border rounded-lg ${
+                    errors.level ? "border-red-500" : "border-gray-300"
+                  }`}
+                >
+                  <option value="">Select level</option>
+                  {levels.map((lvl) => (
+                    <option key={lvl.id} value={lvl.id}>
+                      {lvl.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {formData.level && (
               <div>
                 <label className="block text-sm font-medium mb-1">Class *</label>
-                <select
-                  name="classId"
-                  value={formData.classId}
-                  onChange={(e) => {
-                    const classId = e.target.value;
-                    const selected = schoolClasses.find(
-                      (c) => c.id === classId
-                    );
-                    setFormData((prev) => ({
-                      ...prev,
-                      classId,
-                      className: selected?.name || "",
-                    }));
-                  }}
-                  className={`w-full p-2 border rounded-lg ${
-                    errors.classId ? "border-red-500" : "border-gray-300"
-                  }`}
-                >
-                  <option value="">Select class</option>
-                  {schoolClasses
-                    .filter((c) => c.levelId === formData.level)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </select>
+                {loadingLevels ? (
+                  <div className="w-full p-2 border border-gray-300 rounded-lg bg-gray-100">
+                    Loading classes...
+                  </div>
+                ) : (
+                  <select
+                    name="classId"
+                    value={formData.classId}
+                    onChange={(e) => {
+                      const classId = e.target.value;
+                      const selected = schoolClasses.find(
+                        (c) => c.id === classId
+                      );
+                      setFormData((prev) => ({
+                        ...prev,
+                        classId,
+                        className: selected?.name || "",
+                      }));
+                    }}
+                    className={`w-full p-2 border rounded-lg ${
+                      errors.classId ? "border-red-500" : "border-gray-300"
+                    }`}
+                  >
+                    <option value="">Select class</option>
+                    {schoolClasses
+                      .filter((c) => c.levelId === formData.level)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                  </select>
+                )}
               </div>
             )}
           </div>
@@ -880,11 +941,11 @@ export default function ApplicationForm() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="font-medium">Level:</p>
-                  <p>{levels.find((lvl) => lvl.id === formData.level)?.name}</p>
+                  <p>{levels.find((lvl) => lvl.id === formData.level)?.name || formData.level}</p>
                 </div>
                 <div>
                   <p className="font-medium">Class:</p>
-                  <p>{formData.className}</p>
+                  <p>{formData.className || schoolClasses.find((c) => c.id === formData.classId)?.name || formData.classId}</p>
                 </div>
               </div>
             </div>

@@ -14,9 +14,22 @@ model User {
   id          String    @id @default(cuid())
   name        String?
   email       String    @unique
+  password    String    // Hashed password for school-based auth
   imageUrl    String?
-  clerkUserId String    @unique
+  clerkUserId String?   @unique // Optional for external auth
   role        Role      @default(STUDENT)
+  schoolId    String?   // Add schoolId for school isolation
+  school      School?   @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  
+  // Email verification
+  isEmailVerified Boolean @default(false)
+  emailVerificationCode String?
+  emailVerificationExpires DateTime?
+  
+  // Password reset
+  passwordResetCode String?
+  passwordResetExpires DateTime?
+  
   student     Student?
   teacher     Teacher?
   studentApplications StudentApplication?
@@ -25,6 +38,8 @@ model User {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  @@index([schoolId])  // Add index for schoolId queries
+  @@index([email])     // Add index for email queries
   @@map("users")
 }
 
@@ -45,18 +60,20 @@ model School {
   curriculum        CurriculumType
   totalStudents     Int?
   totalTeachers     Int?
-  facilitiesList    String[] // Stored as JSON array
+  facilitiesList    Json?    // Array of facility objects with name, description, image
   accreditation     String?
   isActive          Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   // Relations
-
+  users             User[]  // Add users relation
   levels            Level[]
   classes           Class[]
   subjects          Subject[]
   teachers          Teacher[]
+  students          Student[]  // Add students relation
+  teacherSubjectClasses TeacherSubjectClass[]  // Add junction table relation
   content           SchoolContent?
   subscription      SchoolSubscription?
   facilities        SchoolFacility[]
@@ -80,18 +97,43 @@ model SchoolContent {
   school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   
   // Hero Section (from Hero.tsx)
-  heroTitle       String   @default("Let's Learn To Explore our Community for better health")
+  heroTitle       String?
   heroSubtitle    String?
   heroImage       String?  // School logo/hero image
   
   // School Info (from SchoolManagement.tsx)
   schoolLogo      String?
-  description     String   @default("Our school is committed to providing a nurturing environment that fosters academic excellence, character development, and lifelong learning.")
+  description     String?
+  
+  // Banner Section (from Banner.tsx)
+  bannerTitle     String?
+  bannerImage     String?  // Banner image URL
+  bannerStats     Json?    // Array of stats like "50+ Courses", "More than 50k Students", "Good Facilities"
+  
+  // About Section (from About.tsx)
+  aboutTitle      String?
+  aboutDescription String?
+  aboutImage      String?  // About section image
   
   // Contact Info (from Contact.tsx)
-  contactAddress  String   @default("No.220 Jos road rudun wada lga,kano state")
-  contactPhone    String   @default("99896638")
-  contactEmail    String   @default("info@school.com")
+  contactAddress  String?
+  contactPhone    String?
+  contactEmail    String?
+  
+  // Campus Images (from Campus.tsx)
+  campusImages    Json?    // Array of campus images with name, description, image
+  
+  // Facilities (from Facilities.tsx)
+  facilities      Json?    // Array of facility objects with name, description, image
+  
+  // Soft Skills (from Subjects.tsx)
+  softSkills      Json?    // Array of soft skills like "Carpentry", "Coding", etc.
+  
+  // Classes (from SchoolManagement.tsx)
+  classes         Json?    // Array of class names like "JSS1A", "JSS1B", "SS1A", etc.
+  
+  // Level Selection
+  levelSelection  String?  // "jss1-3", "ss1-3", or "jss1-ss3"
   
   // Social Media
   facebookUrl     String?
@@ -172,6 +214,7 @@ model SchoolSubscription {
 model SchoolApplication {
   id                String   @id @default(cuid())
   schoolName        String
+  subdomain         String   @unique // Add subdomain field for applications
   address           String
   pmbNumber         String?
   rcNumber          String?
@@ -234,8 +277,7 @@ model Class {
   // Relationships
   students      Student[]
   studentApplications StudentApplication[]
-  subjects      Subject[]
-  teachers      Teacher[]
+  teacherSubjectClasses TeacherSubjectClass[]
   timetables    Timetable[]
   examTimetables ExamTimetable[]
   createdAt     DateTime @default(now())
@@ -256,10 +298,12 @@ model Subject {
   schoolId     String
   school       School   @relation(fields: [schoolId], references: [id])
   
-  // Many-to-many relationships
+  // Class assignment for class-specific subjects
+  classAssignment String? // Store "Junior Class A", "Senior Class B", etc.
+  
+  // Many-to-many relationships through junction table
   levels       Level[]
-  classes      Class[]
-  teachers     Teacher[]
+  teacherSubjectClasses TeacherSubjectClass[]
   
   examTimetables ExamTimetable[]
   createdAt    DateTime @default(now())
@@ -283,16 +327,49 @@ model Teacher {
   userId       String?  @unique
   user         User?    @relation(fields: [userId], references: [id])
   
-  // Many-to-many relationships
-  subjects     Subject[]
-  classes      Class[]
+  // Many-to-many relationships through junction table
+  teacherSubjectClasses TeacherSubjectClass[]
   
   examTimetablesAsTeacher ExamTimetable[] @relation("ExamTimetable_Teacher")
   examTimetablesAsInvigilator ExamTimetable[] @relation("ExamTimetable_Invigilator")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  @@index([schoolId])  // Add index for schoolId queries
   @@map("teachers")
+}
+
+// ===== TEACHER-SUBJECT-CLASS JUNCTION TABLE =====
+
+model TeacherSubjectClass {
+  id          String   @id @default(cuid())
+  teacherId   String
+  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subjectId   String
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  classId     String
+  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  // Additional fields for assignment details
+  isActive    Boolean  @default(true)
+  assignedAt  DateTime @default(now())
+  assignedBy  String?  // User ID who made the assignment
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Ensure unique combination of teacher, subject, and class
+  @@unique([teacherId, subjectId, classId])
+  
+  // Indexes for performance
+  @@index([teacherId])
+  @@index([subjectId])
+  @@index([classId])
+  @@index([schoolId])
+
+  @@map("teacher_subject_classes")
 }
 
 model Student {
@@ -316,6 +393,8 @@ model Student {
   // Academic Information
   classId                     String
   class                       Class     @relation(fields: [classId], references: [id])
+  schoolId                    String    // Add direct schoolId reference
+  school                      School    @relation(fields: [schoolId], references: [id])
   className                   String?
   
   // Previous Education - Primary School
@@ -361,6 +440,8 @@ model Student {
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
 
+  @@index([schoolId])  // Add index for schoolId queries
+  @@index([classId])   // Add index for classId queries
   @@map("students")
 }
 
@@ -419,6 +500,7 @@ model Announcement {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([schoolId])  // Add index for schoolId queries
   @@map("announcements")
 }
 
@@ -436,6 +518,7 @@ model Event {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([schoolId])  // Add index for schoolId queries
   @@map("events")
 }
 

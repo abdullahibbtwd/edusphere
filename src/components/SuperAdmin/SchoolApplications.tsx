@@ -6,6 +6,7 @@ import { Search, Eye, CheckCircle, XCircle, Clock } from 'lucide-react';
 interface SchoolApplication {
   id: string;
   schoolName: string;
+  subdomain: string;
   address: string;
   principalName: string;
   email: string;
@@ -34,7 +35,7 @@ const SchoolApplications = () => {
 
   useEffect(() => {
     fetchApplications();
-  }, [currentPage, statusFilter, searchTerm]);
+  }, [currentPage, statusFilter, searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchApplications = async () => {
     try {
@@ -156,6 +157,9 @@ const SchoolApplications = () => {
                   School
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Subdomain
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Principal
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -186,6 +190,11 @@ const SchoolApplications = () => {
                       <div className="text-sm text-gray-500">
                         {application.address}
                       </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-blue-600">
+                      {application.subdomain}.edusphere.com
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -295,6 +304,7 @@ const SchoolApplications = () => {
                 <div>
                   <h3 className="font-semibold text-gray-900">School Information</h3>
                   <p><strong>Name:</strong> {selectedApplication.schoolName}</p>
+                  <p><strong>Subdomain:</strong> <span className="text-blue-600 font-mono">{selectedApplication.subdomain}.edusphere.com</span></p>
                   <p><strong>Address:</strong> {selectedApplication.address}</p>
                   <p><strong>Type:</strong> {selectedApplication.schoolType}</p>
                   <p><strong>Ownership:</strong> {selectedApplication.ownershipType}</p>

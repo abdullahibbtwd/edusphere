@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTheme } from "next-themes";
 
 const SchoolApplicationForm = () => {
@@ -10,6 +10,7 @@ const SchoolApplicationForm = () => {
   // Form state
   const [formData, setFormData] = useState({
     schoolName: '',
+    subdomain: '',
     address: '',
     pmbNumber: '',
     rcNumber: '',
@@ -28,6 +29,17 @@ const SchoolApplicationForm = () => {
     additionalInfo: ''
   });
 
+  // Subdomain validation state
+  const [subdomainStatus, setSubdomainStatus] = useState<{
+    checking: boolean;
+    available: boolean | null;
+    message: string;
+  }>({
+    checking: false,
+    available: null,
+    message: ''
+  });
+
   const facilityOptions = [
     "Science Laboratory",
     "Computer Lab",
@@ -40,6 +52,64 @@ const SchoolApplicationForm = () => {
     "School Bus",
     "Wi-Fi Connectivity"
   ];
+
+  // Debounced subdomain validation
+  const checkSubdomainAvailability = useCallback(async (subdomain: string) => {
+    if (!subdomain || subdomain.length < 3) {
+      setSubdomainStatus({
+        checking: false,
+        available: null,
+        message: ''
+      });
+      return;
+    }
+
+    setSubdomainStatus(prev => ({ ...prev, checking: true }));
+
+    try {
+      const response = await fetch('/api/check-subdomain', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ subdomain }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSubdomainStatus({
+          checking: false,
+          available: data.available,
+          message: data.message || (data.error || '')
+        });
+      } else {
+        setSubdomainStatus({
+          checking: false,
+          available: false,
+          message: data.error || 'Error checking subdomain'
+        });
+      }
+    } catch (error) {
+      console.error('Error checking subdomain:', error);
+      setSubdomainStatus({
+        checking: false,
+        available: false,
+        message: 'Error checking subdomain availability'
+      });
+    }
+  }, []);
+
+  // Debounce subdomain checking
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.subdomain) {
+        checkSubdomainAvailability(formData.subdomain);
+      }
+    }, 2000); // 2 seconds delay
+
+    return () => clearTimeout(timer);
+  }, [formData.subdomain, checkSubdomainAvailability]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -70,6 +140,13 @@ const SchoolApplicationForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check if subdomain is available before submitting
+    if (subdomainStatus.available !== true) {
+      setSubmitMessage('Please ensure your subdomain is available before submitting.');
+      return;
+    }
+    
     setIsSubmitting(true);
     setSubmitMessage('');
 
@@ -95,6 +172,7 @@ const SchoolApplicationForm = () => {
         // Reset form
         setFormData({
           schoolName: '',
+          subdomain: '',
           address: '',
           pmbNumber: '',
           rcNumber: '',
@@ -111,6 +189,13 @@ const SchoolApplicationForm = () => {
           facilities: [],
           accreditation: '',
           additionalInfo: ''
+        });
+        
+        // Reset subdomain status
+        setSubdomainStatus({
+          checking: false,
+          available: null,
+          message: ''
         });
       } else {
         setSubmitMessage(data.error || 'Failed to submit application. Please try again.');
@@ -175,6 +260,70 @@ const SchoolApplicationForm = () => {
                 placeholder="Enter school name"
                 required
               />
+            </div>
+
+            <div className="md:col-span-2">
+              <label htmlFor="subdomain" className="block text-sm font-medium text-[var(--text)] mb-2">
+                School Subdomain *
+              </label>
+              <div className="relative">
+                <input
+                  id="subdomain"
+                  name="subdomain"
+                  type="text"
+                  value={formData.subdomain}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 rounded-lg bg-bg border text-[var(--text)] focus:outline-none focus:ring-2 pr-12 ${
+                    subdomainStatus.available === true 
+                      ? 'border-green-500 focus:ring-green-500' 
+                      : subdomainStatus.available === false 
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-[var(--border)] focus:ring-[var(--primary)]'
+                  }`}
+                  placeholder="your-school-name"
+                  required
+                  pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?"
+                  title="Only lowercase letters, numbers, and hyphens. Cannot start or end with hyphen."
+                />
+                {subdomainStatus.checking && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[var(--primary)]"></div>
+                  </div>
+                )}
+                {!subdomainStatus.checking && subdomainStatus.available === true && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
+                {!subdomainStatus.checking && subdomainStatus.available === false && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <svg className="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              <div className="mt-1 text-sm">
+                <span className="text-[var(--text)] opacity-70">
+                  This will be your school's URL: 
+                </span>
+                <span className="font-mono text-[var(--primary)]">
+                  {formData.subdomain ? `${formData.subdomain}.edusphere.com` : 'your-school-name.edusphere.com'}
+                </span>
+              </div>
+              {subdomainStatus.message && (
+                <div className={`mt-2 text-sm ${
+                  subdomainStatus.available === true 
+                    ? 'text-green-600' 
+                    : subdomainStatus.available === false 
+                    ? 'text-red-600'
+                    : 'text-[var(--text)] opacity-70'
+                }`}>
+                  {subdomainStatus.message}
+                </div>
+              )}
             </div>
 
             <div className="md:col-span-2">
@@ -477,9 +626,9 @@ const SchoolApplicationForm = () => {
           <div className="mt-8 flex justify-between">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || subdomainStatus.available !== true}
               className={`px-6 py-3 rounded-lg font-medium transition-opacity ${
-                isSubmitting 
+                isSubmitting || subdomainStatus.available !== true
                   ? 'bg-gray-400 cursor-not-allowed' 
                   : 'bg-[var(--primary)] hover:opacity-90'
               } text-white`}

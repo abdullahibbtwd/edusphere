@@ -1,11 +1,20 @@
 "use client"
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import hero from "../assets/hero.png";
 import { GrUserExpert } from "react-icons/gr";
 import { MdOutlineAccessTime } from "react-icons/md";
 import { FaBookReader } from "react-icons/fa";
 import { motion } from "framer-motion";
 import Image from 'next/image';
+
+interface BannerData {
+  bannerTitle: string;
+  bannerImage?: string;
+  bannerStats?: Array<{
+    icon: string;
+    text: string;
+  }>;
+}
 
  const FadeUp = (delay: number) => {
   return {
@@ -26,20 +35,69 @@ import Image from 'next/image';
     },
   };
 };
-const Banner = () => {
+const Banner = ({ school }: { school: string }) => {
+  const [bannerData, setBannerData] = useState<BannerData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBannerData = async () => {
+      try {
+        const response = await fetch(`/api/schools/by-subdomain/${school}`);
+        if (response.ok) {
+          const schoolData = await response.json();
+          if (schoolData.content && (schoolData.content.bannerTitle || schoolData.content.bannerImage || schoolData.content.bannerStats)) {
+            setBannerData({
+              bannerTitle: schoolData.content.bannerTitle,
+              bannerImage: schoolData.content.bannerImage,
+              bannerStats: schoolData.content.bannerStats
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching banner data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (school) {
+      fetchBannerData();
+    }
+  }, [school]);
+
+  const getIconComponent = (iconName: string) => {
+    switch (iconName) {
+      case "FaBookReader":
+        return <FaBookReader className="text-2xl" />;
+      case "GrUserExpert":
+        return <GrUserExpert className="text-2xl" />;
+      case "MdOutlineAccessTime":
+        return <MdOutlineAccessTime className="text-2xl" />;
+      default:
+        return <FaBookReader className="text-2xl" />;
+    }
+  };
+
+  // Don't render banner if no content exists
+  if (!bannerData) {
+    return null;
+  }
+
   return (
     <div>
          <section>
       <div
-        className="container bg-bg py-14 md:py-24 
+        className="container bg-surface py-14 md:py-24 
       grid grid-cols-1 md:grid-cols-2 gap-8 
       space-y-6 md:space-y-0"
       >
         {/* Banner image */}
         <div className="flex justify-center items-center">
           <Image
-            src={hero}
-            alt=""
+            src={bannerData.bannerImage || hero}
+            alt="Banner Image"
+            width={450}
+            height={300}
             className="scale-x-[-1] 
             w-[350px] md:max-w-[450px] object-cover drop-shadow
             "
@@ -49,42 +107,22 @@ const Banner = () => {
         <div className="flex flex-col justify-center">
           <div className="text-center md:text-left space-y-12 ">
             <h1 className="text-3xl md:text-4xl font-bold !leading-snug">
-              The Best Secondary School In Kano State
+              {loading ? "Loading..." : bannerData.bannerTitle}
             </h1>
             <div className="flex flex-col gap-6">
+              {bannerData.bannerStats?.map((stat, index) => (
                 <motion.div
-                variants={FadeUp(0.2)}
-                initial="initial"
-                whileInView={"animate"}
-                 // viewport={{once:true}}
-                className="flex items-center gap-4 p-6 bg-surface rounded-2xl *:
-                hover:bg-white duration-300 hover:shadow-2xl
-                "> 
-                    <FaBookReader className="text-2xl "/>
-                    <p className="text-lg">50+ Courses</p>
+                  key={index}
+                  variants={FadeUp(0.2)}
+                  initial="initial"
+                  whileInView={"animate"}
+                  className="flex items-center gap-4 p-6 bg-surface rounded-2xl *:
+                  hover:bg-white duration-300 hover:shadow-2xl
+                  "> 
+                    {getIconComponent(stat.icon)}
+                    <p className="text-lg">{stat.text}</p>
                 </motion.div>
-                <motion.div
-                variants={FadeUp(0.2)}
-                initial="initial"
-                whileInView={"animate"}
-                  //viewport={{once:true}}
-                className="flex items-center gap-4 p-6 bg-surface rounded-2xl *:
-                hover:bg-white duration-300 hover:shadow-2xl
-                "> 
-                    <GrUserExpert className="text-2xl "/>
-                    <p className="text-lg">Morethan 50k Student</p>
-                </motion.div>
-                <motion.div
-                variants={FadeUp(0.2)}
-                initial="initial"
-                whileInView={"animate"}
-                  //viewport={{once:true}}
-                className="flex items-center gap-4 p-6 bg-surface rounded-2xl *:
-                hover:bg-white duration-300 hover:shadow-2xl
-                "> 
-                    < MdOutlineAccessTime className="text-2xl "/>
-                    <p className="text-lg">Good Facilities</p>
-                </motion.div>
+              ))}
             </div>
           </div>
         </div>

@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     
     // Validate required fields
     const requiredFields = [
-      'schoolName', 'address', 'schoolType', 'principalName', 
+      'schoolName', 'subdomain', 'address', 'schoolType', 'principalName', 
       'phoneNumber', 'email', 'establishmentYear', 'ownershipType', 
       'curriculum', 'submittedBy'
     ];
@@ -22,6 +22,15 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+    }
+
+    // Validate subdomain format
+    const subdomainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+    if (!subdomainRegex.test(body.subdomain)) {
+      return NextResponse.json(
+        { error: 'Invalid subdomain format. Only lowercase letters, numbers, and hyphens are allowed.' },
+        { status: 400 }
+      );
     }
 
     // Check if email already exists
@@ -36,10 +45,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if subdomain already exists in applications or schools
+    const existingSubdomain = await db.schoolApplication.findUnique({
+      where: { subdomain: body.subdomain }
+    });
+
+    if (existingSubdomain) {
+      return NextResponse.json(
+        { error: 'This subdomain is already taken' },
+        { status: 400 }
+      );
+    }
+
+    // Check if subdomain exists in schools table
+    const existingSchool = await db.school.findUnique({
+      where: { subdomain: body.subdomain }
+    });
+
+    if (existingSchool) {
+      return NextResponse.json(
+        { error: 'This subdomain is already taken' },
+        { status: 400 }
+      );
+    }
+
     // Create school application
     const schoolApplication = await db.schoolApplication.create({
       data: {
         schoolName: body.schoolName,
+        subdomain: body.subdomain,
         address: body.address,
         pmbNumber: body.pmbNumber || null,
         rcNumber: body.rcNumber || null,

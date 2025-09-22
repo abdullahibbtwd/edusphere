@@ -20,42 +20,46 @@ import {
   Hash,
 } from "lucide-react";
 
-const menuItems = [
-  {
-    SchoolName: "School Name",
-    items: [
-      { icon: Home, label: "Home", href: "/school/admin", visible: ["admin"] },
-      { icon: Users, label: "Teachers", href: "/school/list/teachers", visible: ["admin"] },
-      { icon: School, label: "Schools Management", href: "/school/list/management", visible: ["admin"] },
-      { icon: User, label: "Students", href: "/school/list/students", visible: ["admin", "teacher"] },
-      { icon: UserCheck, label: "Parents", href: "/school/list/parents", visible: [] },
-      { icon: BookOpen, label: "Subjects", href: "/school/list/subjects", visible: ["admin","student","teacher"] },
-      { icon: Hash, label: "Levels", href: "/school/list/levels", visible: ["admin","teacher"] },
-      { icon: Layers, label: "Class", href: "/school/list/class", visible: ["admin","teacher"] },
-      { icon: Timer, label: "Time Table", href: "/school/list/timetable", visible: ["admin","teacher"] },
-      { icon: User, label: "Applicants", href: "/school/list/applicants", visible: ["admin"] },
-      { icon: Hourglass, label: "Screening Time", href: "/school/list/screenin-time", visible: ["admin"] },
-      { icon: ClipboardList, label: "Exams", href: "/school/list/exams", visible: ["admin","teacher","student","parent"] },
-      { icon: ClipboardList, label: "Assignments", href: "/school/list/assignments", visible: [] },
-      { icon: GraduationCap, label: "Results", href: "/school/list/results", visible: ["admin","teacher","student"] },
-      { icon: Users, label: "Attendance", href: "/school/list/attendance", visible: [] },
-      { icon: Calendar, label: "Events", href: "/school/list/events", visible: ["admin","teacher","student"] },
-      { icon: Megaphone, label: "Messages", href: "/school/list/messages", visible: [] },
-      { icon: Megaphone, label: "Announcements", href: "/school/list/announcements", visible: ["admin","teacher","student"] },
-    ],
-  },
-  {
-    title: "OTHER",
-    items: [
-      { icon: UserCircle, label: "Profile", href: "/list/profile", visible: ["admin","teacher","student","parent"] },
-      { icon: LogOut, label: "Logout", href: "/logout", visible: ["admin","teacher","student","parent"] },
-    ],
-  },
-];
+interface SidebarProps {
+  school: string;
+}
 
-const Sidebar = () => {
+const Sidebar = ({ school }: SidebarProps) => {
   const role = "admin";
   const pathname = usePathname();
+
+  const menuItems = [
+    {
+      SchoolName: "School Name",
+      items: [
+        { icon: Home, label: "Home", href: `/${school}/admin`, visible: ["admin"] },
+        { icon: Users, label: "Teachers", href: `/${school}/list/teachers`, visible: ["admin"] },
+        { icon: School, label: "Schools Management", href: `/${school}/list/management`, visible: ["admin"] },
+        { icon: User, label: "Students", href: `/${school}/list/students`, visible: ["admin", "teacher"] },
+        { icon: UserCheck, label: "Parents", href: `/${school}/list/parents`, visible: [] },
+        { icon: BookOpen, label: "Subjects", href: `/${school}/list/subjects`, visible: ["admin","student","teacher"] },
+        { icon: Hash, label: "Levels", href: `/${school}/list/levels`, visible: ["admin","teacher"] },
+        { icon: Layers, label: "Class", href: `/${school}/list/class`, visible: ["admin","teacher"] },
+        { icon: Timer, label: "Time Table", href: `/${school}/list/timetable`, visible: ["admin","teacher"] },
+        { icon: User, label: "Applicants", href: `/${school}/list/applicants`, visible: ["admin"] },
+        { icon: Hourglass, label: "Screening Time", href: `/${school}/list/screenin-time`, visible: ["admin"] },
+        { icon: ClipboardList, label: "Exams", href: `/${school}/list/exams`, visible: ["admin","teacher","student","parent"] },
+        { icon: ClipboardList, label: "Assignments", href: `/${school}/list/assignments`, visible: [] },
+        { icon: GraduationCap, label: "Results", href: `/${school}/list/results`, visible: ["admin","teacher","student"] },
+        { icon: Users, label: "Attendance", href: `/${school}/list/attendance`, visible: [] },
+        { icon: Calendar, label: "Events", href: `/${school}/list/events`, visible: ["admin","teacher","student"] },
+        { icon: Megaphone, label: "Messages", href: `/${school}/list/messages`, visible: [] },
+        { icon: Megaphone, label: "Announcements", href: `/${school}/list/announcements`, visible: ["admin","teacher","student"] },
+      ],
+    },
+    {
+      title: "OTHER",
+      items: [
+        { icon: UserCircle, label: "Profile", href: `/${school}/list/profile`, visible: ["admin","teacher","student","parent"] },
+        { icon: LogOut, label: "Logout", href: "/logout", visible: ["admin","teacher","student","parent"] },
+      ],
+    },
+  ];
 
   return (
     <div className=" ">
