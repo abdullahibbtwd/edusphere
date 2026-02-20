@@ -1,0 +1,19 @@
+C:\Users\abdul\OneDrive\Documents\edusphere\node_modules\@prisma\client\src\runtime\utils\validatePrismaClientOptions.ts:229
+    throw new PrismaClientConstructorValidationError(
+          ^
+
+
+PrismaClientConstructorValidationError: Using engine type "client" requires either "adapter" or "accelerateUrl" to be provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at validateDependentOptions (C:\Users\abdul\OneDrive\Documents\edusphere\node_modules\@prisma\client\src\runtime\utils\validatePrismaClientOptions.ts:229:11)
+    at validatePrismaClientOptions (C:\Users\abdul\OneDrive\Documents\edusphere\node_modules\@prisma\client\src\runtime\utils\validatePrismaClientOptions.ts:246:3)
+    at new t (C:\Users\abdul\OneDrive\Documents\edusphere\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:281:7)
+    at <anonymous> (C:\Users\abdul\OneDrive\Documents\edusphere\prisma\test-connection.ts:3:16)
+    at Object.<anonymous> (C:\Users\abdul\OneDrive\Documents\edusphere\prisma\test-connection.ts:17:6)
+    at Module._compile (node:internal/modules/cjs/loader:1692:14)
+    at Object.transformer (C:\Users\abdul\OneDrive\Documents\edusphere\node_modules\tsx\dist\register-D46fvsV_.cjs:3:1104)
+    at Module.load (node:internal/modules/cjs/loader:1427:32)
+    at Module._load (node:internal/modules/cjs/loader:1250:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+
+Node.js v24.4.0

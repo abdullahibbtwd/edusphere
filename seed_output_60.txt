@@ -1,0 +1,102 @@
+﻿­ƒî▒ Seeding with 30 Teachers (Max 6 Classes Each)...
+­ƒº╣ Cleaning up old data...
+­ƒæ¿ÔÇì­ƒÅ½ Creating 60 Teachers...
+­ƒôÜ Creating Subjects and Linking to Levels...
+­ƒöù Assigning Subjects to Teachers and Classes...
+­ƒôï Total Subject-Class Combinations: 215
+
+
+­ƒôè Assignment Summary:
+   Total Assignments Created: 215
+   Skipped: 0
+
+­ƒæ¿ÔÇì­ƒÅ½ Teacher Workload:
+   Abdullahi Bashir: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Fatima Hassan: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Ibrahim Musa: 0 classes, 0 subjects
+   Aisha Yusuf: 3 classes, 1 subjects
+   Muhammad Ali: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Zainab Ahmed: 3 classes, 1 subjects
+   Usman Bello: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Hauwa Sani: 0 classes, 0 subjects
+   Yusuf Garba: 0 classes, 0 subjects
+   Maryam Umar: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Suleiman Isa: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Amina Bala: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Aliyu Danjuma: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Khadija Suleiman: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Bashir Adamu: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Halima Ibrahim: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Nasir Abdullahi: 2 classes, 1 subjects
+   Safiya Musa: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Kabir Hassan: 3 classes, 1 subjects
+   Ruqayya Usman: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Ismail Bello: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Jamila Yusuf: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Murtala Garba: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Nana Aisha: 3 classes, 1 subjects
+   Sadiq Ahmed: 0 classes, 0 subjects
+   Bilkisu Sani: 3 classes, 1 subjects
+   Hamza Danjuma: 0 classes, 0 subjects
+   Zulaiha Aliyu: 3 classes, 1 subjects
+   Faruk Isa: 0 classes, 0 subjects
+   Hadiza Bala: 0 classes, 0 subjects
+   Teacher Bashir 31: 3 classes, 1 subjects
+   Teacher Hassan 32: 0 classes, 0 subjects
+   Teacher Musa 33: 3 classes, 1 subjects
+   Teacher Yusuf 34: 3 classes, 1 subjects
+   Teacher Ali 35: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Teacher Ahmed 36: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Teacher Bello 37: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Teacher Sani 38: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Teacher Garba 39: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Teacher Umar 40: 0 classes, 0 subjects
+   Teacher Isa 41: 0 classes, 0 subjects
+   Teacher Bala 42: 3 classes, 1 subjects
+   Teacher Danjuma 43: 3 classes, 1 subjects
+   Teacher Suleiman 44: 0 classes, 0 subjects
+   Teacher Adamu 45: 0 classes, 0 subjects
+   Teacher Ibrahim 46: 0 classes, 0 subjects
+   Teacher Abdullahi 47: 3 classes, 1 subjects
+   Teacher Musa 48: 0 classes, 0 subjects
+   Teacher Hassan 49: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Teacher Usman 50: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Teacher Bello 51: 3 classes, 1 subjects
+   Teacher Yusuf 52: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Teacher Garba 53: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Teacher Aisha 54: 3 classes, 1 subjects
+   Teacher Ahmed 55: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Teacher Sani 56: 0 classes, 0 subjects
+   Teacher Danjuma 57: 6 classes, 1 subjects
+      (Max Capacity Reached)
+   Teacher Aliyu 58: 3 classes, 1 subjects
+   Teacher Isa 59: 3 classes, 1 subjects
+   Teacher Bala 60: 3 classes, 1 subjects
+
+Ô£à Seeding completed successfully!

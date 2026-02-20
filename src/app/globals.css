@@ -1,0 +1,171 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Roboto+Mono:wght@400;700&family=Playfair+Display:wght@400;700&display=swap');
+@import 'tailwindcss';
+
+:root {
+  /* Light Theme variables, which are the default values */
+  --bg: #EEEFEA;
+  --surface: #F6F6F2;
+  --text: #0F172A;
+  --muted: oklch(0.97 0 0);
+  --primary: #8B5CF6;
+  --primary-rgb: 139 92 246;
+  --primary-400: #6366F1;
+  --primary-400-rgb: 99 102 241;
+  --accent: oklch(0.97 0 0);
+  --cta: #F59E0B;
+  --success: #10B981;
+  --danger: #EF4444;
+}
+
+.animation-delay-200 {
+  animation-delay: 0.2s;
+}
+
+.animation-delay-400 {
+  animation-delay: 0.4s;
+}
+
+.animation-delay-600 {
+  animation-delay: 0.6s;
+}
+
+/* This selector will override the root variables when the <html> or <body> has a class of 'dark' */
+.dark {
+  --bg: #0B1220;
+  --surface: #0F172A;
+  --text: #E6EEF8;
+  --muted: #94A3B8;
+  --primary: #8B5CF6;
+  --primary-rgb: 139 92 246;
+  --primary-400: #A78BFA;
+  --primary-400-rgb: 167 139 250;
+  --accent: #2DD4BF;
+  --cta: #F59E0B;
+  --success: #34D399;
+  --danger: #F87171;
+}
+
+.table-custom tr:nth-child(even) {
+  background-color: var(--bg);
+}
+
+
+.table-custom tr:nth-child(odd) {
+  background-color: var(--surface);
+}
+
+.animate-scroll {
+  display: flex;
+  animation: scrollLeft 20s linear infinite;
+}
+
+/* Text color helpers */
+.text-bg {
+  color: var(--bg) !important;
+}
+
+.text-surface {
+  color: var(--surface) !important;
+}
+
+.text-text {
+  color: var(--text) !important;
+}
+
+.text-muted {
+  color: var(--text) !important;
+}
+
+.text-primary {
+  color: var(--primary) !important;
+}
+
+.text-primary-400 {
+  color: var(--primary-400) !important;
+}
+
+.text-accent {
+  color: var(--accent) !important;
+}
+
+.text-cta {
+  color: var(--cta) !important;
+}
+
+.text-success {
+  color: var(--success) !important;
+}
+
+.text-danger {
+  color: var(--danger) !important;
+}
+
+/* For light mode */
+.rbc-today {
+  background-color: var(--accent) !important;
+  /* or any of your vars: --primary, --cta, etc */
+  color: var(--text) !important;
+  opacity: 0.2;
+  /* optional: make it softer */
+}
+
+/* For dark mode */
+.dark .rbc-today {
+  background-color: var(--primary-400) !important;
+  color: var(--surface) !important;
+  opacity: 0.3;
+}
+
+/* Background color helpers */
+.bg-bg {
+  background-color: var(--bg) !important;
+}
+
+.bg-surface {
+  background-color: var(--surface) !important;
+}
+
+.bg-text {
+  background-color: var(--text) !important;
+}
+
+.bg-muted {
+  background-color: var(--muted) !important;
+}
+
+.bg-primary {
+  background-color: var(--primary) !important;
+}
+
+.bg-primary-400 {
+  background-color: var(--primary-400) !important;
+}
+
+.bg-accent {
+  background-color: var(--accent) !important;
+}
+
+.bg-cta {
+  background-color: var(--cta) !important;
+}
+
+.bg-success {
+  background-color: var(--success) !important;
+}
+
+.bg-danger {
+  background-color: var(--danger) !important;
+}
+
+/* Font helpers */
+.font-poppins {
+  font-family: 'Poppins', sans-serif;
+}
+
+.font-roboto-mono {
+  font-family: 'Roboto Mono', monospace;
+}
+
+.font-playfair {
+  font-family: 'Playfair Display', serif;
+}

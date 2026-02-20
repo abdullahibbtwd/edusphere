@@ -1,0 +1,14 @@
+# Database
+DATABASE_URL="your-postgresql-connection-string"
+
+# Authentication
+JWT_SECRET="change-this-to-a-secure-random-string-in-production"
+
+# Email (Resend)
+RESEND_API_KEY="re_xxxxxxxxxxxxx"
+
+# App URL (for email links)
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# To generate a secure JWT_SECRET, run:
+# node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"

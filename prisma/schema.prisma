@@ -1,0 +1,796 @@
+// schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ===== CORE MODELS =====
+
+model User {
+  id          String  @id @default(cuid())
+  name        String?
+  email       String  @unique
+  password    String // Hashed password for school-based auth
+  imageUrl    String?
+  clerkUserId String? @unique // Optional for external auth
+  role        Role    @default(USER)
+  schoolId    String? // Add schoolId for school isolation
+  school      School? @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+
+  // Email verification
+  isEmailVerified          Boolean   @default(false)
+  emailVerificationCode    String?
+  emailVerificationExpires DateTime?
+
+  // Password reset
+  passwordResetCode    String?
+  passwordResetExpires DateTime?
+
+  student             Student?
+  teacher             Teacher?
+  studentApplications StudentApplication?
+  announcements       Announcement[]
+  events              Event[]
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  schoolApplications  SchoolApplication[]
+
+  @@index([schoolId]) // Add index for schoolId queries
+  @@index([email]) // Add index for email queries
+  @@map("users")
+}
+
+model School {
+  id                String         @id @default(cuid())
+  name              String         @unique
+  subdomain         String         @unique // For schoolname.edusphere.com
+  address           String
+  pmbNumber         String?
+  rcNumber          String?
+  schoolType        SchoolType
+  principalName     String
+  phoneNumber       String
+  email             String
+  website           String?
+  establishmentYear String
+  ownershipType     OwnershipType
+  curriculum        CurriculumType
+  totalStudents     Int?
+  totalTeachers     Int?
+  facilitiesList    Json? // Array of facility objects with name, description, image
+  accreditation     String?
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  // Relations
+  users                 User[] // Add users relation
+  levels                Level[]
+  classes               Class[]
+  subjects              Subject[]
+  teachers              Teacher[]
+  students              Student[] // Add students relation
+  teacherSubjectClasses TeacherSubjectClass[] // Add junction table relation
+  content               SchoolContent?
+  subscription          SchoolSubscription?
+  facilities            SchoolFacility[]
+  campuses              SchoolCampus[]
+  timetables            Timetable[]
+  examTimetables        ExamTimetable[]
+  announcements         Announcement[]
+  events                Event[]
+  screeningSlots        ScreeningSlot[]
+  applicationBookings   ApplicationBooking[]
+  studentApplications   StudentApplication[]
+  academicSessions      AcademicSession[]
+  academicTerms         AcademicTerm[]
+  academicEvents        AcademicEvent[]
+  timetableConfig       TimetableConfig?
+
+  @@map("schools")
+}
+
+// ===== SCHOOL WEBSITE CONTENT =====
+
+model SchoolContent {
+  id       String @id @default(cuid())
+  schoolId String @unique
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  // Hero Section (from Hero.tsx)
+  heroTitle    String?
+  heroSubtitle String?
+  heroImage    String? // School logo/hero image
+
+  // School Info (from SchoolManagement.tsx)
+  schoolLogo  String?
+  description String?
+
+  // Banner Section (from Banner.tsx)
+  bannerTitle String?
+  bannerImage String? // Banner image URL
+  bannerStats Json? // Array of stats like "50+ Courses", "More than 50k Students", "Good Facilities"
+
+  // About Section (from About.tsx)
+  aboutTitle       String?
+  aboutDescription String?
+  aboutImage       String? // About section image
+
+  // Contact Info (from Contact.tsx)
+  contactAddress String?
+  contactPhone   String?
+  contactEmail   String?
+
+  // Campus Images (from Campus.tsx)
+  campusImages Json? // Array of campus images with name, description, image
+
+  // Facilities (from Facilities.tsx)
+  facilities Json? // Array of facility objects with name, description, image
+
+  // Soft Skills (from Subjects.tsx)
+  softSkills Json? // Array of soft skills like "Carpentry", "Coding", etc.
+
+  // Classes (from SchoolManagement.tsx)
+  classes Json? // Array of class names like "JSS1A", "JSS1B", "SS1A", etc.
+
+  // Level Selection
+  levelSelection String? // "jss1-3", "ss1-3", or "jss1-ss3"
+
+  // Social Media
+  facebookUrl  String?
+  twitterUrl   String?
+  instagramUrl String?
+  linkedinUrl  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("school_contents")
+}
+
+// ===== FACILITIES (from Facilities.tsx) =====
+
+model SchoolFacility {
+  id          String  @id @default(cuid())
+  schoolId    String
+  school      School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name        String // e.g., "Library", "Laboratory", "Computer Lab"
+  imageUrl    String?
+  description String?
+  isActive    Boolean @default(true)
+  order       Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("school_facilities")
+}
+
+// ===== CAMPUS IMAGES (from Campus.tsx) =====
+
+model SchoolCampus {
+  id          String  @id @default(cuid())
+  schoolId    String
+  school      School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  title       String // e.g., "Outside Campus", "Inside Campus", "School Ground"
+  imageUrl    String?
+  description String?
+  isActive    Boolean @default(true)
+  order       Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("school_campuses")
+}
+
+// ===== SUBSCRIPTION MANAGEMENT =====
+
+model SchoolSubscription {
+  id       String @id @default(cuid())
+  schoolId String @unique
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  planType    SubscriptionPlan   @default(FREE)
+  status      SubscriptionStatus @default(ACTIVE)
+  startDate   DateTime           @default(now())
+  endDate     DateTime
+  maxStudents Int                @default(500)
+  maxTeachers Int                @default(50)
+  features    String[] // Array of enabled features
+
+  // Payment info
+  amount        Float   @default(0)
+  currency      String  @default("USD")
+  paymentMethod String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("school_subscriptions")
+}
+
+// ===== SCHOOL APPLICATION =====
+
+model SchoolApplication {
+  id                  String                  @id @default(cuid())
+  schoolName          String
+  subdomain           String                  @unique
+  state               String
+  lga                 String
+  address             String
+  schoolType          String // PUBLIC or PRIVATE
+  educationLevel      String // JUNIOR_SECONDARY or SENIOR_SECONDARY
+  rcNumber            String?
+  waecNecoNumber      String?
+  nemisId             String?
+  stateApprovalNumber String?
+  principalName       String
+  officialPhone       String
+  schoolEmail         String
+  establishmentYear   String
+  totalStudents       Int?
+  totalTeachers       Int?
+  facilities          String[] // Stored as JSON array
+  accreditation       String?
+  additionalInfo      String?
+  status              SchoolApplicationStatus @default(PENDING)
+  submittedBy         String // User ID
+  submittedByUser     User                    @relation(fields: [submittedBy], references: [id], onDelete: Cascade)
+  submittedAt         DateTime                @default(now())
+  reviewedAt          DateTime?
+  reviewedBy          String? // Admin user ID
+
+  @@map("school_applications")
+}
+
+// ===== EXISTING ACADEMIC MODELS =====
+
+model Level {
+  id          String  @id @default(cuid())
+  name        String // JSS1, JSS2, JSS3, SS1, SS2, SS3
+  schoolId    String
+  school      School  @relation(fields: [schoolId], references: [id])
+  description String?
+  isActive    Boolean @default(true)
+
+  // Relationships
+  classes        Class[]
+  subjects       Subject[]
+  timetables     Timetable[]
+  examTimetables ExamTimetable[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([name, schoolId])
+  @@map("levels")
+}
+
+model Class {
+  id       String @id @default(cuid())
+  name     String
+  levelId  String
+  level    Level  @relation(fields: [levelId], references: [id])
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id])
+
+  // Relationships
+  supervisorId          String?
+  supervisor            Teacher?              @relation("ClassSupervisor", fields: [supervisorId], references: [id])
+  students              Student[]
+  studentApplications   StudentApplication[]
+  teacherSubjectClasses TeacherSubjectClass[]
+  timetables            Timetable[]
+  examTimetables        ExamTimetable[]
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@unique([name, levelId, schoolId])
+  @@map("classes")
+}
+
+model Subject {
+  id         String  @id @default(cuid())
+  name       String
+  code       String
+  creditUnit Int
+  term       Term
+  isGeneral  Boolean @default(false)
+  schoolId   String
+  school     School  @relation(fields: [schoolId], references: [id])
+
+  // Class assignment for class-specific subjects
+  classAssignment String? // Store "Junior Class A", "Senior Class B", etc.
+
+  // Many-to-many relationships through junction table
+  levels                Level[]
+  teacherSubjectClasses TeacherSubjectClass[]
+
+  examTimetables ExamTimetable[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@map("subjects")
+}
+
+model Teacher {
+  id        String  @id @default(cuid())
+  name      String
+  email     String  @unique
+  phone     String
+  address   String
+  birthday  String
+  sex       String
+  img       String
+  teacherId String  @unique
+  schoolId  String
+  school    School  @relation(fields: [schoolId], references: [id])
+  userId    String? @unique
+  user      User?   @relation(fields: [userId], references: [id])
+
+  // Many-to-many relationships through junction table
+  teacherSubjectClasses TeacherSubjectClass[]
+  classesSupervised     Class[]               @relation("ClassSupervisor")
+
+  examTimetablesAsTeacher     ExamTimetable[] @relation("ExamTimetable_Teacher")
+  examTimetablesAsInvigilator ExamTimetable[] @relation("ExamTimetable_Invigilator")
+  createdAt                   DateTime        @default(now())
+  updatedAt                   DateTime        @updatedAt
+
+  @@index([schoolId]) // Add index for schoolId queries
+  @@map("teachers")
+}
+
+// ===== TEACHER-SUBJECT-CLASS JUNCTION TABLE =====
+
+model TeacherSubjectClass {
+  id        String  @id @default(cuid())
+  teacherId String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  classId   String
+  class     Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  schoolId  String
+  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  // Additional fields for assignment details
+  isActive             Boolean  @default(true)
+  assignedAt           DateTime @default(now())
+  assignedBy           String? // User ID who made the assignment
+  hoursPerWeek         Int      @default(1) // How many periods per week
+  requiresDoublePeriod Boolean  @default(false) // Needs consecutive slots
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Ensure unique combination of teacher, subject, and class
+  @@unique([teacherId, subjectId, classId])
+  // Indexes for performance
+  @@index([teacherId])
+  @@index([subjectId])
+  @@index([classId])
+  @@index([schoolId])
+  @@map("teacher_subject_classes")
+}
+
+model Student {
+  id String @id @default(cuid())
+
+  // Personal Information
+  firstName  String
+  lastName   String
+  middleName String?
+  dob        String
+  gender     String
+  email      String  @unique
+  phone      String
+  address    String
+  city       String
+  state      String
+  zipCode    String
+  lga        String
+  religion   String
+
+  // Academic Information
+  classId   String
+  class     Class   @relation(fields: [classId], references: [id])
+  schoolId  String // Add direct schoolId reference
+  school    School  @relation(fields: [schoolId], references: [id])
+  className String?
+
+  // Previous Education - Primary School
+  primarySchoolName      String?
+  primarySchoolStartDate String?
+  primarySchoolEndDate   String?
+  primarySchoolGrade     String?
+
+  // Previous Education - Junior Secondary School
+  juniorSecondarySchoolName      String?
+  juniorSecondarySchoolStartDate String?
+  juniorSecondarySchoolEndDate   String?
+  juniorSecondarySchoolGrade     String?
+
+  // Parent/Guardian Information
+  parentName         String
+  parentRelationship String
+  parentEmail        String
+  parentPhone        String
+  parentOccupation   String?
+  parentAddress      String?
+
+  // File Storage References
+  profileImagePath                     String?
+  primarySchoolCertificatePath         String?
+  primarySchoolTestimonialPath         String?
+  juniorSecondarySchoolCertificatePath String?
+  juniorSecondarySchoolTestimonialPath String?
+  parentIdCardPath                     String?
+  indigeneCertificatePath              String?
+  nationalIdCardPath                   String?
+
+  // Application Status
+  agreeTerms        Boolean           @default(false)
+  status            ApplicationStatus @default(PROGRESS)
+  applicationNumber String            @unique @default(cuid())
+  applicationDate   DateTime          @default(now())
+
+  // User relation (optional for applications)
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId]) // Add index for schoolId queries
+  @@index([classId]) // Add index for classId queries
+  @@map("students")
+}
+
+// ===== EXISTING ACADEMIC MODELS (KEEP AS IS) =====
+
+model Timetable {
+  id        String   @id @default(cuid())
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id])
+  levelId   String
+  level     Level    @relation(fields: [levelId], references: [id])
+  term      Term
+  schedule  Json // Stored as JSON array of day schedules
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([classId, term, schoolId])
+  @@map("timetables")
+}
+
+model ExamTimetable {
+  id            String   @id @default(cuid())
+  subjectId     String
+  subject       Subject  @relation(fields: [subjectId], references: [id])
+  teacherId     String
+  teacher       Teacher  @relation("ExamTimetable_Teacher", fields: [teacherId], references: [id])
+  invigilatorId String?
+  invigilator   Teacher? @relation("ExamTimetable_Invigilator", fields: [invigilatorId], references: [id])
+  examHall      String
+  date          String
+  startTime     String
+  endTime       String
+  term          Term
+  classId       String
+  class         Class    @relation(fields: [classId], references: [id])
+  levelId       String
+  level         Level    @relation(fields: [levelId], references: [id])
+  schoolId      String
+  school        School   @relation(fields: [schoolId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("exam_timetables")
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  targetRoles Role[] // Stored as JSON array
+  createdBy   String
+  creator     User     @relation(fields: [createdBy], references: [id])
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([schoolId]) // Add index for schoolId queries
+  @@map("announcements")
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  startTime   String
+  endTime     String
+  date        String
+  createdBy   String
+  creator     User     @relation(fields: [createdBy], references: [id])
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([schoolId]) // Add index for schoolId queries
+  @@map("events")
+}
+
+model ScreeningSlot {
+  id           String               @id @default(cuid())
+  date         String
+  startTime    String
+  maxCapacity  Int
+  bookingCount Int                  @default(0)
+  schoolId     String
+  school       School               @relation(fields: [schoolId], references: [id])
+  bookings     ApplicationBooking[]
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@map("screening_slots")
+}
+
+model ApplicationBooking {
+  id        String        @id @default(cuid())
+  name      String
+  email     String
+  slotId    String
+  slot      ScreeningSlot @relation(fields: [slotId], references: [id])
+  schoolId  String
+  school    School        @relation(fields: [schoolId], references: [id])
+  createdAt DateTime      @default(now())
+
+  @@map("application_bookings")
+}
+
+// ===== STUDENT APPLICATION MODEL =====
+
+model StudentApplication {
+  id String @id @default(cuid())
+
+  // Personal Information
+  firstName  String
+  lastName   String
+  middleName String?
+  dob        String
+  gender     String
+  email      String
+  phone      String
+  address    String
+  city       String
+  state      String
+  zipCode    String
+  lga        String
+  religion   String
+
+  // Academic Information
+  classId   String
+  class     Class   @relation(fields: [classId], references: [id])
+  className String?
+
+  // Previous Education - Primary School
+  primarySchoolName      String?
+  primarySchoolStartDate String?
+  primarySchoolEndDate   String?
+  primarySchoolGrade     String?
+
+  // Previous Education - Junior Secondary School
+  juniorSecondarySchoolName      String?
+  juniorSecondarySchoolStartDate String?
+  juniorSecondarySchoolEndDate   String?
+  juniorSecondarySchoolGrade     String?
+
+  // Parent/Guardian Information
+  parentName         String
+  parentRelationship String
+  parentEmail        String
+  parentPhone        String
+  parentOccupation   String?
+  parentAddress      String?
+
+  // File Storage References
+  profileImagePath                     String?
+  primarySchoolCertificatePath         String?
+  primarySchoolTestimonialPath         String?
+  juniorSecondarySchoolCertificatePath String?
+  juniorSecondarySchoolTestimonialPath String?
+  parentIdCardPath                     String?
+  indigeneCertificatePath              String?
+  nationalIdCardPath                   String?
+
+  // Application Status
+  agreeTerms        Boolean           @default(false)
+  status            ApplicationStatus @default(PROGRESS)
+  applicationNumber String            @unique @default(cuid())
+  applicationDate   DateTime          @default(now())
+
+  // School Information
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id])
+
+  // User relation (optional for applications)
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("student_applications")
+}
+
+// ===== ENUMS =====
+
+enum Role {
+  USER
+  STUDENT
+  TEACHER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum Term {
+  FIRST
+  SECOND
+  THIRD
+}
+
+enum ApplicationStatus {
+  ADMITTED
+  PROGRESS
+  REJECTED
+}
+
+enum SchoolApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SchoolType {
+  PUBLIC
+  PRIVATE
+  INTERNATIONAL
+  FAITH_BASED
+}
+
+enum OwnershipType {
+  GOVERNMENT
+  PRIVATE
+  RELIGIOUS
+  COMMUNITY
+}
+
+enum CurriculumType {
+  NATIONAL
+  BRITISH
+  AMERICAN
+  IB
+  MONTESSORI
+  OTHER
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  SUSPENDED
+}
+
+// ===== ACADEMIC CALENDAR =====
+
+model AcademicSession {
+  id        String   @id @default(cuid())
+  name      String // e.g., "2025/2026"
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(false)
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  terms AcademicTerm[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, schoolId])
+  @@index([schoolId])
+  @@map("academic_sessions")
+}
+
+model AcademicTerm {
+  id        String          @id @default(cuid())
+  name      Term // Enum: FIRST, SECOND, THIRD
+  startDate DateTime
+  endDate   DateTime
+  sessionId String
+  session   AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  schoolId  String
+  school    School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  events AcademicEvent[]
+
+  isActive Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, sessionId])
+  @@index([sessionId])
+  @@index([schoolId])
+  @@map("academic_terms")
+}
+
+model AcademicEvent {
+  id        String       @id @default(cuid())
+  title     String // e.g. "Mid-Term Break", "Week 1", "WAEC Exams"
+  type      EventType
+  startDate DateTime
+  endDate   DateTime
+  termId    String
+  term      AcademicTerm @relation(fields: [termId], references: [id], onDelete: Cascade)
+  schoolId  String
+  school    School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([termId])
+  @@index([schoolId])
+  @@map("academic_events")
+}
+
+enum EventType {
+  HOLIDAY
+  EXAM
+  CA
+  REVISION
+  NORMAL_CLASS
+  OTHER
+}
+
+// ===== TIMETABLE CONFIGURATION =====
+
+model TimetableConfig {
+  id       String @id @default(cuid())
+  schoolId String @unique
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  // Time configuration
+  schoolStartTime String // "08:00"
+  schoolEndTime   String // "14:00"
+  periodDuration  Int // minutes (e.g., 40)
+
+  // Breaks configuration (stored as JSON array)
+  // Format: [{ startTime: "10:00", endTime: "10:15", name: "Short Break" }]
+  breaks Json // Array of break objects with time ranges
+
+  // Working days
+  workingDays Json // ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("timetable_configs")
+}
