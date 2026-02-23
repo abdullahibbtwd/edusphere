@@ -13,7 +13,7 @@ export default async function DashboardLayout({ children, params }: DashboardLay
   return (
     <div className="flex h-screen bg-bg overflow-hidden">
       {/* Sidebar (Fixed width) */}
-      <aside className="hidden md:block w-64 bg-surface text-text shadow-lg h-full border-r border-gray-200 dark:border-gray-700">
+      <aside className="hidden md:block w-64 bg-surface text-text shadow-lg h-full">
         <Sidebar school={school} />
       </aside>
 

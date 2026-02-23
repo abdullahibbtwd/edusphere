@@ -23,10 +23,10 @@ export async function POST(
     }
 
     // Validate role
-    const validRoles = ['STUDENT', 'TEACHER', 'PARENT', 'ADMIN'];
+    const validRoles = ['STUDENT', 'TEACHER', 'PARENT', 'ADMIN', 'USER'];
     if (!validRoles.includes(role)) {
       return NextResponse.json({
-        error: 'Invalid role. Must be STUDENT, TEACHER, PARENT, or ADMIN'
+        error: 'Invalid role. Must be STUDENT, TEACHER, PARENT, ADMIN, or USER'
       }, { status: 400 });
     }
 

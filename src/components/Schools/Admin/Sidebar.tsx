@@ -97,7 +97,10 @@ const Sidebar = ({ school }: SidebarProps) => {
       {menuItems.map((section, idx) => (
         <div className="flex flex-col gap-2 " key={section.title || section.SchoolName || idx}>
           {section.SchoolName ? (
-            <div className="flex px-3 mt-5 items-center gap-3">
+            <Link
+              href={`/${school}`}
+              className="flex px-3 mt-5 items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+            >
               {schoolLogo && (
                 <div className="relative w-8 h-8 flex-shrink-0">
                   <Image
@@ -109,9 +112,9 @@ const Sidebar = ({ school }: SidebarProps) => {
                 </div>
               )}
               <h2 className="text-lg font-semibold font-italic text-text">
-                {dynamicSchoolName || "School Name"}
+                {dynamicSchoolName || "________"}
               </h2>
-            </div>
+            </Link>
           ) : (
             <div className="px-3 mt-4">
               <h2 className="text-sm text-text">{section.title}</h2>

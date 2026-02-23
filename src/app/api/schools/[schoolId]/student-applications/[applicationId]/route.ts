@@ -34,9 +34,9 @@ export async function GET(
     const actualSchoolId = school.id;
 
     const application = await prisma.studentApplication.findUnique({
-      where: { 
+      where: {
         id: applicationId,
-        schoolId: actualSchoolId 
+        schoolId: actualSchoolId
       },
       include: {
         class: {
@@ -65,19 +65,17 @@ export async function GET(
         id: application.id,
         firstName: application.firstName,
         lastName: application.lastName,
-        middleName: application.middleName,
         dob: application.dob,
         gender: application.gender,
         email: application.email,
         phone: application.phone,
         address: application.address,
-        city: application.city,
         state: application.state,
-        zipCode: application.zipCode,
         lga: application.lga,
         religion: application.religion,
         applicationNumber: application.applicationNumber,
         applicationDate: application.applicationDate.toISOString(),
+        lastSchoolAttended: application.lastSchoolAttended,
         status: application.status,
         class: {
           id: application.class.id,
@@ -85,15 +83,6 @@ export async function GET(
           levelName: application.class.level.name,
           fullName: `${application.class.level.name}${application.class.name}`
         },
-        // Previous Education
-        primarySchoolName: application.primarySchoolName,
-        primarySchoolStartDate: application.primarySchoolStartDate,
-        primarySchoolEndDate: application.primarySchoolEndDate,
-        primarySchoolGrade: application.primarySchoolGrade,
-        juniorSecondarySchoolName: application.juniorSecondarySchoolName,
-        juniorSecondarySchoolStartDate: application.juniorSecondarySchoolStartDate,
-        juniorSecondarySchoolEndDate: application.juniorSecondarySchoolEndDate,
-        juniorSecondarySchoolGrade: application.juniorSecondarySchoolGrade,
         // Parent Information
         parentName: application.parentName,
         parentRelationship: application.parentRelationship,
@@ -103,13 +92,6 @@ export async function GET(
         parentAddress: application.parentAddress,
         // File paths
         profileImagePath: application.profileImagePath,
-        primarySchoolCertificatePath: application.primarySchoolCertificatePath,
-        primarySchoolTestimonialPath: application.primarySchoolTestimonialPath,
-        juniorSecondarySchoolCertificatePath: application.juniorSecondarySchoolCertificatePath,
-        juniorSecondarySchoolTestimonialPath: application.juniorSecondarySchoolTestimonialPath,
-        parentIdCardPath: application.parentIdCardPath,
-        indigeneCertificatePath: application.indigeneCertificatePath,
-        nationalIdCardPath: application.nationalIdCardPath,
         user: application.user,
         createdAt: application.createdAt.toISOString(),
         updatedAt: application.updatedAt.toISOString()
@@ -133,8 +115,8 @@ export async function PUT(
     const { status, notes } = body; // status: 'ADMITTED' | 'REJECTED'
 
     if (!status || !['ADMITTED', 'REJECTED'].includes(status)) {
-      return NextResponse.json({ 
-        error: 'Invalid status. Must be ADMITTED or REJECTED' 
+      return NextResponse.json({
+        error: 'Invalid status. Must be ADMITTED or REJECTED'
       }, { status: 400 });
     }
 
@@ -159,9 +141,9 @@ export async function PUT(
 
     // Find application
     const application = await prisma.studentApplication.findUnique({
-      where: { 
+      where: {
         id: applicationId,
-        schoolId: school.id 
+        schoolId: school.id
       },
       include: {
         class: {
@@ -180,8 +162,8 @@ export async function PUT(
     }
 
     if (application.status !== 'PROGRESS') {
-      return NextResponse.json({ 
-        error: 'Application has already been processed' 
+      return NextResponse.json({
+        error: 'Application has already been processed'
       }, { status: 409 });
     }
 
@@ -216,8 +198,8 @@ export async function PUT(
         });
 
         if (existingStudent) {
-          return NextResponse.json({ 
-            error: 'Student with this email already exists' 
+          return NextResponse.json({
+            error: 'Student with this email already exists'
           }, { status: 409 });
         }
 
@@ -227,34 +209,21 @@ export async function PUT(
             // Personal Information
             firstName: application.firstName,
             lastName: application.lastName,
-            middleName: application.middleName,
             dob: application.dob,
             gender: application.gender,
             email: application.email,
-            phone: application.phone,
-            address: application.address,
-            city: application.city,
-            state: application.state,
-            zipCode: application.zipCode,
-            lga: application.lga,
-            religion: application.religion,
-            
+            phone: application.phone || "",
+            address: application.address || "",
+            state: application.state || "",
+            lga: application.lga || "",
+            religion: application.religion || "",
+
             // Academic Information
+            lastSchoolAttended: application.lastSchoolAttended,
             classId: application.classId,
             schoolId: school.id,
             className: application.className,
-            
-            // Previous Education
-            primarySchoolName: application.primarySchoolName,
-            primarySchoolStartDate: application.primarySchoolStartDate,
-            primarySchoolEndDate: application.primarySchoolEndDate,
-            primarySchoolGrade: application.primarySchoolGrade,
-            
-            juniorSecondarySchoolName: application.juniorSecondarySchoolName,
-            juniorSecondarySchoolStartDate: application.juniorSecondarySchoolStartDate,
-            juniorSecondarySchoolEndDate: application.juniorSecondarySchoolEndDate,
-            juniorSecondarySchoolGrade: application.juniorSecondarySchoolGrade,
-            
+
             // Parent/Guardian Information
             parentName: application.parentName,
             parentRelationship: application.parentRelationship,
@@ -262,17 +231,10 @@ export async function PUT(
             parentPhone: application.parentPhone,
             parentOccupation: application.parentOccupation,
             parentAddress: application.parentAddress,
-            
+
             // File Storage References
             profileImagePath: application.profileImagePath,
-            primarySchoolCertificatePath: application.primarySchoolCertificatePath,
-            primarySchoolTestimonialPath: application.primarySchoolTestimonialPath,
-            juniorSecondarySchoolCertificatePath: application.juniorSecondarySchoolCertificatePath,
-            juniorSecondarySchoolTestimonialPath: application.juniorSecondarySchoolTestimonialPath,
-            parentIdCardPath: application.parentIdCardPath,
-            indigeneCertificatePath: application.indigeneCertificatePath,
-            nationalIdCardPath: application.nationalIdCardPath,
-            
+
             agreeTerms: application.agreeTerms,
             userId: application.userId,
             status: 'ADMITTED'
@@ -298,9 +260,9 @@ export async function PUT(
           where: { id: applicationId },
           data: { status: 'PROGRESS' }
         });
-        
-        return NextResponse.json({ 
-          error: 'Failed to create student record' 
+
+        return NextResponse.json({
+          error: 'Failed to create student record'
         }, { status: 500 });
       }
     }
@@ -342,9 +304,9 @@ export async function DELETE(
 
     // Check if application exists
     const application = await prisma.studentApplication.findUnique({
-      where: { 
+      where: {
         id: applicationId,
-        schoolId: school.id 
+        schoolId: school.id
       }
     });
 

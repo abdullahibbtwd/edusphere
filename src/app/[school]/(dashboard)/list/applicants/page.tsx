@@ -15,7 +15,6 @@ type Application = {
   id: string;
   firstName: string;
   lastName: string;
-  middleName?: string;
   email: string;
   phone: string;
   applicationNumber: string;
@@ -40,15 +39,12 @@ type ApplicationDetails = {
   id: string;
   firstName: string;
   lastName: string;
-  middleName?: string;
   dob: string;
   gender: string;
   email: string;
   phone: string;
   address: string;
-  city: string;
   state: string;
-  zipCode: string;
   lga: string;
   religion: string;
   applicationNumber: string;
@@ -60,15 +56,8 @@ type ApplicationDetails = {
     levelName: string;
     fullName: string;
   };
-  // Previous Education
-  primarySchoolName?: string;
-  primarySchoolStartDate?: string;
-  primarySchoolEndDate?: string;
-  primarySchoolGrade?: string;
-  juniorSecondarySchoolName?: string;
-  juniorSecondarySchoolStartDate?: string;
-  juniorSecondarySchoolEndDate?: string;
-  juniorSecondarySchoolGrade?: string;
+  // Academic History
+  lastSchoolAttended?: string;
   // Parent Information
   parentName: string;
   parentRelationship: string;
@@ -78,13 +67,6 @@ type ApplicationDetails = {
   parentAddress?: string;
   // File paths
   profileImagePath?: string;
-  primarySchoolCertificatePath?: string;
-  primarySchoolTestimonialPath?: string;
-  juniorSecondarySchoolCertificatePath?: string;
-  juniorSecondarySchoolTestimonialPath?: string;
-  parentIdCardPath?: string;
-  indigeneCertificatePath?: string;
-  nationalIdCardPath?: string;
   user?: {
     id: string;
     name: string;
@@ -97,13 +79,54 @@ type ApplicationDetails = {
 const ApplicantsList = () => {
   const params = useParams();
   const schoolId = params.school as string;
-  
+
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedApplicant, setSelectedApplicant] = useState<ApplicationDetails | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [processingApplication, setProcessingApplication] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState<string | null>(null);
+  const [isAdmissionsOpen, setIsAdmissionsOpen] = useState(true);
+  const [updatingSettings, setUpdatingSettings] = useState(false);
+
+  // Fetch school settings
+  const fetchSchoolSettings = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/schools/${schoolId}`);
+      const data = await response.json();
+      if (response.ok) {
+        setIsAdmissionsOpen(data.isAdmissionsOpen);
+      }
+    } catch (error) {
+      console.error("Failed to fetch school settings:", error);
+    }
+  }, [schoolId]);
+
+  // Toggle admissions
+  const handleToggleAdmissions = async () => {
+    try {
+      setUpdatingSettings(true);
+      const newStatus = !isAdmissionsOpen;
+      const response = await fetch(`/api/schools/${schoolId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isAdmissionsOpen: newStatus }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setIsAdmissionsOpen(newStatus);
+        toast.success(newStatus ? "Admissions opened" : "Admissions closed");
+      } else {
+        toast.error(data.error || "Failed to update admissions status");
+      }
+    } catch (error) {
+      toast.error("Failed to update admissions status");
+    } finally {
+      setUpdatingSettings(false);
+    }
+  };
 
   // Fetch applications
   const fetchApplications = useCallback(async () => {
@@ -111,7 +134,7 @@ const ApplicantsList = () => {
       setLoading(true);
       const response = await fetch(`/api/schools/${schoolId}/student-applications`);
       const data = await response.json();
-      
+
       if (response.ok) {
         setApplications(data.applications || []);
       } else {
@@ -129,7 +152,7 @@ const ApplicantsList = () => {
     try {
       const response = await fetch(`/api/schools/${schoolId}/student-applications/${applicationId}`);
       const data = await response.json();
-      
+
       if (response.ok) {
         setSelectedApplicant(data.application);
       } else {
@@ -153,9 +176,9 @@ const ApplicantsList = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       });
-      
+
       const data = await response.json();
-      
+
       if (response.ok) {
         toast.success(data.message);
         setSelectedApplicant(null);
@@ -174,7 +197,7 @@ const ApplicantsList = () => {
   const generatePdf = async (application: ApplicationDetails) => {
     try {
       setGeneratingPdf(application.id);
-      
+
       const schoolInfo = {
         name: "Your School Name", // You can make this dynamic based on school data
         address: "School Address",
@@ -182,7 +205,14 @@ const ApplicantsList = () => {
         email: "School Email"
       };
 
-      await generateApplicationPdf(application, application.applicationNumber, schoolInfo);
+      const pdfData = {
+        ...application,
+        level: application.class.levelName,
+        classId: application.class.id,
+        className: application.class.name,
+      };
+
+      await generateApplicationPdf(pdfData as any, application.applicationNumber, schoolInfo);
       toast.success('PDF generated and downloaded successfully');
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -194,7 +224,8 @@ const ApplicantsList = () => {
 
   useEffect(() => {
     fetchApplications();
-  }, [fetchApplications]);
+    fetchSchoolSettings();
+  }, [fetchApplications, fetchSchoolSettings]);
 
   // Filter Applications
   const filteredApplications = applications.filter((application) =>
@@ -205,7 +236,26 @@ const ApplicantsList = () => {
 
   return (
     <div className="p-4 bg-bg dark:bg-surface rounded-lg shadow">
-      <h2 className="text-xl font-bold mb-4 text-foreground">Admission Applicants</h2>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+        <h2 className="text-xl font-bold text-foreground">Admission Applicants</h2>
+
+        <div className="flex items-center gap-3 bg-muted/30 px-4 py-2 rounded-lg border border-border">
+          <span className="text-sm font-medium text-foreground">
+            Admissions: {isAdmissionsOpen ? 'Open' : 'Closed'}
+          </span>
+          <button
+            onClick={handleToggleAdmissions}
+            disabled={updatingSettings}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 ${isAdmissionsOpen ? 'bg-primary' : 'bg-gray-300'
+              }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isAdmissionsOpen ? 'translate-x-6' : 'translate-x-1'
+                }`}
+            />
+          </button>
+        </div>
+      </div>
 
       {/* Search */}
       <input
@@ -238,9 +288,8 @@ const ApplicantsList = () => {
               {filteredApplications.map((application, i) => (
                 <tr
                   key={application.id}
-                  className={`${
-                    i % 2 === 0 ? "bg-bg dark:bg-surface" : "bg-surface dark:bg-bg"
-                  } hover:bg-muted/50`}
+                  className={`${i % 2 === 0 ? "bg-bg dark:bg-surface" : "bg-surface dark:bg-bg"
+                    } hover:bg-muted/50`}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -267,13 +316,12 @@ const ApplicantsList = () => {
                     {application.class.fullName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      application.status === 'ADMITTED' 
-                        ? 'bg-green-100 text-green-800' 
-                        : application.status === 'REJECTED'
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${application.status === 'ADMITTED'
+                      ? 'bg-green-100 text-green-800'
+                      : application.status === 'REJECTED'
                         ? 'bg-red-100 text-red-800'
                         : 'bg-yellow-100 text-yellow-800'
-                    }`}>
+                      }`}>
                       {application.status}
                     </span>
                   </td>
@@ -341,14 +389,13 @@ const ApplicantsList = () => {
                 Application Details - {selectedApplicant.firstName} {selectedApplicant.lastName}
               </h3>
               <p className="text-sm text-muted-foreground">
-                Application #: {selectedApplicant.applicationNumber} | Status: 
-                <span className={`ml-1 px-2 py-1 text-xs font-semibold rounded-full ${
-                  selectedApplicant.status === 'ADMITTED' 
-                    ? 'bg-green-100 text-green-800' 
-                    : selectedApplicant.status === 'REJECTED'
+                Application #: {selectedApplicant.applicationNumber} | Status:
+                <span className={`ml-1 px-2 py-1 text-xs font-semibold rounded-full ${selectedApplicant.status === 'ADMITTED'
+                  ? 'bg-green-100 text-green-800'
+                  : selectedApplicant.status === 'REJECTED'
                     ? 'bg-red-100 text-red-800'
                     : 'bg-yellow-100 text-yellow-800'
-                }`}>
+                  }`}>
                   {selectedApplicant.status}
                 </span>
               </p>
@@ -361,7 +408,7 @@ const ApplicantsList = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Full Name</label>
-                    <p className="text-foreground">{selectedApplicant.firstName} {selectedApplicant.middleName} {selectedApplicant.lastName}</p>
+                    <p className="text-foreground">{selectedApplicant.firstName} {selectedApplicant.lastName}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Date of Birth</label>
@@ -385,7 +432,7 @@ const ApplicantsList = () => {
                   </div>
                   <div className="md:col-span-2">
                     <label className="text-sm font-medium text-muted-foreground">Address</label>
-                    <p className="text-foreground">{selectedApplicant.address}, {selectedApplicant.city}, {selectedApplicant.state}</p>
+                    <p className="text-foreground">{selectedApplicant.address}, {selectedApplicant.state}</p>
                   </div>
                 </div>
               </div>
@@ -405,30 +452,14 @@ const ApplicantsList = () => {
                 </div>
               </div>
 
-              {/* Previous Education */}
-              {(selectedApplicant.primarySchoolName || selectedApplicant.juniorSecondarySchoolName) && (
+              {/* Academic History */}
+              {selectedApplicant.lastSchoolAttended && (
                 <div>
-                  <h4 className="text-md font-semibold mb-3 text-foreground">Previous Education</h4>
-                  {selectedApplicant.primarySchoolName && (
-                    <div className="mb-4 p-3 bg-muted/30 rounded-lg">
-                      <h5 className="font-medium text-foreground">Primary School</h5>
-                      <p className="text-sm text-muted-foreground">{selectedApplicant.primarySchoolName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedApplicant.primarySchoolStartDate} to {selectedApplicant.primarySchoolEndDate}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Grade: {selectedApplicant.primarySchoolGrade}</p>
-                    </div>
-                  )}
-                  {selectedApplicant.juniorSecondarySchoolName && (
-                    <div className="p-3 bg-muted/30 rounded-lg">
-                      <h5 className="font-medium text-foreground">Junior Secondary School</h5>
-                      <p className="text-sm text-muted-foreground">{selectedApplicant.juniorSecondarySchoolName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedApplicant.juniorSecondarySchoolStartDate} to {selectedApplicant.juniorSecondarySchoolEndDate}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Grade: {selectedApplicant.juniorSecondarySchoolGrade}</p>
-                    </div>
-                  )}
+                  <h4 className="text-md font-semibold mb-3 text-foreground">Academic History</h4>
+                  <div className="p-3 bg-muted/30 rounded-lg">
+                    <label className="text-sm font-medium text-muted-foreground">Last School Attended</label>
+                    <p className="text-foreground">{selectedApplicant.lastSchoolAttended}</p>
+                  </div>
                 </div>
               )}
 
@@ -468,28 +499,7 @@ const ApplicantsList = () => {
                 <h4 className="text-md font-semibold mb-3 text-foreground">Documents</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {selectedApplicant.profileImagePath && (
-                    <DocumentCard title="Profile Image" path={selectedApplicant.profileImagePath} />
-                  )}
-                  {selectedApplicant.primarySchoolCertificatePath && (
-                    <DocumentCard title="Primary School Certificate" path={selectedApplicant.primarySchoolCertificatePath} />
-                  )}
-                  {selectedApplicant.primarySchoolTestimonialPath && (
-                    <DocumentCard title="Primary School Testimonial" path={selectedApplicant.primarySchoolTestimonialPath} />
-                  )}
-                  {selectedApplicant.juniorSecondarySchoolCertificatePath && (
-                    <DocumentCard title="JSS Certificate" path={selectedApplicant.juniorSecondarySchoolCertificatePath} />
-                  )}
-                  {selectedApplicant.juniorSecondarySchoolTestimonialPath && (
-                    <DocumentCard title="JSS Testimonial" path={selectedApplicant.juniorSecondarySchoolTestimonialPath} />
-                  )}
-                  {selectedApplicant.parentIdCardPath && (
-                    <DocumentCard title="Parent ID Card" path={selectedApplicant.parentIdCardPath} />
-                  )}
-                  {selectedApplicant.indigeneCertificatePath && (
-                    <DocumentCard title="Indigene Certificate" path={selectedApplicant.indigeneCertificatePath} />
-                  )}
-                  {selectedApplicant.nationalIdCardPath && (
-                    <DocumentCard title="National ID Card" path={selectedApplicant.nationalIdCardPath} />
+                    <DocumentCard title="Student Photo" path={selectedApplicant.profileImagePath} />
                   )}
                 </div>
               </div>

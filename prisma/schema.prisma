@@ -1,4 +1,3 @@
-// schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,369 +6,306 @@ datasource db {
   provider = "postgresql"
 }
 
-// ===== CORE MODELS =====
-
 model User {
-  id          String  @id @default(cuid())
-  name        String?
-  email       String  @unique
-  password    String // Hashed password for school-based auth
-  imageUrl    String?
-  clerkUserId String? @unique // Optional for external auth
-  role        Role    @default(USER)
-  schoolId    String? // Add schoolId for school isolation
-  school      School? @relation(fields: [schoolId], references: [id], onDelete: SetNull)
-
-  // Email verification
-  isEmailVerified          Boolean   @default(false)
+  id                       String              @id @default(cuid())
+  name                     String?
+  email                    String              @unique
+  imageUrl                 String?
+  clerkUserId              String?             @unique
+  role                     Role                @default(USER)
+  schoolId                 String?
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
   emailVerificationCode    String?
   emailVerificationExpires DateTime?
+  isEmailVerified          Boolean             @default(false)
+  password                 String
+  passwordResetCode        String?
+  passwordResetExpires     DateTime?
+  announcements            Announcement[]
+  events                   Event[]
+  schoolApplications       SchoolApplication[]
+  studentApplications      StudentApplication?
+  student                  Student?
+  teacher                  Teacher?
+  school                   School?             @relation(fields: [schoolId], references: [id])
 
-  // Password reset
-  passwordResetCode    String?
-  passwordResetExpires DateTime?
-
-  student             Student?
-  teacher             Teacher?
-  studentApplications StudentApplication?
-  announcements       Announcement[]
-  events              Event[]
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  schoolApplications  SchoolApplication[]
-
-  @@index([schoolId]) // Add index for schoolId queries
-  @@index([email]) // Add index for email queries
+  @@index([schoolId])
+  @@index([email])
   @@map("users")
 }
 
 model School {
-  id                String         @id @default(cuid())
-  name              String         @unique
-  subdomain         String         @unique // For schoolname.edusphere.com
-  address           String
-  pmbNumber         String?
-  rcNumber          String?
-  schoolType        SchoolType
-  principalName     String
-  phoneNumber       String
-  email             String
-  website           String?
-  establishmentYear String
-  ownershipType     OwnershipType
-  curriculum        CurriculumType
-  totalStudents     Int?
-  totalTeachers     Int?
-  facilitiesList    Json? // Array of facility objects with name, description, image
-  accreditation     String?
-  isActive          Boolean        @default(true)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-
-  // Relations
-  users                 User[] // Add users relation
-  levels                Level[]
-  classes               Class[]
-  subjects              Subject[]
-  teachers              Teacher[]
-  students              Student[] // Add students relation
-  teacherSubjectClasses TeacherSubjectClass[] // Add junction table relation
-  content               SchoolContent?
-  subscription          SchoolSubscription?
-  facilities            SchoolFacility[]
-  campuses              SchoolCampus[]
-  timetables            Timetable[]
-  examTimetables        ExamTimetable[]
-  announcements         Announcement[]
-  events                Event[]
-  screeningSlots        ScreeningSlot[]
-  applicationBookings   ApplicationBooking[]
-  studentApplications   StudentApplication[]
+  id                    String                @id @default(cuid())
+  name                  String                @unique
+  subdomain             String                @unique
+  address               String
+  pmbNumber             String?
+  rcNumber              String?
+  schoolType            SchoolType
+  principalName         String
+  phoneNumber           String
+  email                 String
+  website               String?
+  establishmentYear     String
+  ownershipType         OwnershipType
+  curriculum            CurriculumType
+  totalStudents         Int?
+  totalTeachers         Int?
+  accreditation         String?
+  isActive              Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  facilitiesList        Json?
+  isAdmissionsOpen      Boolean               @default(true)
+  isScreeningEnabled    Boolean               @default(false)
+  screeningVenue        String?
+  screeningStartTime    String?
+  screeningEndTime      String?
+  screeningSlotsPerDay  Int?
+  academicEvents        AcademicEvent[]
   academicSessions      AcademicSession[]
   academicTerms         AcademicTerm[]
-  academicEvents        AcademicEvent[]
+  announcements         Announcement[]
+  applicationBookings   ApplicationBooking[]
+  classes               Class[]
+  events                Event[]
+  examTimetables        ExamTimetable[]
+  levels                Level[]
+  campuses              SchoolCampus[]
+  content               SchoolContent?
+  facilities            SchoolFacility[]
+  subscription          SchoolSubscription?
+  screeningSlots        ScreeningSlot[]
+  studentApplications   StudentApplication[]
+  students              Student[]
+  subjects              Subject[]
+  teacherSubjectClasses TeacherSubjectClass[]
+  teachers              Teacher[]
   timetableConfig       TimetableConfig?
+  timetables            Timetable[]
+  users                 User[]
 
   @@map("schools")
 }
 
-// ===== SCHOOL WEBSITE CONTENT =====
-
 model SchoolContent {
-  id       String @id @default(cuid())
-  schoolId String @unique
-  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-
-  // Hero Section (from Hero.tsx)
-  heroTitle    String?
-  heroSubtitle String?
-  heroImage    String? // School logo/hero image
-
-  // School Info (from SchoolManagement.tsx)
-  schoolLogo  String?
-  description String?
-
-  // Banner Section (from Banner.tsx)
-  bannerTitle String?
-  bannerImage String? // Banner image URL
-  bannerStats Json? // Array of stats like "50+ Courses", "More than 50k Students", "Good Facilities"
-
-  // About Section (from About.tsx)
-  aboutTitle       String?
+  id               String   @id @default(cuid())
+  schoolId         String   @unique
+  heroTitle        String?
+  heroSubtitle     String?
+  heroImage        String?
+  schoolLogo       String?
+  description      String?
+  contactAddress   String?
+  contactPhone     String?
+  contactEmail     String?
+  facebookUrl      String?
+  twitterUrl       String?
+  instagramUrl     String?
+  linkedinUrl      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  campusImages     Json?
   aboutDescription String?
-  aboutImage       String? // About section image
-
-  // Contact Info (from Contact.tsx)
-  contactAddress String?
-  contactPhone   String?
-  contactEmail   String?
-
-  // Campus Images (from Campus.tsx)
-  campusImages Json? // Array of campus images with name, description, image
-
-  // Facilities (from Facilities.tsx)
-  facilities Json? // Array of facility objects with name, description, image
-
-  // Soft Skills (from Subjects.tsx)
-  softSkills Json? // Array of soft skills like "Carpentry", "Coding", etc.
-
-  // Classes (from SchoolManagement.tsx)
-  classes Json? // Array of class names like "JSS1A", "JSS1B", "SS1A", etc.
-
-  // Level Selection
-  levelSelection String? // "jss1-3", "ss1-3", or "jss1-ss3"
-
-  // Social Media
-  facebookUrl  String?
-  twitterUrl   String?
-  instagramUrl String?
-  linkedinUrl  String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  aboutImage       String?
+  aboutTitle       String?
+  bannerImage      String?
+  bannerStats      Json?
+  bannerTitle      String?
+  facilities       Json?
+  levelSelection   String?
+  softSkills       Json?
+  classes          Json?
+  school           School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@map("school_contents")
 }
 
-// ===== FACILITIES (from Facilities.tsx) =====
-
 model SchoolFacility {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   schoolId    String
-  school      School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  name        String // e.g., "Library", "Laboratory", "Computer Lab"
+  name        String
   imageUrl    String?
   description String?
-  isActive    Boolean @default(true)
-  order       Int     @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@map("school_facilities")
 }
 
-// ===== CAMPUS IMAGES (from Campus.tsx) =====
-
 model SchoolCampus {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   schoolId    String
-  school      School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  title       String // e.g., "Outside Campus", "Inside Campus", "School Ground"
+  title       String
   imageUrl    String?
   description String?
-  isActive    Boolean @default(true)
-  order       Int     @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@map("school_campuses")
 }
 
-// ===== SUBSCRIPTION MANAGEMENT =====
-
 model SchoolSubscription {
-  id       String @id @default(cuid())
-  schoolId String @unique
-  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-
-  planType    SubscriptionPlan   @default(FREE)
-  status      SubscriptionStatus @default(ACTIVE)
-  startDate   DateTime           @default(now())
-  endDate     DateTime
-  maxStudents Int                @default(500)
-  maxTeachers Int                @default(50)
-  features    String[] // Array of enabled features
-
-  // Payment info
-  amount        Float   @default(0)
-  currency      String  @default("USD")
+  id            String             @id @default(cuid())
+  schoolId      String             @unique
+  planType      SubscriptionPlan   @default(FREE)
+  status        SubscriptionStatus @default(ACTIVE)
+  startDate     DateTime           @default(now())
+  endDate       DateTime
+  maxStudents   Int                @default(500)
+  maxTeachers   Int                @default(50)
+  features      String[]
+  amount        Float              @default(0)
+  currency      String             @default("USD")
   paymentMethod String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  school        School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@map("school_subscriptions")
 }
-
-// ===== SCHOOL APPLICATION =====
 
 model SchoolApplication {
   id                  String                  @id @default(cuid())
   schoolName          String
   subdomain           String                  @unique
-  state               String
-  lga                 String
   address             String
-  schoolType          String // PUBLIC or PRIVATE
-  educationLevel      String // JUNIOR_SECONDARY or SENIOR_SECONDARY
   rcNumber            String?
-  waecNecoNumber      String?
-  nemisId             String?
-  stateApprovalNumber String?
   principalName       String
-  officialPhone       String
-  schoolEmail         String
   establishmentYear   String
   totalStudents       Int?
   totalTeachers       Int?
-  facilities          String[] // Stored as JSON array
+  facilities          String[]
   accreditation       String?
   additionalInfo      String?
   status              SchoolApplicationStatus @default(PENDING)
-  submittedBy         String // User ID
-  submittedByUser     User                    @relation(fields: [submittedBy], references: [id], onDelete: Cascade)
+  submittedBy         String
   submittedAt         DateTime                @default(now())
   reviewedAt          DateTime?
-  reviewedBy          String? // Admin user ID
+  reviewedBy          String?
+  educationLevel      String
+  lga                 String
+  nemisId             String?
+  officialPhone       String
+  schoolEmail         String
+  state               String
+  stateApprovalNumber String?
+  waecNecoNumber      String?
+  schoolType          String
+  submittedByUser     User                    @relation(fields: [submittedBy], references: [id], onDelete: Cascade)
 
   @@map("school_applications")
 }
 
-// ===== EXISTING ACADEMIC MODELS =====
-
 model Level {
-  id          String  @id @default(cuid())
-  name        String // JSS1, JSS2, JSS3, SS1, SS2, SS3
-  schoolId    String
-  school      School  @relation(fields: [schoolId], references: [id])
-  description String?
-  isActive    Boolean @default(true)
-
-  // Relationships
-  classes        Class[]
-  subjects       Subject[]
-  timetables     Timetable[]
-  examTimetables ExamTimetable[]
+  id             String          @id @default(cuid())
+  name           String
+  schoolId       String
+  description    String?
+  isActive       Boolean         @default(true)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+  classes        Class[]
+  examTimetables ExamTimetable[]
+  school         School          @relation(fields: [schoolId], references: [id])
+  timetables     Timetable[]
+  subjects       Subject[]       @relation("LevelToSubject")
 
   @@unique([name, schoolId])
   @@map("levels")
 }
 
 model Class {
-  id       String @id @default(cuid())
-  name     String
-  levelId  String
-  level    Level  @relation(fields: [levelId], references: [id])
-  schoolId String
-  school   School @relation(fields: [schoolId], references: [id])
-
-  // Relationships
-  supervisorId          String?
-  supervisor            Teacher?              @relation("ClassSupervisor", fields: [supervisorId], references: [id])
-  students              Student[]
-  studentApplications   StudentApplication[]
-  teacherSubjectClasses TeacherSubjectClass[]
-  timetables            Timetable[]
-  examTimetables        ExamTimetable[]
+  id                    String                @id @default(cuid())
+  name                  String
+  levelId               String
+  schoolId              String
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
+  supervisorId          String?
+  level                 Level                 @relation(fields: [levelId], references: [id])
+  school                School                @relation(fields: [schoolId], references: [id])
+  supervisor            Teacher?              @relation("ClassSupervisor", fields: [supervisorId], references: [id])
+  examTimetables        ExamTimetable[]
+  studentApplications   StudentApplication[]
+  students              Student[]
+  teacherSubjectClasses TeacherSubjectClass[]
+  timetables            Timetable[]
 
   @@unique([name, levelId, schoolId])
   @@map("classes")
 }
 
 model Subject {
-  id         String  @id @default(cuid())
-  name       String
-  code       String
-  creditUnit Int
-  term       Term
-  isGeneral  Boolean @default(false)
-  schoolId   String
-  school     School  @relation(fields: [schoolId], references: [id])
-
-  // Class assignment for class-specific subjects
-  classAssignment String? // Store "Junior Class A", "Senior Class B", etc.
-
-  // Many-to-many relationships through junction table
-  levels                Level[]
+  id                    String                @id @default(cuid())
+  name                  String
+  code                  String
+  creditUnit            Int
+  term                  Term
+  isGeneral             Boolean               @default(false)
+  schoolId              String
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  classAssignment       String?
+  examTimetables        ExamTimetable[]
+  school                School                @relation(fields: [schoolId], references: [id])
   teacherSubjectClasses TeacherSubjectClass[]
-
-  examTimetables ExamTimetable[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  levels                Level[]               @relation("LevelToSubject")
 
   @@map("subjects")
 }
 
 model Teacher {
-  id        String  @id @default(cuid())
-  name      String
-  email     String  @unique
-  phone     String
-  address   String
-  birthday  String
-  sex       String
-  img       String
-  teacherId String  @unique
-  schoolId  String
-  school    School  @relation(fields: [schoolId], references: [id])
-  userId    String? @unique
-  user      User?   @relation(fields: [userId], references: [id])
+  id                          String                @id @default(cuid())
+  name                        String
+  email                       String                @unique
+  phone                       String
+  address                     String
+  birthday                    String
+  sex                         String
+  img                         String
+  teacherId                   String                @unique
+  schoolId                    String
+  userId                      String?               @unique
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
+  classesSupervised           Class[]               @relation("ClassSupervisor")
+  examTimetablesAsInvigilator ExamTimetable[]       @relation("ExamTimetable_Invigilator")
+  examTimetablesAsTeacher     ExamTimetable[]       @relation("ExamTimetable_Teacher")
+  teacherSubjectClasses       TeacherSubjectClass[]
+  school                      School                @relation(fields: [schoolId], references: [id])
+  user                        User?                 @relation(fields: [userId], references: [id])
 
-  // Many-to-many relationships through junction table
-  teacherSubjectClasses TeacherSubjectClass[]
-  classesSupervised     Class[]               @relation("ClassSupervisor")
-
-  examTimetablesAsTeacher     ExamTimetable[] @relation("ExamTimetable_Teacher")
-  examTimetablesAsInvigilator ExamTimetable[] @relation("ExamTimetable_Invigilator")
-  createdAt                   DateTime        @default(now())
-  updatedAt                   DateTime        @updatedAt
-
-  @@index([schoolId]) // Add index for schoolId queries
+  @@index([schoolId])
   @@map("teachers")
 }
 
-// ===== TEACHER-SUBJECT-CLASS JUNCTION TABLE =====
-
 model TeacherSubjectClass {
-  id        String  @id @default(cuid())
-  teacherId String
-  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  subjectId String
-  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  classId   String
-  class     Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
-  schoolId  String
-  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-
-  // Additional fields for assignment details
+  id                   String   @id @default(cuid())
+  teacherId            String
+  subjectId            String
+  classId              String
+  schoolId             String
   isActive             Boolean  @default(true)
   assignedAt           DateTime @default(now())
-  assignedBy           String? // User ID who made the assignment
-  hoursPerWeek         Int      @default(1) // How many periods per week
-  requiresDoublePeriod Boolean  @default(false) // Needs consecutive slots
+  assignedBy           String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  hoursPerWeek         Int      @default(1)
+  requiresDoublePeriod Boolean  @default(false)
+  class                Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  school               School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject              Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher              Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Ensure unique combination of teacher, subject, and class
   @@unique([teacherId, subjectId, classId])
-  // Indexes for performance
   @@index([teacherId])
   @@index([subjectId])
   @@index([classId])
@@ -378,92 +314,56 @@ model TeacherSubjectClass {
 }
 
 model Student {
-  id String @id @default(cuid())
-
-  // Personal Information
-  firstName  String
-  lastName   String
-  middleName String?
-  dob        String
-  gender     String
-  email      String  @unique
-  phone      String
-  address    String
-  city       String
-  state      String
-  zipCode    String
-  lga        String
-  religion   String
-
-  // Academic Information
-  classId   String
-  class     Class   @relation(fields: [classId], references: [id])
-  schoolId  String // Add direct schoolId reference
-  school    School  @relation(fields: [schoolId], references: [id])
-  className String?
-
-  // Previous Education - Primary School
-  primarySchoolName      String?
-  primarySchoolStartDate String?
-  primarySchoolEndDate   String?
-  primarySchoolGrade     String?
-
-  // Previous Education - Junior Secondary School
-  juniorSecondarySchoolName      String?
-  juniorSecondarySchoolStartDate String?
-  juniorSecondarySchoolEndDate   String?
-  juniorSecondarySchoolGrade     String?
-
-  // Parent/Guardian Information
+  id                 String            @id @default(cuid())
+  firstName          String
+  lastName           String
+  dob                String
+  gender             String
+  email              String            @unique
+  phone              String
+  address            String
+  state              String
+  lga                String
+  religion           String
+  classId            String
+  schoolId           String
+  className          String?
   parentName         String
   parentRelationship String
   parentEmail        String
   parentPhone        String
   parentOccupation   String?
   parentAddress      String?
+  profileImagePath   String?
+  agreeTerms         Boolean           @default(false)
+  status             ApplicationStatus @default(PROGRESS)
+  applicationNumber  String            @unique @default(cuid())
+  applicationDate    DateTime          @default(now())
+  userId             String?           @unique
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  lastSchoolAttended String?
+  class              Class             @relation(fields: [classId], references: [id])
+  school             School            @relation(fields: [schoolId], references: [id])
+  user               User?             @relation(fields: [userId], references: [id])
 
-  // File Storage References
-  profileImagePath                     String?
-  primarySchoolCertificatePath         String?
-  primarySchoolTestimonialPath         String?
-  juniorSecondarySchoolCertificatePath String?
-  juniorSecondarySchoolTestimonialPath String?
-  parentIdCardPath                     String?
-  indigeneCertificatePath              String?
-  nationalIdCardPath                   String?
-
-  // Application Status
-  agreeTerms        Boolean           @default(false)
-  status            ApplicationStatus @default(PROGRESS)
-  applicationNumber String            @unique @default(cuid())
-  applicationDate   DateTime          @default(now())
-
-  // User relation (optional for applications)
-  userId String? @unique
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([schoolId]) // Add index for schoolId queries
-  @@index([classId]) // Add index for classId queries
+  @@index([schoolId])
+  @@index([classId])
   @@map("students")
 }
-
-// ===== EXISTING ACADEMIC MODELS (KEEP AS IS) =====
 
 model Timetable {
   id        String   @id @default(cuid())
   classId   String
-  class     Class    @relation(fields: [classId], references: [id])
   levelId   String
-  level     Level    @relation(fields: [levelId], references: [id])
   term      Term
-  schedule  Json // Stored as JSON array of day schedules
+  schedule  Json
   schoolId  String
-  school    School   @relation(fields: [schoolId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  class     Class    @relation(fields: [classId], references: [id])
+  level     Level    @relation(fields: [levelId], references: [id])
+  school    School   @relation(fields: [schoolId], references: [id])
 
   @@unique([classId, term, schoolId])
   @@map("timetables")
@@ -472,24 +372,24 @@ model Timetable {
 model ExamTimetable {
   id            String   @id @default(cuid())
   subjectId     String
-  subject       Subject  @relation(fields: [subjectId], references: [id])
   teacherId     String
-  teacher       Teacher  @relation("ExamTimetable_Teacher", fields: [teacherId], references: [id])
   invigilatorId String?
-  invigilator   Teacher? @relation("ExamTimetable_Invigilator", fields: [invigilatorId], references: [id])
   examHall      String
   date          String
   startTime     String
   endTime       String
   term          Term
   classId       String
-  class         Class    @relation(fields: [classId], references: [id])
   levelId       String
-  level         Level    @relation(fields: [levelId], references: [id])
   schoolId      String
-  school        School   @relation(fields: [schoolId], references: [id])
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  class         Class    @relation(fields: [classId], references: [id])
+  invigilator   Teacher? @relation("ExamTimetable_Invigilator", fields: [invigilatorId], references: [id])
+  level         Level    @relation(fields: [levelId], references: [id])
+  school        School   @relation(fields: [schoolId], references: [id])
+  subject       Subject  @relation(fields: [subjectId], references: [id])
+  teacher       Teacher  @relation("ExamTimetable_Teacher", fields: [teacherId], references: [id])
 
   @@map("exam_timetables")
 }
@@ -498,15 +398,15 @@ model Announcement {
   id          String   @id @default(cuid())
   title       String
   content     String
-  targetRoles Role[] // Stored as JSON array
+  targetRoles Role[]
   createdBy   String
-  creator     User     @relation(fields: [createdBy], references: [id])
   schoolId    String
-  school      School   @relation(fields: [schoolId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  creator     User     @relation(fields: [createdBy], references: [id])
+  school      School   @relation(fields: [schoolId], references: [id])
 
-  @@index([schoolId]) // Add index for schoolId queries
+  @@index([schoolId])
   @@map("announcements")
 }
 
@@ -518,13 +418,13 @@ model Event {
   endTime     String
   date        String
   createdBy   String
-  creator     User     @relation(fields: [createdBy], references: [id])
   schoolId    String
-  school      School   @relation(fields: [schoolId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  creator     User     @relation(fields: [createdBy], references: [id])
+  school      School   @relation(fields: [schoolId], references: [id])
 
-  @@index([schoolId]) // Add index for schoolId queries
+  @@index([schoolId])
   @@map("events")
 }
 
@@ -532,13 +432,16 @@ model ScreeningSlot {
   id           String               @id @default(cuid())
   date         String
   startTime    String
+  endTime      String?
+  venue        String?
   maxCapacity  Int
   bookingCount Int                  @default(0)
   schoolId     String
-  school       School               @relation(fields: [schoolId], references: [id])
-  bookings     ApplicationBooking[]
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
+  bookings     ApplicationBooking[]
+  applications StudentApplication[]
+  school       School               @relation(fields: [schoolId], references: [id])
 
   @@map("screening_slots")
 }
@@ -548,97 +451,130 @@ model ApplicationBooking {
   name      String
   email     String
   slotId    String
-  slot      ScreeningSlot @relation(fields: [slotId], references: [id])
   schoolId  String
-  school    School        @relation(fields: [schoolId], references: [id])
   createdAt DateTime      @default(now())
+  school    School        @relation(fields: [schoolId], references: [id])
+  slot      ScreeningSlot @relation(fields: [slotId], references: [id])
 
   @@map("application_bookings")
 }
 
-// ===== STUDENT APPLICATION MODEL =====
-
 model StudentApplication {
-  id String @id @default(cuid())
-
-  // Personal Information
-  firstName  String
-  lastName   String
-  middleName String?
-  dob        String
-  gender     String
-  email      String
-  phone      String
-  address    String
-  city       String
-  state      String
-  zipCode    String
-  lga        String
-  religion   String
-
-  // Academic Information
-  classId   String
-  class     Class   @relation(fields: [classId], references: [id])
-  className String?
-
-  // Previous Education - Primary School
-  primarySchoolName      String?
-  primarySchoolStartDate String?
-  primarySchoolEndDate   String?
-  primarySchoolGrade     String?
-
-  // Previous Education - Junior Secondary School
-  juniorSecondarySchoolName      String?
-  juniorSecondarySchoolStartDate String?
-  juniorSecondarySchoolEndDate   String?
-  juniorSecondarySchoolGrade     String?
-
-  // Parent/Guardian Information
+  id                 String            @id @default(cuid())
+  firstName          String
+  lastName           String
+  dob                String
+  gender             String
+  email              String
+  phone              String?
+  classId            String
+  className          String?
   parentName         String
   parentRelationship String
   parentEmail        String
   parentPhone        String
   parentOccupation   String?
   parentAddress      String?
-
-  // File Storage References
-  profileImagePath                     String?
-  primarySchoolCertificatePath         String?
-  primarySchoolTestimonialPath         String?
-  juniorSecondarySchoolCertificatePath String?
-  juniorSecondarySchoolTestimonialPath String?
-  parentIdCardPath                     String?
-  indigeneCertificatePath              String?
-  nationalIdCardPath                   String?
-
-  // Application Status
-  agreeTerms        Boolean           @default(false)
-  status            ApplicationStatus @default(PROGRESS)
-  applicationNumber String            @unique @default(cuid())
-  applicationDate   DateTime          @default(now())
-
-  // School Information
-  schoolId String
-  school   School @relation(fields: [schoolId], references: [id])
-
-  // User relation (optional for applications)
-  userId String? @unique
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  profileImagePath   String?
+  agreeTerms         Boolean           @default(false)
+  status             ApplicationStatus @default(PROGRESS)
+  applicationNumber  String            @unique @default(cuid())
+  applicationDate    DateTime          @default(now())
+  schoolId           String
+  userId             String?           @unique
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  lastSchoolAttended String?
+  address            String?
+  lga                String?
+  religion           String?
+  state              String?
+  screeningSlotId    String?
+  class              Class             @relation(fields: [classId], references: [id])
+  school             School            @relation(fields: [schoolId], references: [id])
+  user               User?             @relation(fields: [userId], references: [id])
+  screeningSlot      ScreeningSlot?    @relation(fields: [screeningSlotId], references: [id])
 
   @@map("student_applications")
 }
 
-// ===== ENUMS =====
+model AcademicSession {
+  id        String         @id @default(cuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean        @default(false)
+  schoolId  String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  school    School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  terms     AcademicTerm[]
+
+  @@unique([name, schoolId])
+  @@index([schoolId])
+  @@map("academic_sessions")
+}
+
+model AcademicTerm {
+  id        String          @id @default(cuid())
+  name      Term
+  startDate DateTime
+  endDate   DateTime
+  sessionId String
+  schoolId  String
+  isActive  Boolean         @default(false)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  events    AcademicEvent[]
+  school    School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  session   AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([name, sessionId])
+  @@index([sessionId])
+  @@index([schoolId])
+  @@map("academic_terms")
+}
+
+model AcademicEvent {
+  id          String       @id @default(cuid())
+  title       String
+  type        EventType
+  startDate   DateTime
+  endDate     DateTime
+  termId      String
+  schoolId    String
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  term        AcademicTerm @relation(fields: [termId], references: [id], onDelete: Cascade)
+
+  @@index([termId])
+  @@index([schoolId])
+  @@map("academic_events")
+}
+
+model TimetableConfig {
+  id              String   @id @default(cuid())
+  schoolId        String   @unique
+  schoolStartTime String
+  schoolEndTime   String
+  periodDuration  Int
+  breaks          Json
+  workingDays     Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  school          School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@map("timetable_configs")
+}
 
 enum Role {
-  USER
   STUDENT
   TEACHER
   ADMIN
   SUPER_ADMIN
+  USER
 }
 
 enum Term {
@@ -696,71 +632,6 @@ enum SubscriptionStatus {
   SUSPENDED
 }
 
-// ===== ACADEMIC CALENDAR =====
-
-model AcademicSession {
-  id        String   @id @default(cuid())
-  name      String // e.g., "2025/2026"
-  startDate DateTime
-  endDate   DateTime
-  isActive  Boolean  @default(false)
-  schoolId  String
-  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-
-  terms AcademicTerm[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([name, schoolId])
-  @@index([schoolId])
-  @@map("academic_sessions")
-}
-
-model AcademicTerm {
-  id        String          @id @default(cuid())
-  name      Term // Enum: FIRST, SECOND, THIRD
-  startDate DateTime
-  endDate   DateTime
-  sessionId String
-  session   AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  schoolId  String
-  school    School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-
-  events AcademicEvent[]
-
-  isActive Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([name, sessionId])
-  @@index([sessionId])
-  @@index([schoolId])
-  @@map("academic_terms")
-}
-
-model AcademicEvent {
-  id        String       @id @default(cuid())
-  title     String // e.g. "Mid-Term Break", "Week 1", "WAEC Exams"
-  type      EventType
-  startDate DateTime
-  endDate   DateTime
-  termId    String
-  term      AcademicTerm @relation(fields: [termId], references: [id], onDelete: Cascade)
-  schoolId  String
-  school    School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-
-  description String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([termId])
-  @@index([schoolId])
-  @@map("academic_events")
-}
-
 enum EventType {
   HOLIDAY
   EXAM
@@ -768,29 +639,4 @@ enum EventType {
   REVISION
   NORMAL_CLASS
   OTHER
-}
-
-// ===== TIMETABLE CONFIGURATION =====
-
-model TimetableConfig {
-  id       String @id @default(cuid())
-  schoolId String @unique
-  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-
-  // Time configuration
-  schoolStartTime String // "08:00"
-  schoolEndTime   String // "14:00"
-  periodDuration  Int // minutes (e.g., 40)
-
-  // Breaks configuration (stored as JSON array)
-  // Format: [{ startTime: "10:00", endTime: "10:15", name: "Short Break" }]
-  breaks Json // Array of break objects with time ranges
-
-  // Working days
-  workingDays Json // ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("timetable_configs")
 }

@@ -75,7 +75,6 @@ export async function GET(
       id: application.id,
       firstName: application.firstName,
       lastName: application.lastName,
-      middleName: application.middleName,
       email: application.email,
       phone: application.phone,
       applicationNumber: application.applicationNumber,
@@ -117,39 +116,25 @@ export async function POST(
   try {
     const { schoolId } = await params;
     const body = await request.json();
-    
-    // Updated: Destructure using the same field names as the client
+
     const {
       // Personal Information
       firstName,
       lastName,
-      middleName,
       dob,
       gender,
       email,
       phone,
       address,
-      city,
       state,
-      zipCode,
       lga,
       religion,
-      
+
       // Academic Information
       classId,
       className,
-      
-      // Previous Education
-      primarySchoolName,
-      primarySchoolStartDate,
-      primarySchoolEndDate,
-      primarySchoolGrade,
-      
-      juniorSecondarySchoolName,
-      juniorSecondarySchoolStartDate,
-      juniorSecondarySchoolEndDate,
-      juniorSecondarySchoolGrade,
-      
+      lastSchoolAttended,
+
       // Parent/Guardian Information
       parentName,
       parentRelationship,
@@ -157,25 +142,17 @@ export async function POST(
       parentPhone,
       parentOccupation,
       parentAddress,
-      
+
       // File Storage References
-      // Updated to match the client-side names
       image,
-      primarySchoolCertificate,
-      primarySchoolTestimonial,
-      juniorSecondarySchoolCertificate,
-      juniorSecondarySchoolTestimonial,
-      parentIdCard,
-      indigeneCertificate,
-      nationalIdCard,
-      
+
       agreeTerms,
       userId
     } = body;
 
     if (!firstName || !lastName || !email || !classId || !parentName || !parentEmail) {
-      return NextResponse.json({ 
-        error: 'Required fields missing: firstName, lastName, email, classId, parentName, parentEmail' 
+      return NextResponse.json({
+        error: 'Required fields missing: firstName, lastName, email, classId, parentName, parentEmail'
       }, { status: 400 });
     }
 
@@ -200,9 +177,9 @@ export async function POST(
 
     // Verify class exists
     const classExists = await prisma.class.findUnique({
-      where: { 
+      where: {
         id: classId,
-        schoolId: school.id 
+        schoolId: school.id
       }
     });
 
@@ -210,6 +187,7 @@ export async function POST(
       return NextResponse.json({ error: 'Class not found' }, { status: 404 });
     }
 
+    // Check if user already has an application
     // Check if user already has an application
     if (userId) {
       const existingApplication = await prisma.studentApplication.findFirst({
@@ -220,46 +198,82 @@ export async function POST(
       });
 
       if (existingApplication) {
-        return NextResponse.json({ 
-          error: 'User already has an application for this school' 
+        return NextResponse.json({
+          error: 'User already has an application for this school'
         }, { status: 409 });
       }
     }
 
     // Create application
+    // Generate custom application number: [SubdomainCode][Year]-[SequentialNumber]
+    const currentYear = new Date().getFullYear();
+    const subdomainCode = school.subdomain.charAt(0).toUpperCase();
+
+    // Count applications for this school in this year to get sequence
+    const yearStart = new Date(currentYear, 0, 1);
+    const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59);
+
+    const yearAppsCount = await prisma.studentApplication.count({
+      where: {
+        schoolId: school.id,
+        createdAt: {
+          gte: yearStart,
+          lte: yearEnd
+        }
+      }
+    });
+
+    const sequentialNumber = (yearAppsCount + 1).toString().padStart(3, '0');
+    const applicationNumber = `${subdomainCode}${currentYear}-${sequentialNumber}`;
+
+    // Auto-assign a screening slot if screening is enabled
+    let screeningSlotId: string | null = null;
+    const schoolSettings = await prisma.school.findUnique({
+      where: { id: school.id },
+      select: { isScreeningEnabled: true },
+    });
+
+    if (schoolSettings?.isScreeningEnabled) {
+      const today = new Date().toISOString().split('T')[0];
+      // Get the earliest upcoming slot and check capacity in code
+      // (Prisma doesn't support field-to-field comparison directly)
+      const availableSlot = await prisma.screeningSlot.findFirst({
+        where: {
+          schoolId: school.id,
+          date: { gte: today },
+        },
+        orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+      });
+
+      if (availableSlot && availableSlot.bookingCount < availableSlot.maxCapacity) {
+        screeningSlotId = availableSlot.id;
+        await prisma.screeningSlot.update({
+          where: { id: availableSlot.id },
+          data: { bookingCount: { increment: 1 } },
+        });
+      }
+    }
+
     const application = await prisma.studentApplication.create({
       data: {
         // Personal Information
         firstName,
         lastName,
-        middleName,
         dob,
         gender,
         email,
         phone,
         address,
-        city,
         state,
-        zipCode,
         lga,
         religion,
-        
+
         // Academic Information
+        lastSchoolAttended: body.lastSchoolAttended,
         classId,
         className,
         schoolId: school.id,
-        
-        // Previous Education
-        primarySchoolName,
-        primarySchoolStartDate,
-        primarySchoolEndDate,
-        primarySchoolGrade,
-        
-        juniorSecondarySchoolName,
-        juniorSecondarySchoolStartDate,
-        juniorSecondarySchoolEndDate,
-        juniorSecondarySchoolGrade,
-        
+
         // Parent/Guardian Information
         parentName,
         parentRelationship,
@@ -267,21 +281,15 @@ export async function POST(
         parentPhone,
         parentOccupation,
         parentAddress,
-        
+
         // File Storage References
-        // Updated to use the correct field names
         profileImagePath: image,
-        primarySchoolCertificatePath: primarySchoolCertificate,
-        primarySchoolTestimonialPath: primarySchoolTestimonial,
-        juniorSecondarySchoolCertificatePath: juniorSecondarySchoolCertificate,
-        juniorSecondarySchoolTestimonialPath: juniorSecondarySchoolTestimonial,
-        parentIdCardPath: parentIdCard,
-        indigeneCertificatePath: indigeneCertificate,
-        nationalIdCardPath: nationalIdCard,
-        
+
         agreeTerms,
         userId,
-        status: 'PROGRESS'
+        applicationNumber,
+        status: 'PROGRESS',
+        ...(screeningSlotId && { screeningSlotId }),
       }
     });
 
@@ -292,7 +300,8 @@ export async function POST(
         id: application.id,
         applicationNumber: application.applicationNumber,
         status: application.status,
-        applicationDate: application.applicationDate.toISOString()
+        applicationDate: application.applicationDate.toISOString(),
+        ...(screeningSlotId && { screeningSlotId }),
       }
     });
 

@@ -16,6 +16,7 @@ interface SchoolData {
     heroImage?: string;
     schoolLogo?: string;
   };
+  isAdmissionsOpen: boolean;
 }
 
 const FadeUp = (delay: number) => {
@@ -275,23 +276,22 @@ const Hero = ({ school }: { school: string }) => {
                 {schoolData.content.heroSubtitle}
               </motion.p>
             )}
-            <motion.div
-              variants={FadeUp(0.8)}
-              initial="initial"
-              animate="animate"
-              className="flex  justify-center md:justify-start"
-            >
-
-              <button
-                onClick={() => router.push(`/${school}/application`)}
-                className="bg-primary px-4 py-1.5 rounded-md cursor-pointer text-white flex flex-row items-center justify-center  gap-2 group"
+            {schoolData?.isAdmissionsOpen && (
+              <motion.div
+                variants={FadeUp(0.8)}
+                initial="initial"
+                animate="animate"
+                className="flex justify-center md:justify-start"
               >
-                Apply Now!
-                <IoIosArrowRoundForward className="text-xl group-hover:translate-x-2 group-hover:-rotate-45 duration-300" />
-              </button>
-
-
-            </motion.div>
+                <button
+                  onClick={() => router.push(`/${school}/application`)}
+                  className="bg-primary px-4 py-1.5 rounded-md cursor-pointer text-white flex flex-row items-center justify-center gap-2 group"
+                >
+                  Apply Now!
+                  <IoIosArrowRoundForward className="text-xl group-hover:translate-x-2 group-hover:-rotate-45 duration-300" />
+                </button>
+              </motion.div>
+            )}
           </div>
         </div>
 

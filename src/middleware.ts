@@ -90,8 +90,8 @@ export async function middleware(request: NextRequest) {
 
       // If not authenticated and trying to access protected routes on subdomain
       if (!isAuthenticated && !isSubdomainPublicRoute) {
-        console.log(`🔒 Unauthenticated user trying to access "${pathname}" on subdomain, redirecting to "/${subdomain}"`);
-        url.pathname = `/${subdomain}`;
+        console.log(`🔒 Unauthenticated user trying to access "${pathname}" on subdomain, redirecting to "/${subdomain}/auth"`);
+        url.pathname = `/${subdomain}/auth`;
         return NextResponse.redirect(url);
       }
 

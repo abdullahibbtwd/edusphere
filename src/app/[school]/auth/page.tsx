@@ -95,8 +95,8 @@ const AuthSystem = () => {
       const response = await fetch(`/api/schools/${schoolId}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Hardcode role to STUDENT as per requirements
-        body: JSON.stringify({ name, email, password, role: 'STUDENT' }),
+        // Default role to USER for applicants
+        body: JSON.stringify({ name, email, password, role: 'USER' }),
       });
 
       const data = await response.json();

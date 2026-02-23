@@ -96,8 +96,14 @@ const Navbar = ({ schoolName = "School Name", subdomain }: NavbarProps) => {
             <>
               <button
                 className="inline-block bg-primary text-text font-semibold text-xs md:text-base py-2 px-4 md:px-6 rounded-lg hover:bg-primary-400 cursor-pointer duration-200"
-                onClick={() => router.push(`/${activeSubdomain}/${role}`)}>
-                Dashboard
+                onClick={() => {
+                  if (role === 'user') {
+                    router.push(`/${activeSubdomain}/application`);
+                  } else {
+                    router.push(`/${activeSubdomain}/${role}`);
+                  }
+                }}>
+                {role === 'user' ? 'Application' : 'Dashboard'}
               </button>
               <button
                 className="inline-flex items-center justify-center bg-danger text-white font-semibold p-2 md:py-2 md:px-4 rounded-lg hover:bg-danger/80 cursor-pointer duration-200"
