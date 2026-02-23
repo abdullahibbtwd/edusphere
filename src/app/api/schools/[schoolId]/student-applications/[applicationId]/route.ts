@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
+import { sendStudentAdmissionEmail, sendStudentRejectionEmail } from '@/lib/email-service';
 
 // GET - Get single application details
 export async function GET(
@@ -111,8 +113,13 @@ export async function PUT(
 ) {
   try {
     const { schoolId, applicationId } = await params;
+
+    // Security check - Admin role required
+    const sessionUser = requireRole(request, ['ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     const body = await request.json();
-    const { status, notes } = body; // status: 'ADMITTED' | 'REJECTED'
+    const { status, classId } = body; // status: 'ADMITTED' | 'REJECTED', optional classId for reassignment
 
     if (!status || !['ADMITTED', 'REJECTED'].includes(status)) {
       return NextResponse.json({
@@ -167,6 +174,32 @@ export async function PUT(
       }, { status: 409 });
     }
 
+    // Update class if provided (class reassignment)
+    let finalClassId = application.classId;
+    let finalClassName = `${application.class.level.name}${application.class.name}`;
+
+    if (status === 'ADMITTED' && classId && classId !== application.classId) {
+      const newClass = await prisma.class.findUnique({
+        where: { id: classId, schoolId: school.id },
+        include: {
+          level: { select: { name: true } }
+        }
+      });
+
+      if (!newClass) {
+        return NextResponse.json({ error: 'Target class not found' }, { status: 400 });
+      }
+
+      finalClassId = classId;
+      finalClassName = `${newClass.level.name}${newClass.name}`;
+
+      // Update the application's classId record as well
+      await prisma.studentApplication.update({
+        where: { id: applicationId },
+        data: { classId: finalClassId }
+      });
+    }
+
     // Update application status
     const updatedApplication = await prisma.studentApplication.update({
       where: { id: applicationId },
@@ -174,17 +207,6 @@ export async function PUT(
         status: status as 'ADMITTED' | 'REJECTED'
       }
     });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let result: any = {
-      success: true,
-      message: `Application ${status.toLowerCase()} successfully`,
-      application: {
-        id: updatedApplication.id,
-        applicationNumber: updatedApplication.applicationNumber,
-        status: updatedApplication.status
-      }
-    };
 
     // If admitted, create student record
     if (status === 'ADMITTED') {
@@ -198,15 +220,24 @@ export async function PUT(
         });
 
         if (existingStudent) {
+          // Rollback application if student already exists
+          await prisma.studentApplication.update({
+            where: { id: applicationId },
+            data: { status: 'PROGRESS' }
+          });
           return NextResponse.json({
             error: 'Student with this email already exists'
           }, { status: 409 });
         }
 
+        // Get current active session
+        const activeSession = await prisma.academicSession.findFirst({
+          where: { schoolId: school.id, isActive: true }
+        });
+
         // Create student record
         const student = await prisma.student.create({
           data: {
-            // Personal Information
             firstName: application.firstName,
             lastName: application.lastName,
             dob: application.dob,
@@ -217,45 +248,75 @@ export async function PUT(
             state: application.state || "",
             lga: application.lga || "",
             religion: application.religion || "",
-
-            // Academic Information
             lastSchoolAttended: application.lastSchoolAttended,
-            classId: application.classId,
+            classId: finalClassId,
             schoolId: school.id,
-            className: application.className,
-
-            // Parent/Guardian Information
+            className: finalClassName,
             parentName: application.parentName,
             parentRelationship: application.parentRelationship,
             parentEmail: application.parentEmail,
             parentPhone: application.parentPhone,
             parentOccupation: application.parentOccupation,
             parentAddress: application.parentAddress,
-
-            // File Storage References
             profileImagePath: application.profileImagePath,
-
             agreeTerms: application.agreeTerms,
             userId: application.userId,
-            status: 'ADMITTED'
+            status: 'ADMITTED',
+
+            // New Registration & Session Fields
+            isRegistered: false,
+            admissionSessionId: activeSession?.id,
+            currentSessionId: activeSession?.id,
+            isActive: true
           }
         });
 
-        result = {
-          ...result,
+        // Upgrade associated User role to STUDENT and link to school
+        if (application.userId) {
+          try {
+            await prisma.user.update({
+              where: { id: application.userId },
+              data: {
+                role: 'STUDENT',
+                schoolId: school.id
+              }
+            });
+          } catch (userUpdateError) {
+            console.error('Failed to upgrade user role:', userUpdateError);
+            // We don't rollback the student creation because the admission itself is successful
+            // but we log it as a critical failure for manual intervention if needed.
+          }
+        }
+
+        // Send Admission Email
+        try {
+          await sendStudentAdmissionEmail(
+            application.email,
+            `${application.firstName} ${application.lastName}`,
+            school.name || "EduSphere School",
+            finalClassName
+          );
+        } catch (emailError) {
+          console.error("Failed to send admission email:", emailError);
+        }
+
+        return NextResponse.json({
+          success: true,
           message: 'Application admitted and student record created successfully',
+          application: {
+            id: updatedApplication.id,
+            status: updatedApplication.status
+          },
           student: {
             id: student.id,
-            applicationNumber: student.applicationNumber,
             name: `${student.firstName} ${student.lastName}`,
-            class: application.class.name,
-            level: application.class.level?.name
+            class: finalClassName
           }
-        };
+        });
 
       } catch (studentError) {
         console.error('Error creating student record:', studentError);
-        // Rollback application status
+        // Rollback
         await prisma.studentApplication.update({
           where: { id: applicationId },
           data: { status: 'PROGRESS' }
@@ -265,9 +326,28 @@ export async function PUT(
           error: 'Failed to create student record'
         }, { status: 500 });
       }
-    }
+    } else {
+      // It's a REJECTION
+      // Send Rejection Email
+      try {
+        await sendStudentRejectionEmail(
+          application.email,
+          `${application.firstName} ${application.lastName}`,
+          school.name || "EduSphere School"
+        );
+      } catch (emailError) {
+        console.error("Failed to send rejection email:", emailError);
+      }
 
-    return NextResponse.json(result);
+      return NextResponse.json({
+        success: true,
+        message: `Application rejected successfully`,
+        application: {
+          id: updatedApplication.id,
+          status: updatedApplication.status
+        }
+      });
+    }
 
   } catch (error) {
     console.error('Error updating application:', error);
@@ -282,6 +362,10 @@ export async function DELETE(
 ) {
   try {
     const { schoolId, applicationId } = await params;
+
+    // Security check - Admin role required
+    const sessionUser = requireRole(request, ['ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
 
     // Find school
     let school;

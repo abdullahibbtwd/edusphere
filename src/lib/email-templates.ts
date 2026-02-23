@@ -1,4 +1,4 @@
-export const getVerificationEmailTemplate = (name: string, code: string) => {
+export function getVerificationEmailTemplate(name: string, code: string) {
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -86,7 +86,7 @@ export const getVerificationEmailTemplate = (name: string, code: string) => {
   `.trim();
 };
 
-export const getPasswordResetEmailTemplate = (name: string, code: string) => {
+export function getPasswordResetEmailTemplate(name: string, code: string) {
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -359,4 +359,443 @@ export const getSchoolRejectionEmailTemplate = (schoolName: string, principalNam
 </body>
 </html>
   `.trim();
-};
+}
+
+export function getStudentAdmissionEmailTemplate(studentName: string, schoolName: string, className: string) {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admission Confirmed</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f7fa; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">🎉 Admission Confirmed!</h1>
+              <p style="margin: 10px 0 0; color: #d1fae5; font-size: 14px;">Welcome to ${schoolName}</p>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 20px; color: #1a202c; font-size: 24px; font-weight: 600;">Congratulations, ${studentName}!</h2>
+              
+              <p style="margin: 0 0 20px; color: #4a5568; font-size: 16px; line-height: 1.6;">
+                We are delighted to inform you that your application for admission to <strong>${schoolName}</strong> has been approved.
+              </p>
+              
+              <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 8px;">
+                <p style="margin: 0 0 10px; color: #065f46; font-size: 16px;">
+                  <strong>Assigned Class:</strong> ${className}
+                </p>
+                <p style="margin: 0; color: #065f46; font-size: 16px;">
+                  <strong>Status:</strong> Admitted
+                </p>
+              </div>
+              
+              <p style="margin: 0 0 30px; color: #4a5568; font-size: 16px; line-height: 1.6;">
+                You are now officially a student at ${schoolName}. We are excited to have you join our academic community and look forward to your contributions and success.
+              </p>
+              
+              <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #1e40af; font-size: 14px; font-weight: 500;">
+                  💡 <strong>Next Steps:</strong> Please visit the school office to complete your registration and pick up your school supplies and timetable.
+                </p>
+              </div>
+              
+              <!-- Divider -->
+              <div style="border-top: 1px solid #e2e8f0; margin: 30px 0;"></div>
+              
+              <p style="margin: 0; color: #718096; font-size: 14px; line-height: 1.6;">
+                If you have any questions, please contact the school administration.
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f7fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0 0 10px; color: #a0aec0; font-size: 12px;">
+                © ${new Date().getFullYear()} ${schoolName}. Powered by EduSphere.
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+export function getStudentRejectionEmailTemplate(studentName: string, schoolName: string) {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Application Update</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f7fa; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); padding: 40px 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Application Update</h1>
+              <p style="margin: 10px 0 0; color: #cbd5e1; font-size: 14px;">${schoolName}</p>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 20px; color: #1a202c; font-size: 24px; font-weight: 600;">Dear ${studentName},</h2>
+              
+              <p style="margin: 0 0 20px; color: #4a5568; font-size: 16px; line-height: 1.6;">
+                Thank you for your interest in <strong>${schoolName}</strong>. After careful consideration of your application, we regret to inform you that we are unable to offer you admission at this time.
+              </p>
+              
+              <p style="margin: 0 0 30px; color: #4a5568; font-size: 16px; line-height: 1.6;">
+                This decision was made after a thorough review of all applications. We appreciate the time and effort you put into your application and wish you the best in your future academic endeavors.
+              </p>
+              
+              <!-- Divider -->
+              <div style="border-top: 1px solid #e2e8f0; margin: 30px 0;"></div>
+              
+              <p style="margin: 0; color: #718096; font-size: 14px; line-height: 1.6;">
+                Regards,<br>
+                Admissions Committee<br>
+                ${schoolName}
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f7fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0 0 10px; color: #a0aec0; font-size: 12px;">
+                © ${new Date().getFullYear()} ${schoolName}. Powered by EduSphere.
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+export function getStudentRegistrationEmailTemplate(studentName: string, schoolName: string, regNumber: string) {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Registration Complete</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f7fa; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 40px 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Student Registration</h1>
+              <p style="margin: 10px 0 0; color: #e0e7ff; font-size: 14px;">Official Student Credentials</p>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 20px; color: #111827; font-size: 24px; font-weight: 600;">Welcome, ${studentName}!</h2>
+              
+              <p style="margin: 0 0 20px; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Your registration at <strong>${schoolName}</strong> is now complete. You have been assigned an official registration number.
+              </p>
+              
+              <div style="background-color: #f3f4f6; border: 2px dashed #4f46e5; padding: 25px; margin: 30px 0; border-radius: 12px; text-align: center;">
+                <p style="margin: 0 0 10px; color: #6b7280; font-size: 14px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Your Registration Number</p>
+                <p style="margin: 0; color: #4f46e5; font-size: 32px; font-weight: 800; font-family: 'Courier New', monospace; letter-spacing: 2px;">
+                  ${regNumber}
+                </p>
+              </div>
+              
+              <h3 style="margin: 30px 0 15px; color: #111827; font-size: 18px; font-weight: 600;">Student Records Portal</h3>
+              <p style="margin: 0 0 30px; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Use your registration number and password to access the student dashboard, view your timetable, attendance records, and track your academic progress.
+              </p>
+              
+              <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #92400e; font-size: 14px; font-weight: 500;">
+                  📌 <strong>Important:</strong> Keep this registration number safe as it will be required for all your official student activities.
+                </p>
+              </div>
+              
+              <!-- Divider -->
+              <div style="border-top: 1px solid #e5e7eb; margin: 30px 0;"></div>
+              
+              <p style="margin: 0; color: #9ca3af; font-size: 14px; line-height: 1.6;">
+                Best regards,<br>
+                Registrar's Office<br>
+                ${schoolName}
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 5px; color: #9ca3af; font-size: 12px;">
+                © ${new Date().getFullYear()} ${schoolName}. All rights reserved.
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+export function getFeePaymentEmailTemplate(data: {
+  studentName: string,
+  schoolName: string,
+  sessionName: string,
+  term: string,
+  amountPaid: number,
+  totalPaid: number,
+  totalDue: number,
+  method: string,
+  reference: string
+}) {
+  const balance = data.totalDue - data.totalPaid;
+  const paymentStatus = balance <= 0 ? "PAID IN FULL" : `BALANCE DUE: ₦${balance.toLocaleString()}`;
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Receipt</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); overflow: hidden;">
+          
+          <!-- Success Banner -->
+          <tr>
+            <td style="background-color: #059669; padding: 15px; text-align: center;">
+              <p style="margin: 0; color: #ffffff; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;">Payment Successful</p>
+            </td>
+          </tr>
+
+          <!-- Header -->
+          <tr>
+            <td style="padding: 40px 30px; text-align: center;">
+              <h1 style="margin: 0; color: #1e293b; font-size: 24px; font-weight: 800;">Receipt from ${data.schoolName}</h1>
+              <p style="margin: 10px 0 0; color: #64748b; font-size: 16px;">Fee Payment Confirmation</p>
+            </td>
+          </tr>
+          
+          <!-- Receipt Summary -->
+          <tr>
+            <td style="padding: 0 30px;">
+              <div style="background-color: #f8fafc; border-radius: 8px; padding: 30px; text-align: center;">
+                <p style="margin: 0 0 10px; color: #64748b; font-size: 14px; font-weight: 600; text-transform: uppercase;">Amount Paid</p>
+                <p style="margin: 0; color: #059669; font-size: 40px; font-weight: 800;">₦${data.amountPaid.toLocaleString()}</p>
+                <p style="margin: 15px 0 0; color: #64748b; font-size: 13px;">Transaction Ref: ${data.reference}</p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Details Table -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h3 style="margin: 0 0 20px; color: #1e293b; font-size: 16px; font-weight: 700; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Payment Breakdown</h3>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding: 10px 0; color: #64748b; font-size: 14px;">Student Name</td>
+                  <td align="right" style="padding: 10px 0; color: #1e293b; font-size: 14px; font-weight: 600;">${data.studentName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #64748b; font-size: 14px;">Academic Session</td>
+                  <td align="right" style="padding: 10px 0; color: #1e293b; font-size: 14px; font-weight: 600;">${data.sessionName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #64748b; font-size: 14px;">Term / Plan</td>
+                  <td align="right" style="padding: 10px 0; color: #1e293b; font-size: 14px; font-weight: 600;">${data.term.replace('_', ' ')}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #64748b; font-size: 14px;">Payment Method</td>
+                  <td align="right" style="padding: 10px 0; color: #1e293b; font-size: 14px; font-weight: 600;">${data.method}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px 0 10px; border-top: 1px solid #f1f5f9; color: #64748b; font-size: 14px;">Total session/term Fee</td>
+                  <td align="right" style="padding: 20px 0 10px; border-top: 1px solid #f1f5f9; color: #1e293b; font-size: 14px; font-weight: 600;">₦${data.totalDue.toLocaleString()}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #64748b; font-size: 14px;">Total Paid to Date</td>
+                  <td align="right" style="padding: 10px 0; color: #059669; font-size: 14px; font-weight: 700;">₦${data.totalPaid.toLocaleString()}</td>
+                </tr>
+              </table>
+
+              <!-- Status Box -->
+              <div style="margin-top: 30px; padding: 15px; background-color: ${balance <= 0 ? '#ecfdf5' : '#fff7ed'}; border-radius: 8px; text-align: center;">
+                <p style="margin: 0; color: ${balance <= 0 ? '#065f46' : '#9a3412'}; font-size: 14px; font-weight: 800; letter-spacing: 0.05em;">${paymentStatus}</p>
+              </div>
+
+              <!-- CTA -->
+              <div style="margin-top: 40px; text-align: center;">
+                <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
+                  View your complete financial history and download official receipts on the student dashboard.
+                </p>
+              </div>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 30px; text-align: center; border-top: 1px solid #f1f5f9;">
+              <p style="margin: 0 0 5px; color: #94a3b8; font-size: 12px;">This is a system-generated receipt for your records.</p>
+              <p style="margin: 0; color: #94a3b8; font-size: 12px;">Questions? Contact the Bursar's Office at ${data.schoolName}.</p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+export function getUnpaidFeeReminderEmailTemplate(data: {
+  studentName: string,
+  schoolName: string,
+  sessionName: string,
+  term: string,
+  amountDue: number,
+  amountPaid: number,
+  dueDate?: string
+}) {
+  const balance = data.amountDue - data.amountPaid;
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Reminder</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #fff1f2;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fff1f2; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); overflow: hidden; border-top: 6px solid #e11d48;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="padding: 40px 30px; text-align: center;">
+              <div style="width: 60px; height: 60px; background-color: #fff1f2; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                <span style="font-size: 30px;">🔔</span>
+              </div>
+              <h1 style="margin: 0; color: #9f1239; font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Payment Reminder</h1>
+              <p style="margin: 10px 0 0; color: #4b5563; font-size: 16px;">Outstanding School Fees Notice</p>
+            </td>
+          </tr>
+          
+          <!-- Alert Box -->
+          <tr>
+            <td style="padding: 0 30px;">
+              <div style="background-color: #fff1f2; border: 1px solid #fda4af; border-radius: 8px; padding: 25px; text-align: center;">
+                <p style="margin: 0 0 10px; color: #9f1239; font-size: 14px; font-weight: 700; text-transform: uppercase;">Outstanding Balance</p>
+                <p style="margin: 0; color: #e11d48; font-size: 40px; font-weight: 800;">₦${balance.toLocaleString()}</p>
+                ${data.dueDate ? `<p style="margin: 15px 0 0; color: #9f1239; font-size: 13px; font-weight: 600;">Due Date: ${data.dueDate}</p>` : ''}
+              </div>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
+                Dear <strong>${data.studentName}</strong> and Guardian,
+              </p>
+              <p style="margin: 0 0 25px; color: #4b5563; font-size: 15px; line-height: 1.6;">
+                This is a friendly reminder from <strong>${data.schoolName}</strong> regarding your outstanding school fees for the <strong>${data.sessionName}</strong>, <strong>${data.term.replace('_', ' ')}</strong>.
+              </p>
+
+              <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Total Amount Due</td>
+                  <td align="right" style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #111827; font-size: 14px; font-weight: 600;">₦${data.amountDue.toLocaleString()}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Amount Paid to Date</td>
+                  <td align="right" style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #059669; font-size: 14px; font-weight: 600;">₦${data.amountPaid.toLocaleString()}</td>
+                </tr>
+                <tr style="background-color: #fafafa;">
+                  <td style="padding: 15px 10px; color: #9f1239; font-size: 15px; font-weight: 700;">Remaining Balance</td>
+                  <td align="right" style="padding: 15px 10px; color: #e11d48; font-size: 18px; font-weight: 800;">₦${balance.toLocaleString()}</td>
+                </tr>
+              </table>
+
+              <div style="background-color: #fefce8; border-left: 4px solid #eab308; padding: 15px; border-radius: 4px; margin-bottom: 30px;">
+                <p style="margin: 0; color: #854d0e; font-size: 14px; line-height: 1.5;">
+                  <strong>Note:</strong> Timely payment of school fees is essential to ensure uninterrupted access to academic resources, examinations, and other school facilities.
+                </p>
+              </div>
+
+              <div style="text-align: center;">
+                <p style="margin: 0 0 20px; color: #4b5563; font-size: 14px;">Payments can be made via bank transfer or online through the student portal.</p>
+              </div>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #f3f4f6;">
+              <p style="margin: 0 0 5px; color: #9ca3af; font-size: 12px;">Bursar's Office, ${data.schoolName}</p>
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">This is an automated reminder. If you have already made this payment, please disregard this email.</p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}

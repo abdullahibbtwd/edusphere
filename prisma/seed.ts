@@ -16,7 +16,7 @@ const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-const schoolId = 'cmk9qgrwz000360igxkc2hrkx';
+const schoolId = 'cmlz2l4nj0006ekignelbr07a';
 
 // DEFINED IDs from User Input
 const levelIds = {
@@ -103,8 +103,21 @@ const subjectsList = [
 async function main() {
     console.log('🌱 Seeding with 30 Teachers (Max 6 Classes Each)...');
 
+    // Fetch existing levels and classes for this school
+    console.log('🔍 Fetching existing levels and classes...');
+    const dbLevels = await prisma.level.findMany({ where: { schoolId } });
+    const dbClasses = await prisma.class.findMany({ where: { schoolId } });
+
+    if (dbLevels.length === 0 || dbClasses.length === 0) {
+        console.error('❌ No levels or classes found in the database. Please create them first.');
+        return;
+    }
+
+    const levelMap = new Map(dbLevels.map(l => [l.name, l.id]));
+    const classMap = new Map(dbClasses.map(c => [c.name, c.id]));
+
     // Cleanup
-    console.log('🧹 Cleaning up old data...');
+    console.log('🧹 Cleaning up old data (Teachers and Subjects only)...');
     await prisma.teacherSubjectClass.deleteMany({ where: { schoolId } });
     await prisma.subject.deleteMany({ where: { schoolId } });
     await prisma.teacher.deleteMany({ where: { schoolId } });
@@ -132,7 +145,7 @@ async function main() {
                 email: `teacher${i}@edusphere.com`,
                 phone: `+234${String(8000000000 + i).substring(1)}`,
                 address: `${i} Teacher's Quarters, School Compound`,
-                birthday: `19${60 + (i % 30)}-0${(i % 12) + 1}-15`,
+                birthday: new Date(`19${60 + (i % 30)}-0${(i % 12) + 1}-15`),
                 sex: i % 2 === 0 ? 'Male' : 'Female',
                 img: '/default-avatar.png',
                 schoolId
@@ -152,16 +165,19 @@ async function main() {
         // 60% general, 40% specific streams
         const rand = Math.random();
         if (rand < 0.6) {
-            assignment = null; // General - all streams
+            assignment = null;
         } else {
-            // Assign to 1-2 random streams
             const streams = classAssignments.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 2) + 1);
             assignment = streams.join(', ');
         }
 
-        const linkedLevels = levels.filter(l => template.levels.includes(l.name));
-        const matchesAllLevels = linkedLevels.length === levels.length;
-        const isGeneral = matchesAllLevels && !assignment;
+        const linkedLevelIds = template.levels
+            .map(name => levelMap.get(name))
+            .filter((id): id is string => !!id);
+
+        if (linkedLevelIds.length === 0) continue;
+
+        const isGeneral = template.levels.length === dbLevels.length && !assignment;
 
         const createdSub = await prisma.subject.create({
             data: {
@@ -173,7 +189,7 @@ async function main() {
                 classAssignment: assignment,
                 schoolId,
                 levels: {
-                    connect: linkedLevels.map(l => ({ id: l.id }))
+                    connect: linkedLevelIds.map(id => ({ id }))
                 }
             },
             include: {
@@ -186,27 +202,23 @@ async function main() {
     // 3. Assign Subjects to Teachers and Classes
     console.log('🔗 Assigning Subjects to Teachers and Classes...');
 
-    // Track state
-    // purely for logic checks
-    const teacherLoad = new Map<string, number>(); // teacherId -> count of classes
-    const teacherSubjects = new Map<string, Set<string>>(); // teacherId -> Set of subjectIds
-    const teacherClassesMap = new Map<string, Set<string>>(); // teacherId -> Set of classIds
+    const teacherLoad = new Map<string, number>();
+    const teacherSubjects = new Map<string, Set<string>>();
+    const teacherClassesMap = new Map<string, Set<string>>();
 
-    // Initialize maps
     teachers.forEach(t => {
         teacherLoad.set(t.id, 0);
         teacherSubjects.set(t.id, new Set());
         teacherClassesMap.set(t.id, new Set());
     });
 
-    // Create a pool of subject-class combinations
     const assignments: Array<{ subjectId: string; classId: string; hoursPerWeek: number }> = [];
 
     for (const subject of createdSubjects) {
         const subjectLevelIds = subject.levels.map(l => l.id);
         const allowedSuffixes = subject.classAssignment ? subject.classAssignment.split(', ') : classAssignments;
 
-        const eligibleClasses = classes.filter(cls => {
+        const eligibleClasses = dbClasses.filter(cls => {
             const matchesLevel = subjectLevelIds.includes(cls.levelId);
             const matchesStream = allowedSuffixes.some(suffix => cls.name.endsWith(suffix));
             return matchesLevel && matchesStream;
@@ -223,77 +235,28 @@ async function main() {
 
     console.log(`📋 Total Subject-Class Combinations: ${assignments.length}\n`);
 
-    // Assign to teachers with MAX 6 CLASSES constraint
     let assignedCount = 0;
     let skippedCount = 0;
 
-    // Shuffle assignments for variety
     assignments.sort(() => 0.5 - Math.random());
 
     for (const assignment of assignments) {
         let selectedTeacher = null;
         let bestScore = -1;
 
-        // Scoring criteria:
-        // 1. Must implement max 6 classes rule (HARD CONSTRAINT)
-        // 2. Must not be already assigned this subject-class (HARD CONSTRAINT)
-        // 3. Favor teacher who already teaches this subject (SPECIALIZATION)
-        // 4. Favor teacher with fewer total classes (LOAD BALANCING)
-        // 5. Penalize teacher who already teaches multiple subjects to THIS class (DIVERSITY)
-
         for (const teacher of teachers) {
             const currentLoad = teacherLoad.get(teacher.id) || 0;
             const subjects = teacherSubjects.get(teacher.id)!;
             const classesTaught = teacherClassesMap.get(teacher.id)!;
 
-            // Hard Constraints
-            if (currentLoad >= 6) continue; // Max 6 classes
+            if (currentLoad >= 6) continue;
 
-            // Avoid duplicate assignment (although unlikely with unique assignment list)
-            // We can check db, but relies on local state `classesTaught` isn't granular enough to know (subject, class).
-            // However, `assignments` iterates unique (subject, class) pairs, so a teacher is never assigned the same pair twice in this loop.
-
-            // Calculate Score
             let score = 0;
-
-            // SPECIALIZATION: HUGE Bonus if they already teach this subject
-            if (subjects.has(assignment.subjectId)) {
-                score += 50;
-            }
-
-            // PENALTY: Being a jack-of-all-trades
-            // If they teach 2+ DIFFERENT subjects already, small penalty to encourage specialization
-            // But user said "multiple subjects" is OK, so we won't penalize too heavily, just a bit.
-            if (subjects.size >= 2 && !subjects.has(assignment.subjectId)) {
-                score -= 10;
-            }
-            if (subjects.size >= 3 && !subjects.has(assignment.subjectId)) {
-                score -= 30; // Stronger deterrent for >3 subjects
-            }
-
-            // DIVERSITY IN CLASS: 
-            // Check how many subjects this teacher already teaches in THIS specific class
-            // We need a way to track (Teacher -> Class -> Count of Subjects)
-            // Let's do a quick scan of what we've assigned so far? 
-            // Actually, we can just look at `teacherClassesMap` to see if they are in the class, 
-            // but that doesn't tell us HOW MANY subjects. 
-            // Let's create a helper map for this check? 
-            // For now, simpler heuristic:
-            // If they already teach this class, check logic:
-            if (classesTaught.has(assignment.classId)) {
-                // They are already in this class. 
-                // If they are specialists (score 50), it means they are teaching the SAME subject to this class? 
-                // No, distinct (Subject, Class) pairs.
-                // So if they are in the class, they are teaching a DIFFERENT subject.
-                // We generally want to avoid one teacher teaching multiple subjects to the same class unless necessary.
-                score -= 40;
-            }
-
-            // LOAD BALANCING
-            // Prefer teachers with less load to spread work
+            if (subjects.has(assignment.subjectId)) score += 50;
+            if (subjects.size >= 2 && !subjects.has(assignment.subjectId)) score -= 10;
+            if (subjects.size >= 3 && !subjects.has(assignment.subjectId)) score -= 30;
+            if (classesTaught.has(assignment.classId)) score -= 40;
             score -= (currentLoad * 2);
-
-            // Random tie-breaker
             score += Math.random();
 
             if (score > bestScore) {
@@ -303,7 +266,6 @@ async function main() {
         }
 
         if (!selectedTeacher) {
-            console.warn(`⚠️ Could not find suitable teacher for subject ${assignment.subjectId} in class ${assignment.classId}. Assignments remaining: ${assignments.length - assignedCount}`);
             skippedCount++;
             continue;
         }
@@ -320,34 +282,19 @@ async function main() {
                 }
             });
 
-            // Update state
             teacherLoad.set(selectedTeacher.id, (teacherLoad.get(selectedTeacher.id) || 0) + 1);
             teacherSubjects.get(selectedTeacher.id)!.add(assignment.subjectId);
             teacherClassesMap.get(selectedTeacher.id)!.add(assignment.classId);
 
             assignedCount++;
         } catch (error) {
-            console.error(`Error assigning: ${error}`);
             skippedCount++;
         }
     }
 
-    // Print summary
     console.log('\n📊 Assignment Summary:');
     console.log(`   Total Assignments Created: ${assignedCount}`);
     console.log(`   Skipped: ${skippedCount}\n`);
-
-    console.log('👨‍🏫 Teacher Workload:');
-    for (const teacher of teachers) {
-        const load = teacherLoad.get(teacher.id);
-        const uniqueSubjects = teacherSubjects.get(teacher.id)?.size || 0;
-        const uniqueClasses = teacherClassesMap.get(teacher.id)?.size || 0;
-
-        console.log(`   ${teacher.name}: ${load} classes, ${uniqueSubjects} subjects`);
-
-        if (load === 0) console.warn(`   ⚠️  ${teacher.name} has 0 classes!`);
-        if (load === 6) console.log(`      (Max Capacity Reached)`);
-    }
 
     console.log('\n✅ Seeding completed successfully!');
 }

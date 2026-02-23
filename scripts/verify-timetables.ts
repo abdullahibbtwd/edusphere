@@ -6,7 +6,7 @@
  * 2. Run: npx tsx scripts/verify-timetables.ts
  */
 
-const SCHOOL_ID = 'cmk9qgrwz000360igxkc2hrkx'; // Your school ID
+const SCHOOL_ID = 'cmlz2l4nj0006ekignelbr07a'; // Your school ID
 const TERM = 'FIRST'; // Change to SECOND or THIRD as needed
 const API_URL = 'http://localhost:3000'; // Change if using different port
 

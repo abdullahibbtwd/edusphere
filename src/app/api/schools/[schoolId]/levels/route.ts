@@ -80,7 +80,7 @@ export async function GET(
 
     // Parse pagination parameters
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '10'))); // Max 100 per page
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '100'))); // Max 100 per page
     const skip = (page - 1) * limit;
 
     // Resolve school ID

@@ -1,10 +1,18 @@
 import { Resend } from 'resend';
-import { getVerificationEmailTemplate, getPasswordResetEmailTemplate } from './email-templates';
+import {
+    getVerificationEmailTemplate,
+    getPasswordResetEmailTemplate,
+    getStudentRegistrationEmailTemplate,
+    getFeePaymentEmailTemplate,
+    getUnpaidFeeReminderEmailTemplate,
+    getStudentAdmissionEmailTemplate,
+    getStudentRejectionEmailTemplate
+} from './email-templates';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface SendEmailParams {
-    to: string;
+    to: string | string[];
     subject: string;
     html: string;
     type?: 'verification' | 'password-reset' | 'general';
@@ -16,11 +24,11 @@ export async function sendEmail({ to, subject, html, type = 'general' }: SendEma
             throw new Error('Resend API key not configured');
         }
 
-        const fromEmail = 'onboarding@resend.dev'; // Resend's default testing domain
+        const fromEmail = 'onboarding@resend.dev';
 
         const { data, error } = await resend.emails.send({
             from: fromEmail,
-            to: [to],
+            to: Array.isArray(to) ? to : [to],
             subject,
             html,
         });
@@ -86,6 +94,82 @@ export async function sendSchoolRejectionEmail(email: string, schoolName: string
     return sendEmail({
         to: email,
         subject: '📋 School Application Status Update - EduSphere',
+        html,
+        type: 'general',
+    });
+}
+
+export async function sendStudentAdmissionEmail(email: string, studentName: string, schoolName: string, className: string) {
+    const html = getStudentAdmissionEmailTemplate(studentName, schoolName, className);
+
+    return sendEmail({
+        to: email,
+        subject: `🎉 Admission Gallery: Welcome to ${schoolName}`,
+        html,
+        type: 'general',
+    });
+}
+
+export async function sendStudentRejectionEmail(email: string, studentName: string, schoolName: string) {
+    const html = getStudentRejectionEmailTemplate(studentName, schoolName);
+
+    return sendEmail({
+        to: email,
+        subject: `Application Status - ${schoolName}`,
+        html,
+        type: 'general',
+    });
+}
+
+export async function sendStudentRegistrationEmail(email: string, studentName: string, schoolName: string, regNumber: string) {
+    const html = getStudentRegistrationEmailTemplate(studentName, schoolName, regNumber);
+
+    return sendEmail({
+        to: email,
+        subject: `📝 Student Registration Complete - ${regNumber}`,
+        html,
+        type: 'general',
+    });
+}
+
+export async function sendFeePaymentEmail(data: {
+    to: string,
+    studentName: string,
+    schoolName: string,
+    sessionName: string,
+    term: string,
+    amountPaid: number,
+    totalPaid: number,
+    totalDue: number,
+    method: string,
+    reference: string
+}) {
+    const html = getFeePaymentEmailTemplate(data);
+
+    return sendEmail({
+        to: data.to,
+        subject: `💳 Payment Receipt: ₦${data.amountPaid.toLocaleString()} received`,
+        html,
+        type: 'general',
+    });
+}
+
+export async function sendFeeReminderEmail(data: {
+    to: string[],
+    studentName: string,
+    schoolName: string,
+    sessionName: string,
+    term: string,
+    amountDue: number,
+    amountPaid: number,
+    dueDate?: string
+}) {
+    const html = getUnpaidFeeReminderEmailTemplate(data);
+    const balance = data.amountDue - data.amountPaid;
+
+    return sendEmail({
+        to: data.to,
+        subject: `⚠️ Payment Reminder: Outstanding balance for ${data.studentName} (₦${balance.toLocaleString()})`,
         html,
         type: 'general',
     });

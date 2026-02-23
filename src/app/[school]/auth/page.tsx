@@ -44,6 +44,23 @@ const AuthSystem = () => {
     }
   };
 
+  const handlePaste = (index: number, e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6 - index);
+    if (!pastedData) return;
+
+    const newCode = [...verificationCode];
+    pastedData.split('').forEach((digit, i) => {
+      if (index + i < 6) newCode[index + i] = digit;
+    });
+    setVerificationCode(newCode);
+
+    // Focus last filled input or next empty one
+    const nextIndex = Math.min(index + pastedData.length, 5);
+    const nextInput = document.getElementById(`verification-${nextIndex}`);
+    if (nextInput) nextInput.focus();
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -540,7 +557,7 @@ const AuthSystem = () => {
                 <label className="block text-sm font-medium text-[var(--text)] mb-2">
                   Verification code
                 </label>
-                <div className="flex justify-between space-x-2">
+                <div className="flex justify-between gap-2">
                   {verificationCode.map((digit, index) => (
                     <input
                       key={index}
@@ -551,7 +568,8 @@ const AuthSystem = () => {
                       value={digit}
                       onChange={(e) => handleVerificationInput(index, e.target.value)}
                       onKeyDown={(e) => handleVerificationKeyDown(index, e)}
-                      className="w-12 h-12 text-center text-xl rounded-lg bg-bg border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                      onPaste={(e) => handlePaste(index, e)}
+                      className="w-10 h-10 sm:w-12 sm:h-12 text-center text-xl rounded-lg bg-bg border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                       required
                     />
                   ))}

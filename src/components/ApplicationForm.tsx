@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import generateApplicationPdf from "./ApplicationPdfGenerator";
 import { uploadImage } from "@/lib/cloudinary";
 import { useUser } from "@/context/UserContext";
+import { toast } from "sonner";
 
 interface FormData {
   // Personal Information
@@ -117,7 +118,7 @@ export default function ApplicationForm({ onSuccess }: { onSuccess?: () => void 
         }
 
         // Fetch levels
-        const levelsResponse = await fetch(`/api/schools/${schoolId}/levels`);
+        const levelsResponse = await fetch(`/api/schools/${schoolId}/levels?limit=100`);
         const levelsData = await levelsResponse.json();
 
         if (levelsResponse.ok) {
@@ -127,7 +128,7 @@ export default function ApplicationForm({ onSuccess }: { onSuccess?: () => void 
         }
 
         // Fetch classes
-        const classesResponse = await fetch(`/api/schools/${schoolId}/classes`);
+        const classesResponse = await fetch(`/api/schools/${schoolId}/classes?limit=100`);
         const classesData = await classesResponse.json();
 
         if (classesResponse.ok) {
@@ -321,10 +322,10 @@ export default function ApplicationForm({ onSuccess }: { onSuccess?: () => void 
         } as any;
 
         await generateApplicationPdf(dataForPdf, data.application.applicationNumber, schoolInfo);
-        alert(`✅ Application submitted successfully! Your application number is: ${data.application.applicationNumber}\n📄 Application PDF has been downloaded.`);
+        toast.success(`Application submitted successfully! Your application number is: ${data.application.applicationNumber}`);
       } catch (pdfError) {
         console.error('Error generating PDF:', pdfError);
-        alert(`✅ Application submitted successfully! Your application number is: ${data.application.applicationNumber}\n⚠️ PDF generation failed, but your application was saved.`);
+        toast.warning(`Application submitted successfully! Application Number: ${data.application.applicationNumber}. (PDF generation failed)`);
       }
 
       setFormData({
@@ -359,9 +360,9 @@ export default function ApplicationForm({ onSuccess }: { onSuccess?: () => void 
         onSuccess();
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting application:', error);
-      alert(`❌ Error: ${error instanceof Error ? error.message : 'Failed to submit application'}`);
+      toast.error(error.message || 'Failed to submit application');
     } finally {
       setLoading(false);
     }

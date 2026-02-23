@@ -36,10 +36,14 @@ export async function GET(
     }
 
     const actualSchoolId = school.id;
+    const status = searchParams.get('status');
 
     // Get student applications
     const applications = await prisma.studentApplication.findMany({
-      where: { schoolId: actualSchoolId },
+      where: {
+        schoolId: actualSchoolId,
+        ...(status ? { status: status as any } : {})
+      },
       include: {
         class: {
           include: {
@@ -65,7 +69,10 @@ export async function GET(
 
     // Get total count for pagination
     const totalCount = await prisma.studentApplication.count({
-      where: { schoolId: actualSchoolId }
+      where: {
+        schoolId: actualSchoolId,
+        ...(status ? { status: status as any } : {})
+      }
     });
 
     const totalPages = Math.ceil(totalCount / limit);
@@ -198,9 +205,32 @@ export async function POST(
       });
 
       if (existingApplication) {
-        return NextResponse.json({
-          error: 'User already has an application for this school'
-        }, { status: 409 });
+        if (existingApplication.status === 'REJECTED') {
+          // If previously rejected, delete it so they can apply again
+          await prisma.$transaction(async (tx) => {
+            // If they had a screening slot, decrement the booking count
+            if (existingApplication.screeningSlotId) {
+              await tx.screeningSlot.update({
+                where: { id: existingApplication.screeningSlotId },
+                data: { bookingCount: { decrement: 1 } }
+              });
+            }
+
+            // Delete the application
+            await tx.studentApplication.delete({
+              where: { id: existingApplication.id }
+            });
+          });
+        } else {
+          const statusMsg = existingApplication.status === 'ADMITTED'
+            ? 'You have already been admitted to this school.'
+            : 'You already have an active application in progress for this school.';
+
+          return NextResponse.json({
+            error: statusMsg,
+            status: existingApplication.status
+          }, { status: 409 });
+        }
       }
     }
 
@@ -259,7 +289,7 @@ export async function POST(
         // Personal Information
         firstName,
         lastName,
-        dob,
+        dob: dob ? new Date(dob) : new Date(),
         gender,
         email,
         phone,

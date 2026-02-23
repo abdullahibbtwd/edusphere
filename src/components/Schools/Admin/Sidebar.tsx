@@ -21,6 +21,7 @@ import {
   Layers,
   Timer,
   Hash,
+  Wallet, // Added Wallet icon import
 } from "lucide-react";
 
 interface SidebarProps {
@@ -32,6 +33,7 @@ const Sidebar = ({ school }: SidebarProps) => {
   const pathname = usePathname();
   const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
   const [dynamicSchoolName, setDynamicSchoolName] = useState<string>("");
+  const [pendingApplicantsCount, setPendingApplicantsCount] = useState<number>(0);
 
   useEffect(() => {
     const fetchSchoolData = async () => {
@@ -49,8 +51,24 @@ const Sidebar = ({ school }: SidebarProps) => {
       }
     };
 
+    const fetchPendingCount = async () => {
+      if (school && role === 'admin') {
+        try {
+          // fetch with status=PROGRESS and limit=1 to get the totalCount from pagination object efficiently
+          const response = await fetch(`/api/schools/${school}/student-applications?status=PROGRESS&limit=1`);
+          if (response.ok) {
+            const data = await response.json();
+            setPendingApplicantsCount(data.pagination?.totalCount || 0);
+          }
+        } catch (error) {
+          console.error('Error fetching pending count:', error);
+        }
+      }
+    };
+
     fetchSchoolData();
-  }, [school]);
+    fetchPendingCount();
+  }, [school, role]);
 
   const getHomeHref = () => {
     if (role === 'admin') return `/${school}/admin`;
@@ -71,8 +89,15 @@ const Sidebar = ({ school }: SidebarProps) => {
         { icon: BookOpen, label: "Subjects", href: `/${school}/list/subjects`, visible: ["admin", "student", "teacher"] },
         { icon: Hash, label: "Levels", href: `/${school}/list/levels`, visible: ["admin"] },
         { icon: Layers, label: "Classes", href: `/${school}/list/class`, visible: ["admin", "teacher"] },
+        { icon: Wallet, label: "Fees & Payments", href: `/${school}/list/fees`, visible: ["admin"] },
         { icon: Timer, label: "Time Table", href: `/${school}/list/timetable`, visible: ["admin", "teacher"] },
-        { icon: User, label: "Applicants", href: `/${school}/list/applicants`, visible: ["admin"] },
+        {
+          icon: User,
+          label: "Applicants",
+          href: `/${school}/list/applicants`,
+          visible: ["admin"],
+          badge: pendingApplicantsCount > 0 ? pendingApplicantsCount : null
+        },
         { icon: Hourglass, label: "Screening Time", href: `/${school}/list/screenin-time`, visible: ["admin"] },
         { icon: ClipboardList, label: "Exams", href: `/${school}/list/exams`, visible: ["admin", "teacher", "student", "parent"] },
         { icon: ClipboardList, label: "Assignments", href: `/${school}/list/assignments`, visible: [] },
@@ -131,11 +156,18 @@ const Sidebar = ({ school }: SidebarProps) => {
                   <Link
                     href={item.href}
                     key={item.href}
-                    className={`flex rounded-md gap-4 items-center justify-center lg:justify-start py-2 px-3 transition-colors cursor-pointer
+                    className={`flex rounded-md gap-4 items-center justify-between py-2 px-3 transition-colors cursor-pointer
                       ${isActive ? "bg-purple-600 text-white" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
                   >
-                    <Icon size={18} />
-                    <span className="hidden lg:block text-[14px]">{item.label}</span>
+                    <div className="flex items-center gap-4">
+                      <Icon size={18} />
+                      <span className="hidden lg:block text-[14px]">{item.label}</span>
+                    </div>
+                    {(item as any).badge && (
+                      <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                        {(item as any).badge}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

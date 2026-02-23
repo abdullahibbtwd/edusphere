@@ -6,6 +6,7 @@ import {
   CheckIcon,
   XMarkIcon,
   DocumentArrowDownIcon,
+  UserIcon,
 } from "@heroicons/react/24/outline";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
@@ -76,6 +77,12 @@ type ApplicationDetails = {
   updatedAt: string;
 };
 
+type SchoolClass = {
+  id: string;
+  name: string;
+  levelName: string;
+};
+
 const ApplicantsList = () => {
   const params = useParams();
   const schoolId = params.school as string;
@@ -89,6 +96,22 @@ const ApplicantsList = () => {
   const [isAdmissionsOpen, setIsAdmissionsOpen] = useState(true);
   const [updatingSettings, setUpdatingSettings] = useState(false);
 
+  // Admission Dialog state
+  const [admitDialog, setAdmitDialog] = useState<{
+    isOpen: boolean;
+    applicationId: string;
+    currentClassId: string;
+    applicantName: string;
+  }>({
+    isOpen: false,
+    applicationId: "",
+    currentClassId: "",
+    applicantName: "",
+  });
+  const [availableClasses, setAvailableClasses] = useState<SchoolClass[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [fetchingClasses, setFetchingClasses] = useState(false);
+
   // Fetch school settings
   const fetchSchoolSettings = useCallback(async () => {
     try {
@@ -99,6 +122,22 @@ const ApplicantsList = () => {
       }
     } catch (error) {
       console.error("Failed to fetch school settings:", error);
+    }
+  }, [schoolId]);
+
+  // Fetch available classes
+  const fetchClasses = useCallback(async () => {
+    try {
+      setFetchingClasses(true);
+      const response = await fetch(`/api/schools/${schoolId}/classes?limit=100`);
+      const data = await response.json();
+      if (response.ok) {
+        setAvailableClasses(data.classes || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch classes:", error);
+    } finally {
+      setFetchingClasses(false);
     }
   }, [schoolId]);
 
@@ -163,9 +202,23 @@ const ApplicantsList = () => {
     }
   };
 
+  // Open Admit Dialog
+  const openAdmitDialog = (applicationId: string, currentClassId: string, name: string) => {
+    setAdmitDialog({
+      isOpen: true,
+      applicationId,
+      currentClassId,
+      applicantName: name,
+    });
+    setSelectedClassId(currentClassId);
+    if (availableClasses.length === 0) {
+      fetchClasses();
+    }
+  };
+
   // Handle Admit / Reject
-  const handleStatusUpdate = async (applicationId: string, status: "ADMITTED" | "REJECTED") => {
-    if (!confirm(`Are you sure you want to ${status.toLowerCase()} this application?`)) {
+  const handleStatusUpdate = async (applicationId: string, status: "ADMITTED" | "REJECTED", classId?: string) => {
+    if (status === "REJECTED" && !confirm(`Are you sure you want to reject this application?`)) {
       return;
     }
 
@@ -174,7 +227,7 @@ const ApplicantsList = () => {
       const response = await fetch(`/api/schools/${schoolId}/student-applications/${applicationId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status, classId })
       });
 
       const data = await response.json();
@@ -182,6 +235,7 @@ const ApplicantsList = () => {
       if (response.ok) {
         toast.success(data.message);
         setSelectedApplicant(null);
+        setAdmitDialog({ isOpen: false, applicationId: "", currentClassId: "", applicantName: "" });
         fetchApplications(); // Refresh the list
       } else {
         toast.error(data.error || `Failed to ${status.toLowerCase()} application`);
@@ -350,7 +404,7 @@ const ApplicantsList = () => {
                       {application.status === 'PROGRESS' && (
                         <>
                           <button
-                            onClick={() => handleStatusUpdate(application.id, "ADMITTED")}
+                            onClick={() => openAdmitDialog(application.id, application.class.id, `${application.firstName} ${application.lastName}`)}
                             disabled={processingApplication === application.id}
                             className="text-green-600 hover:text-green-900 flex items-center disabled:opacity-50"
                           >
@@ -380,31 +434,101 @@ const ApplicantsList = () => {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Admit Confirmation Modal */}
+      {admitDialog.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-bg dark:bg-surface rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-foreground mb-4">Confirm Admission</h3>
+            <p className="text-muted-foreground mb-4">
+              Select the class and level to assign to <strong>{admitDialog.applicantName}</strong> before admitting.
+            </p>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Class & Level
+              </label>
+              {fetchingClasses ? (
+                <div className="h-10 animate-pulse bg-muted rounded"></div>
+              ) : (
+                <select
+                  value={selectedClassId}
+                  onChange={(e) => setSelectedClassId(e.target.value)}
+                  className="w-full px-3 py-2 border rounded bg-surface text-foreground"
+                >
+                  <option value="">Select a class</option>
+                  {availableClasses.map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.levelName} - {cls.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setAdmitDialog({ ...admitDialog, isOpen: false })}
+                className="px-4 py-2 border rounded hover:bg-muted text-foreground"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleStatusUpdate(admitDialog.applicationId, "ADMITTED", selectedClassId)}
+                disabled={processingApplication === admitDialog.applicationId || !selectedClassId}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+              >
+                {processingApplication === admitDialog.applicationId ? "Admitting..." : "Confirm Admission"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Details Modal */}
       {selectedApplicant && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-bg dark:bg-surface rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-border">
-              <h3 className="text-lg font-medium text-foreground">
-                Application Details - {selectedApplicant.firstName} {selectedApplicant.lastName}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Application #: {selectedApplicant.applicationNumber} | Status:
-                <span className={`ml-1 px-2 py-1 text-xs font-semibold rounded-full ${selectedApplicant.status === 'ADMITTED'
-                  ? 'bg-green-100 text-green-800'
-                  : selectedApplicant.status === 'REJECTED'
-                    ? 'bg-red-100 text-red-800'
-                    : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                  {selectedApplicant.status}
-                </span>
-              </p>
+          <div className="bg-bg dark:bg-surface rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
+            <div className="px-6 py-6 border-b border-border flex justify-between items-start pr-32">
+              <div>
+                <h3 className="text-xl font-bold text-foreground">
+                  Application Details - {selectedApplicant.firstName} {selectedApplicant.lastName}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Application #: {selectedApplicant.applicationNumber} | Status:
+                  <span className={`ml-1 px-2 py-1 text-xs font-semibold rounded-full ${selectedApplicant.status === 'ADMITTED'
+                    ? 'bg-green-100 text-green-800'
+                    : selectedApplicant.status === 'REJECTED'
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                    {selectedApplicant.status}
+                  </span>
+                </p>
+              </div>
+
+              {/* Student Photo in Header */}
+              <div className="absolute top-6 right-10">
+                {selectedApplicant.profileImagePath ? (
+                  <img
+                    src={selectedApplicant.profileImagePath}
+                    alt="Student"
+                    className="w-24 h-24 rounded-full object-cover border-4 border-primary shadow-lg"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center border-4 border-border shadow-md">
+                    <UserIcon className="w-12 h-12 text-muted-foreground" />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="p-6 space-y-6">
               {/* Personal Information */}
               <div>
-                <h4 className="text-md font-semibold mb-3 text-foreground">Personal Information</h4>
+                <h4 className="text-md font-semibold mb-3 text-foreground flex items-center">
+                  <span className="w-1 h-4 bg-primary rounded-full mr-2"></span>
+                  Personal Information
+                </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Full Name</label>
@@ -439,7 +563,10 @@ const ApplicantsList = () => {
 
               {/* Academic Information */}
               <div>
-                <h4 className="text-md font-semibold mb-3 text-foreground">Academic Information</h4>
+                <h4 className="text-md font-semibold mb-3 text-foreground flex items-center">
+                  <span className="w-1 h-4 bg-primary rounded-full mr-2"></span>
+                  Academic Information
+                </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Applied Class</label>
@@ -455,7 +582,10 @@ const ApplicantsList = () => {
               {/* Academic History */}
               {selectedApplicant.lastSchoolAttended && (
                 <div>
-                  <h4 className="text-md font-semibold mb-3 text-foreground">Academic History</h4>
+                  <h4 className="text-md font-semibold mb-3 text-foreground flex items-center">
+                    <span className="w-1 h-4 bg-primary rounded-full mr-2"></span>
+                    Academic History
+                  </h4>
                   <div className="p-3 bg-muted/30 rounded-lg">
                     <label className="text-sm font-medium text-muted-foreground">Last School Attended</label>
                     <p className="text-foreground">{selectedApplicant.lastSchoolAttended}</p>
@@ -465,7 +595,10 @@ const ApplicantsList = () => {
 
               {/* Parent Information */}
               <div>
-                <h4 className="text-md font-semibold mb-3 text-foreground">Parent/Guardian Information</h4>
+                <h4 className="text-md font-semibold mb-3 text-foreground flex items-center">
+                  <span className="w-1 h-4 bg-primary rounded-full mr-2"></span>
+                  Parent/Guardian Information
+                </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Name</label>
@@ -493,16 +626,6 @@ const ApplicantsList = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Documents */}
-              <div>
-                <h4 className="text-md font-semibold mb-3 text-foreground">Documents</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedApplicant.profileImagePath && (
-                    <DocumentCard title="Student Photo" path={selectedApplicant.profileImagePath} />
-                  )}
-                </div>
-              </div>
             </div>
 
             <div className="px-6 py-4 border-t border-border flex justify-between">
@@ -510,7 +633,7 @@ const ApplicantsList = () => {
                 <button
                   onClick={() => generatePdf(selectedApplicant)}
                   disabled={generatingPdf === selectedApplicant.id}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center"
+                  className="px-4 py-2 cursor-pointer bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center"
                 >
                   {generatingPdf === selectedApplicant.id ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
@@ -522,9 +645,9 @@ const ApplicantsList = () => {
                 {selectedApplicant.status === 'PROGRESS' && (
                   <>
                     <button
-                      onClick={() => handleStatusUpdate(selectedApplicant.id, "ADMITTED")}
+                      onClick={() => openAdmitDialog(selectedApplicant.id, selectedApplicant.class.id, `${selectedApplicant.firstName} ${selectedApplicant.lastName}`)}
                       disabled={processingApplication === selectedApplicant.id}
-                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 flex items-center"
+                      className="px-4 py-2 cursor-pointer bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 flex items-center"
                     >
                       {processingApplication === selectedApplicant.id ? (
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
@@ -536,7 +659,7 @@ const ApplicantsList = () => {
                     <button
                       onClick={() => handleStatusUpdate(selectedApplicant.id, "REJECTED")}
                       disabled={processingApplication === selectedApplicant.id}
-                      className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 flex items-center"
+                      className="px-4 py-2 cursor-pointer bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 flex items-center"
                     >
                       <XMarkIcon className="h-4 w-4 mr-2" />
                       Reject Application

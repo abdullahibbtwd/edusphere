@@ -34,13 +34,26 @@ const WORKING_DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
  */
 function buildTimeSlots(config: any): TimeSlot[] {
     const slots: TimeSlot[] = [];
-    const [startHour, startMin] = config.schoolStartTime.split(':').map(Number);
-    const [endHour, endMin] = config.schoolEndTime.split(':').map(Number);
+
+    // Handle both Date objects (from DB) and strings (for robust fallback)
+    const getHoursAndMins = (val: any) => {
+        if (val instanceof Date) {
+            return [val.getHours(), val.getMinutes()];
+        }
+        if (typeof val === 'string' && val.includes(':')) {
+            return val.split(':').map(Number);
+        }
+        return [0, 0];
+    };
+
+    const [startHour, startMin] = getHoursAndMins(config.schoolStartTime);
+    const [endHour, endMin] = getHoursAndMins(config.schoolEndTime);
 
     const breaks = Array.isArray(config.breaks) ? config.breaks : [];
 
-    const toMinutes = (time: string) => {
-        const [h, m] = time.split(':').map(Number);
+    const toMinutes = (time: any) => {
+        if (time instanceof Date) return time.getHours() * 60 + time.getMinutes();
+        const [h, m] = String(time).split(':').map(Number);
         return h * 60 + m;
     };
 

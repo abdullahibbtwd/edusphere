@@ -10,7 +10,7 @@ export async function GET(
     const { schoolId } = await params;
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = parseInt(searchParams.get('limit') || '100');
     const levelId = searchParams.get('levelId');
     const skip = (page - 1) * limit;
 

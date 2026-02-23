@@ -45,6 +45,18 @@ export async function GET(
             where: { schoolId }
         });
 
+        if (config) {
+            const formatTime = (date: Date) => {
+                return date.getHours().toString().padStart(2, '0') + ':' +
+                    date.getMinutes().toString().padStart(2, '0');
+            };
+
+            // @ts-ignore - we're transforming for the response
+            config.schoolStartTime = formatTime(config.schoolStartTime as Date);
+            // @ts-ignore
+            config.schoolEndTime = formatTime(config.schoolEndTime as Date);
+        }
+
         return NextResponse.json({ config });
     } catch (error) {
         console.error('Failed to fetch timetable config:', error);
@@ -89,11 +101,18 @@ export async function POST(
             );
         }
 
+        // Helper to convert "HH:mm" to a DateTime object (using 1970-01-01 as base)
+        const parseTime = (timeStr: string) => {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            const date = new Date(1970, 0, 1, hours, minutes);
+            return date;
+        };
+
         const config = await prisma.timetableConfig.upsert({
             where: { schoolId },
             update: {
-                schoolStartTime,
-                schoolEndTime,
+                schoolStartTime: parseTime(schoolStartTime),
+                schoolEndTime: parseTime(schoolEndTime),
                 periodDuration,
                 breaks: breaks || [],
                 workingDays: workingDays || ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
@@ -101,8 +120,8 @@ export async function POST(
             },
             create: {
                 schoolId,
-                schoolStartTime,
-                schoolEndTime,
+                schoolStartTime: parseTime(schoolStartTime),
+                schoolEndTime: parseTime(schoolEndTime),
                 periodDuration,
                 breaks: breaks || [],
                 workingDays: workingDays || ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]

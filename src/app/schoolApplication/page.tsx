@@ -611,8 +611,9 @@ const SchoolApplicationForm = () => {
                 required
               >
                 <option value="">Select education level</option>
-                <option value="Junior Secondary">Junior Secondary</option>
-                <option value="Senior Secondary">Senior Secondary</option>
+                <option value="Primary">Primary</option>
+                <option value="Secondary">Secondary</option>
+                <option value="Primary and Secondary">Primary and Secondary</option>
               </select>
             </div>
 
