@@ -145,7 +145,7 @@ export default function ScreeningPage() {
           </button>
         </motion.div>
 
-        {/* Slot management — visible only when enabled */}
+        {/* Slot management - visible only when enabled */}
         <AnimatePresence>
           {isEnabled && (
             <motion.div
@@ -154,7 +154,7 @@ export default function ScreeningPage() {
               exit={{ opacity: 0, y: -8 }}
               className="grid grid-cols-1 lg:grid-cols-5 gap-6"
             >
-              {/* Add Slot form — 2 cols */}
+              {/* Add Slot form - 2 cols */}
               <div className="lg:col-span-2 bg-surface/60 backdrop-blur border border-border/60 rounded-3xl p-6 shadow-lg">
                 <h3 className="font-black text-sm uppercase tracking-wider mb-5 flex items-center gap-2">
                   <Plus className="w-4 h-4 text-primary" /> Add Screening Slot
@@ -200,7 +200,7 @@ export default function ScreeningPage() {
                 </form>
               </div>
 
-              {/* Slots table — 3 cols */}
+              {/* Slots table - 3 cols */}
               <div className="lg:col-span-3 bg-surface/60 backdrop-blur border border-border/60 rounded-3xl overflow-hidden shadow-lg">
                 <div className="px-6 py-5 border-b border-border/50 flex items-center justify-between">
                   <h3 className="font-black text-sm uppercase tracking-wider">Screening Slots</h3>
@@ -242,7 +242,7 @@ export default function ScreeningPage() {
                                 {slot.startTime}{slot.endTime ? ` – ${slot.endTime}` : ""}
                               </td>
                               <td className="px-5 py-3.5 text-muted-foreground text-xs">
-                                {slot.venue || "—"}
+                                {slot.venue || "-"}
                               </td>
                               <td className="px-5 py-3.5">
                                 <div className="flex items-center gap-2">

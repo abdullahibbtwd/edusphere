@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
@@ -16,8 +17,17 @@ const TeacherCalendar = () => {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [schoolName, setSchoolName] = useState<string>("");
   const [consolidatedSchedule, setConsolidatedSchedule] = useState<any>(null);
   const [selectedTerm, setSelectedTerm] = useState<string>("FIRST");
+
+  useEffect(() => {
+    if (!schoolId) return;
+    fetch(`/api/schools/${schoolId}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => data?.name && setSchoolName(data.name))
+      .catch(() => {});
+  }, [schoolId]);
 
   const fetchAndFilterTimetables = useCallback(async () => {
     if (!schoolId || !teacherName) return;
@@ -91,22 +101,22 @@ const TeacherCalendar = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[400px] bg-surface rounded-2xl border border-muted shadow-sm">
-        <FiLoader className="w-8 h-8 text-primary animate-spin mb-4" />
-        <p className="text-text/60 font-medium">Loading your schedule...</p>
+      <div className="flex flex-col items-center justify-center min-h-[280px] sm:min-h-[360px] bg-surface/50 rounded-2xl shadow-sm">
+        <FiLoader className="w-7 h-7 sm:w-8 sm:h-8 text-primary animate-spin mb-3 sm:mb-4" />
+        <p className="text-sm sm:text-base text-text/60 font-medium">Loading your schedule...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-[400px] bg-surface rounded-2xl border border-danger/20 shadow-sm p-6 text-center">
-        <FiAlertCircle className="w-12 h-12 text-danger mb-4" />
-        <h3 className="text-lg font-bold text-text mb-2">Error Loading Schedule</h3>
-        <p className="text-text/60 mb-6">{error}</p>
+      <div className="flex flex-col items-center justify-center min-h-[280px] sm:min-h-[360px] bg-surface/50 rounded-2xl shadow-sm p-4 sm:p-6 text-center">
+        <FiAlertCircle className="w-10 h-10 sm:w-12 sm:h-12 text-danger mb-3 sm:mb-4" />
+        <h3 className="text-base sm:text-lg font-bold text-text mb-2">Error Loading Schedule</h3>
+        <p className="text-sm text-text/60 mb-4 sm:mb-6">{error}</p>
         <button
           onClick={() => fetchAndFilterTimetables()}
-          className="px-6 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary-hover transition-colors"
+          className="px-5 py-2 sm:px-6 sm:py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
         >
           Try Again
         </button>
@@ -115,13 +125,14 @@ const TeacherCalendar = () => {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Term Selector */}
-      <div className="flex justify-end">
+    <div className="flex flex-col gap-4 sm:gap-6">
+      <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+        <label htmlFor="term-select-teacher" className="text-xs font-semibold text-text/60 uppercase tracking-wider sm:sr-only">Term</label>
         <select
+          id="term-select-teacher"
           value={selectedTerm}
           onChange={(e) => setSelectedTerm(e.target.value)}
-          className="px-4 py-2 rounded-lg border border-muted bg-surface text-text font-semibold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer shadow-sm transition-all hover:border-primary/50"
+          className="w-full sm:w-auto px-3 py-2.5 sm:px-4 sm:py-2 rounded-xl bg-surface text-text text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
         >
           <option value="FIRST">First Term</option>
           <option value="SECOND">Second Term</option>
@@ -133,6 +144,7 @@ const TeacherCalendar = () => {
         schedule={consolidatedSchedule}
         teacherName={teacherName}
         term={selectedTerm}
+        schoolName={schoolName || undefined}
       />
     </div>
   );

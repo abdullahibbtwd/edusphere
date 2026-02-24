@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
@@ -89,7 +90,7 @@ const Sidebar = ({ school }: SidebarProps) => {
         { icon: BookOpen, label: "Subjects", href: `/${school}/list/subjects`, visible: ["admin", "student", "teacher"] },
         { icon: Hash, label: "Levels", href: `/${school}/list/levels`, visible: ["admin"] },
         { icon: Layers, label: "Classes", href: `/${school}/list/class`, visible: ["admin", "teacher"] },
-        { icon: Wallet, label: "Fees & Payments", href: `/${school}/list/fees`, visible: ["admin"] },
+        { icon: Wallet, label: "Fees & Payments", href: `/${school}/list/fees`, visible: ["admin", "student"] },
         { icon: Timer, label: "Time Table", href: `/${school}/list/timetable`, visible: ["admin", "teacher"] },
         {
           icon: User,

@@ -84,6 +84,7 @@ export async function GET(
                                 lastName: true,
                                 gender: true,
                                 applicationNumber: true,
+                                registrationNumber: true,
                                 profileImagePath: true,
                             },
                             orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
@@ -113,6 +114,7 @@ export async function GET(
                     lastName: string;
                     gender: string;
                     applicationNumber: string;
+                    registrationNumber: string | null;
                     profileImagePath: string | null;
                 }[];
                 isSupervised: boolean;
@@ -163,6 +165,7 @@ export async function GET(
                         lastName: true,
                         gender: true,
                         applicationNumber: true,
+                        registrationNumber: true,
                         profileImagePath: true,
                     },
                     orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],

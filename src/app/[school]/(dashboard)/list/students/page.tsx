@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
@@ -13,6 +14,264 @@ import {
 import { Filter } from "lucide-react";
 import StudentRegistrationDialog from "@/components/StudentRegistrationDialog";
 import RecordPaymentDialog from "@/components/RecordPaymentDialog";
+import { useUser } from "@/context/UserContext";
+import { FaChalkboardTeacher, FaStar } from "react-icons/fa";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// ─── Teacher view types (from my-classes API) ─────────────────────────────────
+type TeacherStudent = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  gender: string;
+  applicationNumber: string;
+  registrationNumber?: string | null;
+  profileImagePath: string | null;
+};
+
+type TeacherClass = {
+  id: string;
+  name: string;
+  levelName: string;
+  levelId: string;
+  headTeacher: string;
+  supervisorId: string | null;
+  studentCount: number;
+  subjectCount: number;
+  subjects: { id: string; name: string; code: string }[];
+  students: TeacherStudent[];
+  isSupervised: boolean;
+};
+
+// ─── Teacher Students View ───────────────────────────────────────────────────
+function TeacherStudentsView({ schoolId, userId }: { schoolId: string; userId: string }) {
+  const [taughtClasses, setTaughtClasses] = useState<TeacherClass[]>([]);
+  const [supervisedOnlyClasses, setSupervisedOnlyClasses] = useState<TeacherClass[]>([]);
+  const [teacherName, setTeacherName] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"myclass" | "taught">("myclass");
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
+
+  const fetchMyClasses = useCallback(async () => {
+    if (!schoolId || !userId) return;
+    try {
+      setLoading(true);
+      const res = await fetch(
+        `/api/schools/${schoolId}/teachers/${userId}/my-classes?byUserId=true`
+      );
+      if (!res.ok) throw new Error("Failed to fetch your classes");
+      const data = await res.json();
+      setTaughtClasses(data.taughtClasses ?? []);
+      setSupervisedOnlyClasses(data.supervisedOnlyClasses ?? []);
+      setTeacherName(data.teacher?.name ?? "");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load students");
+    } finally {
+      setLoading(false);
+    }
+  }, [schoolId, userId]);
+
+  useEffect(() => {
+    fetchMyClasses();
+  }, [fetchMyClasses]);
+
+  const myClassSections: TeacherClass[] = [
+    ...taughtClasses.filter((c) => c.isSupervised),
+    ...supervisedOnlyClasses,
+  ].sort((a, b) => a.levelName.localeCompare(b.levelName) || a.name.localeCompare(b.name));
+
+  const allClassesForTab = activeTab === "myclass" ? myClassSections : taughtClasses;
+  const selectedClass = allClassesForTab.find((c) => c.id === selectedClassId) ?? allClassesForTab[0] ?? null;
+
+  useEffect(() => {
+    if (allClassesForTab.length > 0 && !allClassesForTab.some((c) => c.id === selectedClassId)) {
+      setSelectedClassId(allClassesForTab[0].id);
+    }
+  }, [activeTab, allClassesForTab, selectedClassId]);
+
+  const renderStudentTable = (students: TeacherStudent[]) => (
+    <div className="overflow-x-auto rounded-2xl bg-muted/5">
+      {students.length === 0 ? (
+        <div className="px-6 py-12 text-center text-sm text-muted-foreground">
+          No students in this class yet.
+        </div>
+      ) : (
+        <table className="w-full min-w-[380px] text-left text-sm">
+          <thead>
+            <tr className="bg-muted/10">
+              <th className="px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">#</th>
+              <th className="px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Student</th>
+              <th className="hidden sm:table-cell px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Gender</th>
+              <th className="px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Reg. number</th>
+            </tr>
+          </thead>
+          <tbody>
+            {students.map((s, i) => (
+              <tr key={s.id} className="hover:bg-muted/5 transition-colors">
+                <td className="px-4 py-3 text-muted-foreground font-medium">{i + 1}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Image
+                      src={s.profileImagePath || "/avatar.png"}
+                      alt=""
+                      width={36}
+                      height={36}
+                      className="rounded-full object-cover bg-muted/20"
+                    />
+                    <span className="font-medium text-foreground">{s.firstName} {s.lastName}</span>
+                  </div>
+                </td>
+                <td className="hidden sm:table-cell px-4 py-3">
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${s.gender?.toLowerCase() === "male" ? "bg-primary/10 text-primary" : "bg-cta/10 text-cta"}`}>
+                    {s.gender || "-"}
+                  </span>
+                </td>
+                <td className="px-4 py-3 font-mono text-primary font-medium text-xs">{s.registrationNumber || s.applicationNumber || "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-surface m-4 rounded-2xl shadow-sm">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-muted-foreground text-sm font-medium">Loading your students…</p>
+        </div>
+      </div>
+    );
+  }
+
+  const hasMyClass = myClassSections.length > 0;
+  const hasTaught = taughtClasses.length > 0;
+  if (!hasMyClass && !hasTaught) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-surface m-4 rounded-2xl shadow-sm p-8 text-center">
+        <FaChalkboardTeacher className="w-14 h-14 text-muted-foreground/40 mb-4" />
+        <h2 className="text-lg font-bold text-foreground mb-2">No classes assigned</h2>
+        <p className="text-sm text-muted-foreground max-w-sm">You don’t have a class as head teacher or subject teacher yet. Contact your school admin for assignments.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col bg-surface p-4 sm:p-6 m-4 mt-0 flex-1 rounded-2xl shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-primary/10 rounded-xl">
+            <FaChalkboardTeacher className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-foreground">
+              {teacherName ? `${teacherName}'s Students` : "My Students"}
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Switch between your class and classes you teach
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs: clear tab bar with selected state */}
+      <div
+        role="tablist"
+        aria-label="View by my class or students I teach"
+        className="flex rounded-xl border border-muted bg-bg p-1 w-full sm:w-fit mb-6"
+      >
+        {hasMyClass && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "myclass"}
+            onClick={() => { setActiveTab("myclass"); setSelectedClassId(myClassSections[0]?.id ?? ""); }}
+            className={`flex-1 sm:flex-none min-w-0 sm:min-w-[140px] px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+              activeTab === "myclass"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-text/70 hover:text-text hover:bg-surface"
+            }`}
+          >
+            <FaStar className="w-4 h-4 shrink-0" />
+            <span className="truncate">My class</span>
+            <span className="text-xs opacity-90 shrink-0">({myClassSections.length})</span>
+          </button>
+        )}
+        {hasTaught && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "taught"}
+            onClick={() => { setActiveTab("taught"); setSelectedClassId(taughtClasses[0]?.id ?? ""); }}
+            className={`flex-1 sm:flex-none min-w-0 sm:min-w-[160px] px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+              activeTab === "taught"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-text/70 hover:text-text hover:bg-surface"
+            }`}
+          >
+            <FaChalkboardTeacher className="w-4 h-4 shrink-0" />
+            <span className="truncate">Students I teach</span>
+            <span className="text-xs opacity-90 shrink-0">({taughtClasses.length})</span>
+          </button>
+        )}
+      </div>
+
+      {/* Class selector (Radix) + single table */}
+      <div className="space-y-4">
+        {allClassesForTab.length > 1 && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <label className="text-sm font-medium text-text/70 shrink-0">
+              Class
+            </label>
+            <Select
+              value={selectedClassId}
+              onValueChange={setSelectedClassId}
+            >
+              <SelectTrigger className="w-full sm:max-w-xs h-11 rounded-xl bg-bg border-muted text-text">
+                <SelectValue placeholder="Choose a class" />
+              </SelectTrigger>
+              <SelectContent className="bg-surface border-muted text-text">
+                {allClassesForTab.map((cls) => (
+                  <SelectItem key={cls.id} value={cls.id} className="text-text focus:bg-primary/10 focus:text-primary">
+                    {cls.levelName} {cls.name}
+                    {activeTab === "taught" && cls.subjects.length > 0 && ` · ${cls.subjects.map((s) => s.name).join(", ")}`}
+                    {` (${cls.studentCount})`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {selectedClass && (
+          <>
+            <div className="flex flex-wrap items-baseline gap-2">
+              <h2 className="text-base font-bold text-foreground">
+                {activeTab === "myclass" ? "My class: " : ""}{selectedClass.levelName} {selectedClass.name}
+              </h2>
+              <span className="text-sm text-muted-foreground">
+                {selectedClass.studentCount} student{selectedClass.studentCount !== 1 ? "s" : ""}
+                {activeTab === "taught" && selectedClass.subjects.length > 0 && (
+                  <span className="ml-1"> · {selectedClass.subjects.map((s) => s.name).join(", ")}</span>
+                )}
+              </span>
+            </div>
+            {renderStudentTable(selectedClass.students)}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // Define student type
 type Student = {
@@ -46,6 +305,8 @@ const columns = [
 const StudentPage = () => {
   const params = useParams();
   const schoolId = params.school as string;
+  const { role, user, loading: userLoading } = useUser();
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -183,6 +444,10 @@ const StudentPage = () => {
       </td>
     </tr>
   );
+
+  if (!userLoading && role === "teacher" && user?.userId) {
+    return <TeacherStudentsView schoolId={schoolId} userId={user.userId} />;
+  }
 
   if (loading && students.length === 0) {
     return (

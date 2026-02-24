@@ -1,25 +1,32 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { FiClock, FiBookOpen, FiDownload } from "react-icons/fi";
+import { FiClock, FiBookOpen, FiUser, FiDownload } from "react-icons/fi";
 import { downloadTimetablePdf } from "@/lib/timetable-pdf";
 
-type TimetableDisplayProps = {
-    schedule: any;
+const DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
+const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+
+type ScheduleEntry = {
+    subject?: string;
+    teacher?: string;
+    startTime?: string;
+    endTime?: string;
+};
+
+type StudentTimetableDisplayProps = {
+    schedule: Record<string, ScheduleEntry[]>;
     className: string;
     term: string;
     schoolName?: string;
 };
 
-const DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
-const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri"];
-
-const TimetableDisplay = ({ schedule, className, term, schoolName }: TimetableDisplayProps) => {
-    if (!schedule) {
+const StudentTimetableDisplay = ({ schedule, className, term, schoolName }: StudentTimetableDisplayProps) => {
+    if (!schedule || Object.keys(schedule).length === 0) {
         return (
             <div className="flex flex-col items-center justify-center p-6 sm:p-10 text-center bg-surface/50 rounded-2xl shadow-sm">
                 <FiClock className="w-12 h-12 sm:w-16 sm:h-16 text-text/20 mb-3 sm:mb-4" />
-                <p className="text-sm sm:text-base text-text/60">No timetable generated yet</p>
+                <p className="text-sm sm:text-base text-text/60">No timetable found for this term</p>
+                <p className="text-xs sm:text-sm text-text/40 mt-1">Your class timetable will appear here once set by the school.</p>
             </div>
         );
     }
@@ -36,13 +43,15 @@ const TimetableDisplay = ({ schedule, className, term, schoolName }: TimetableDi
                         <FiBookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                     </div>
                     <div>
-                        <h3 className="text-base sm:text-xl font-bold text-text">{className}</h3>
+                        <h3 className="text-base sm:text-xl font-bold text-text flex items-center gap-2">
+                            Class Timetable - {className}
+                        </h3>
                         <p className="text-xs sm:text-sm text-text/60 uppercase tracking-wider font-semibold">{term.replace(/_/g, " ")} Term</p>
                     </div>
                 </div>
                 <button
                     type="button"
-                    onClick={() => downloadTimetablePdf(schedule, `${className} - ${term.replace(/_/g, " ")} Term`, "class", schoolName)}
+                    onClick={() => downloadTimetablePdf(schedule, `Class Timetable - ${className} - ${term.replace(/_/g, " ")} Term`, "class", schoolName)}
                     className="inline-flex cursor-pointer items-center gap-2 px-3 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                     <FiDownload className="w-4 h-4" />
@@ -83,8 +92,8 @@ const TimetableDisplay = ({ schedule, className, term, schoolName }: TimetableDi
                                     </div>
                                 </td>
                                 {DAYS.map(day => {
-                                    const entry = schedule[day]?.[period - 1];
-                                    const hasClass = entry?.subject && entry.subject.toLowerCase() !== "free";
+                                    const entry = schedule[day]?.[period - 1] as ScheduleEntry | undefined;
+                                    const hasClass = entry?.subject && entry.subject.toLowerCase() !== 'free';
                                     return (
                                         <td key={day} className="p-1.5 sm:p-2 md:p-3 align-top border-r border-muted/40 last:border-r-0">
                                             {hasClass ? (
@@ -93,8 +102,9 @@ const TimetableDisplay = ({ schedule, className, term, schoolName }: TimetableDi
                                                         {entry.subject}
                                                     </div>
                                                     {entry.teacher && (
-                                                        <div className="text-[10px] sm:text-xs text-text/70 font-medium mt-0.5 truncate" title={entry.teacher}>
-                                                            {entry.teacher}
+                                                        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-text/70 font-medium mt-0.5 truncate" title={entry.teacher}>
+                                                            <FiUser className="w-3 h-3 text-text/50 shrink-0" />
+                                                            <span className="truncate">{entry.teacher}</span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -115,4 +125,4 @@ const TimetableDisplay = ({ schedule, className, term, schoolName }: TimetableDi
     );
 };
 
-export default TimetableDisplay;
+export default StudentTimetableDisplay;

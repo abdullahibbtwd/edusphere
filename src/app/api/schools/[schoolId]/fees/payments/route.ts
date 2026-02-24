@@ -119,8 +119,6 @@ export async function POST(
 
         return NextResponse.json({ success: true, ...result });
 
-        return NextResponse.json({ success: true, ...result });
-
     } catch (error) {
         console.error('Error recording payment:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

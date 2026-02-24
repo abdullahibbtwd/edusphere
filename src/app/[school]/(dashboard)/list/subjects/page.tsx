@@ -1,13 +1,11 @@
 "use client"
 import Pagination from "@/components/pagination";
 import Table from "@/components/Table";
-import { FaEdit, FaTrash, FaChevronDown, FaChevronRight, FaBook, FaChalkboardTeacher } from "react-icons/fa";
+import { FaEdit, FaTrash, FaChevronDown, FaChevronRight, FaBook } from "react-icons/fa";
 import { useState, useCallback, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import clsx from "clsx";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Using Radix Select
-import { useRouter } from "next/navigation";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUser } from "@/context/UserContext";
 
 // Types for teacher view
@@ -185,6 +183,107 @@ function TeacherSubjectView({ schoolId, userId }: { schoolId: string; userId: st
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Student view: grid of class subjects with teacher name under each
+type StudentSubjectItem = {
+  id: string;
+  name: string;
+  code: string;
+  creditUnit: number;
+  term: string;
+  levelName: string;
+  teacherName: string;
+};
+
+function StudentSubjectView({ schoolId }: { schoolId: string }) {
+  const [subjects, setSubjects] = useState<StudentSubjectItem[]>([]);
+  const [studentInfo, setStudentInfo] = useState<{ name: string; class: string; level: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/schools/${schoolId}/subjects/my-class`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to load subjects");
+        return;
+      }
+      const data = await res.json();
+      setSubjects(data.subjects || []);
+      setStudentInfo(data.student || null);
+    } catch {
+      toast.error("Failed to load your subjects");
+    } finally {
+      setLoading(false);
+    }
+  }, [schoolId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-text/60">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+        <p>Loading your subjects…</p>
+      </div>
+    );
+  }
+
+  if (subjects.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-text/60">
+        <FaBook size={48} className="mb-4 text-primary/40" />
+        <p className="text-lg font-semibold">No subjects for your class yet</p>
+        <p className="text-sm mt-1">Subjects will appear here when assigned to your class.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-primary/10 rounded-lg">
+          <FaBook size={22} className="text-primary" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-text">My Class Subjects</h1>
+          <p className="text-sm text-text/60">
+            {studentInfo && (
+              <>{(studentInfo.level && studentInfo.class) ? `${studentInfo.level} - ${studentInfo.class}` : "Your subjects"}</>
+            )}
+            {!studentInfo && "Subjects for your class"}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {subjects.map((sub) => (
+          <div
+            key={sub.id}
+            className="bg-surface border border-muted rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow flex flex-col"
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <FaBook size={18} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-bold text-text leading-tight">{sub.name}</h3>
+                <p className="text-xs text-text/50 font-mono uppercase tracking-wider">{sub.code}</p>
+              </div>
+            </div>
+            <div className="mt-auto pt-2 border-t border-muted/50">
+              <p className="text-[10px] font-semibold text-text/50 uppercase tracking-wider">Teacher</p>
+              <p className="text-sm font-medium text-text mt-0.5">{sub.teacherName}</p>
             </div>
           </div>
         ))}
@@ -489,10 +588,18 @@ const SubjectsPage = () => {
     </tr>
   );
 
-  if (!userLoading && role === 'teacher' && user?.userId) {
+  if (!userLoading && role === "teacher" && user?.userId) {
     return (
       <div className="flex flex-col bg-surface p-4 m-4 mt-0 flex-1 rounded-lg shadow-sm font-inter">
         <TeacherSubjectView schoolId={schoolId} userId={user.userId} />
+      </div>
+    );
+  }
+
+  if (!userLoading && role === "student") {
+    return (
+      <div className="flex flex-col bg-surface p-4 m-4 mt-0 flex-1 rounded-lg shadow-sm font-inter">
+        <StudentSubjectView schoolId={schoolId} />
       </div>
     );
   }

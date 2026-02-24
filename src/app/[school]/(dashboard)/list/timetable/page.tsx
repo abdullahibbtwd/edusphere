@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
@@ -39,6 +40,15 @@ const TimetablePage = () => {
   const { role, user } = useUser();
   const [teacherSchedule, setTeacherSchedule] = useState<any>(null);
   const [loadingSchedule, setLoadingSchedule] = useState(false);
+  const [schoolName, setSchoolName] = useState<string>("");
+
+  useEffect(() => {
+    if (!schoolId) return;
+    fetch(`/api/schools/${schoolId}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => data?.name && setSchoolName(data.name))
+      .catch(() => {});
+  }, [schoolId]);
 
   const fetchSession = useCallback(async () => {
     try {
@@ -206,7 +216,7 @@ const TimetablePage = () => {
         console.log('='.repeat(80));
 
         const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
-        let grandTotal = { periods: 0, free: 0, classes: timetables.length };
+        const grandTotal = { periods: 0, free: 0, classes: timetables.length };
 
         timetables.forEach((tt: any, index: number) => {
           console.log(`\n%c📋 ${index + 1}. ${tt.className} - ${tt.term}`, 'font-size: 13px; font-weight: bold; color: #2196F3');
@@ -348,8 +358,9 @@ const TimetablePage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-10 h-full">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex flex-col items-center justify-center min-h-[280px] sm:min-h-[360px] p-6">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm text-text/60 font-medium">Loading...</p>
       </div>
     );
   }
@@ -376,7 +387,7 @@ const TimetablePage = () => {
   // ... (keep existing fetch functions)
 
   return (
-    <div className="flex flex-col gap-4 md:gap-6 p-3 md:p-6 h-full font-poppins text-text relative">
+    <div className="flex flex-col gap-4 sm:gap-6 p-3 sm:p-4 md:p-6 h-full font-poppins text-text relative">
       {/* Modals */}
       {showViewCalendar && (
         <CalendarView session={activeSession} onClose={() => setShowViewCalendar(false)} />
@@ -415,20 +426,20 @@ const TimetablePage = () => {
       )}
 
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 md:gap-4 bg-surface p-3 md:p-4 rounded-xl border border-muted shadow-sm">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 sm:gap-4 bg-surface/50 p-3 sm:p-4 rounded-2xl shadow-sm">
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-text truncate">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-text truncate">
             Timetable Management
           </h1>
-          <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-1 text-xs md:text-sm">
-            <span className="flex items-center gap-1.5 px-2 md:px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium border border-primary/20 whitespace-nowrap">
-              <FiCalendar className="w-3 md:w-3.5 h-3 md:h-3.5" />
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 text-xs sm:text-sm">
+            <span className="flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium whitespace-nowrap">
+              <FiCalendar className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               <span className="hidden sm:inline">{activeSession.name}</span>
               <span className="sm:hidden">{activeSession.name.split(' ')[0]}</span>
             </span>
             {currentTerm && (
-              <span className="flex items-center gap-1.5 px-2 md:px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 font-medium border border-orange-200 whitespace-nowrap">
-                <FiClock className="w-3 md:w-3.5 h-3 md:h-3.5" />
+              <span className="flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 font-medium whitespace-nowrap">
+                <FiClock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span className="hidden sm:inline">{currentTerm.name} Term</span>
                 <span className="sm:hidden">{currentTerm.name}</span>
               </span>
@@ -436,21 +447,21 @@ const TimetablePage = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-3 w-full lg:w-auto">
+        <div className="flex items-center gap-2 w-full lg:w-auto">
           <button
             onClick={() => setShowViewCalendar(true)}
-            className="flex-1 lg:flex-none w-10 h-10 bg-surface text-primary border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors flex items-center justify-center"
+            className="flex-1 lg:flex-none min-w-[40px] h-10 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-center"
             title="View Calendar"
           >
-            <FiEye className="w-4 h-4 md:w-5 md:h-5" />
+            <FiEye className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           {role === 'admin' && (
             <button
               onClick={() => setShowEditCalendar(true)}
-              className="flex-1 lg:flex-none w-10 h-10 bg-surface text-text/70 border border-muted rounded-lg hover:bg-muted transition-colors flex items-center justify-center"
+              className="flex-1 lg:flex-none min-w-[40px] h-10 bg-surface text-text/70 rounded-xl hover:bg-muted/50 transition-colors flex items-center justify-center"
               title="Edit Calendar"
             >
-              <FiEdit2 className="w-4 h-4 md:w-5 md:h-5" />
+              <FiEdit2 className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           )}
         </div>
@@ -460,27 +471,26 @@ const TimetablePage = () => {
       {role === 'admin' ? (
         <>
           {/* School-Wide Generation Section (Admins Only) */}
-          <div className="bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 p-4 md:p-6 rounded-xl border border-primary/20 shadow-lg">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
-                <FiGrid className="w-6 h-6 text-primary" />
+          <div className="bg-primary/5 p-4 sm:p-5 md:p-6 rounded-2xl shadow-sm">
+            <div className="flex items-start gap-3 sm:gap-4 mb-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <FiGrid className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
               </div>
-              <div className="flex-1">
-                <h2 className="text-lg md:text-xl font-bold text-text">Generate All Timetables</h2>
-                <p className="text-sm text-text/60 mt-1">
-                  Generate conflict-free timetables for <span className="font-semibold text-primary">{totalClasses} classes</span> across <span className="font-semibold text-primary">{levels.length} levels</span> in one click
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base sm:text-lg md:text-xl font-bold text-text">Generate All Timetables</h2>
+                <p className="text-xs sm:text-sm text-text/60 mt-1">
+                  Generate conflict-free timetables for <span className="font-semibold text-primary">{totalClasses} classes</span> across <span className="font-semibold text-primary">{levels.length} levels</span> in one click.
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Term Selector */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="block text-sm font-medium text-text/70 mb-2">Select Term *</label>
+                <label className="block text-xs sm:text-sm font-medium text-text/70 mb-1.5">Select Term *</label>
                 <select
                   value={selectedTerm}
                   onChange={(e) => setSelectedTerm(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-muted bg-surface text-text focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer font-medium"
+                  className="w-full px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl bg-surface text-text text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
                 >
                   <option value="FIRST">First Term</option>
                   <option value="SECOND">Second Term</option>
@@ -488,11 +498,10 @@ const TimetablePage = () => {
                 </select>
               </div>
 
-              {/* Generate Button & Config */}
               <div className="flex items-end gap-2">
                 <button
                   onClick={() => setShowDoublePeriodConfig(true)}
-                  className="px-4 py-3 bg-white border border-primary/30 text-primary rounded-lg hover:bg-primary/5 transition-all text-sm font-semibold shadow-sm flex-shrink-0 h-[50px] flex items-center justify-center"
+                  className="px-3 py-2.5 sm:px-4 sm:py-3 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all text-sm font-semibold flex-shrink-0 h-[44px] sm:h-[50px] flex items-center justify-center"
                   title="Configure Double Periods"
                 >
                   <FiClock className="w-5 h-5" />
@@ -500,38 +509,37 @@ const TimetablePage = () => {
                 <button
                   onClick={handleGenerateClick}
                   disabled={generating}
-                  className="flex-1 px-6 py-3 cursor-pointer bg-primary text-white rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-bold shadow-xl shadow-primary/30 hover:shadow-primary/40 text-base h-[50px]"
+                  className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-primary text-white rounded-xl hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-bold text-sm sm:text-base h-[44px] sm:h-[50px]"
                 >
-                  <FiZap className="w-5 h-5" />
+                  <FiZap className="w-4 h-4 sm:w-5 sm:h-5" />
                   {generating ? "Generating..." : `Generate ${totalClasses} Classes`}
                 </button>
               </div>
             </div>
 
-            {/* Info Banner */}
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-xs text-blue-800">
-                <strong>Note:</strong> This will generate timetables for ALL classes (JSS1-SS3) for the selected term.
-                The system ensures no teacher conflicts across the entire school.
+            <div className="mt-4 p-3 rounded-xl bg-primary/5">
+              <p className="text-xs text-text/70">
+                <strong>Note:</strong> This generates timetables for ALL classes for the selected term. The system ensures no teacher conflicts across the school.
               </p>
             </div>
           </div>
 
           {/* View Timetable Section */}
-          <div className="bg-surface p-4 rounded-xl border border-muted shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <FiFilter className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-semibold text-text">View Generated Timetables</h2>
+          <div className="bg-surface/50 p-3 sm:p-4 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+              <div className="p-1.5 rounded-lg bg-primary/10">
+                <FiFilter className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+              </div>
+              <h2 className="text-base sm:text-lg font-semibold text-text">View Generated Timetables</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              {/* Level Selector */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="block text-sm font-medium text-text/70 mb-2">Filter by Level</label>
+                <label className="block text-xs sm:text-sm font-medium text-text/70 mb-1.5">Filter by Level</label>
                 <select
                   value={selectedLevel}
                   onChange={(e) => setSelectedLevel(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-muted bg-bg text-text focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                  className="w-full px-3 py-2.5 rounded-xl bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
                 >
                   <option value="">All Levels</option>
                   {levels.map(level => (
@@ -542,14 +550,13 @@ const TimetablePage = () => {
                 </select>
               </div>
 
-              {/* Class Selector */}
               <div>
-                <label className="block text-sm font-medium text-text/70 mb-2">Select Class</label>
+                <label className="block text-xs sm:text-sm font-medium text-text/70 mb-1.5">Select Class</label>
                 <select
                   value={selectedClass}
                   onChange={(e) => setSelectedClass(e.target.value)}
                   disabled={!selectedLevel}
-                  className="w-full px-4 py-2 rounded-lg border border-muted bg-bg text-text focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="w-full px-3 py-2.5 rounded-xl bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <option value="">
                     {selectedLevel ? "Select a class" : "Select a level first"}
@@ -565,25 +572,25 @@ const TimetablePage = () => {
           </div>
 
           {/* Timetable Display */}
-          <div className="bg-surface p-4 rounded-xl border border-muted shadow-sm flex-1">
+          <div className="bg-surface/50 p-3 sm:p-4 rounded-2xl shadow-sm flex-1 min-h-[320px]">
             {loadingTimetable ? (
-              <div className="flex items-center justify-center p-10">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <div className="flex flex-col items-center justify-center min-h-[280px] py-10">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-sm text-text/60 font-medium">Loading timetable...</p>
               </div>
             ) : selectedClass && selectedClassData && selectedLevelData ? (
               <TimetableDisplay
                 schedule={timetable?.schedule}
                 className={`${selectedLevelData.name} ${selectedClassData.name}`}
                 term={selectedTerm}
+                schoolName={schoolName || undefined}
               />
             ) : (
-              <div className="flex flex-col items-center justify-center p-10 text-center">
-                <FiFilter className="w-16 h-16 text-text/20 mb-4" />
-                <p className="text-text/60 mb-2">No class selected</p>
-                <p className="text-sm text-text/40">
-                  {selectedLevel
-                    ? "Select a class above to view its timetable"
-                    : "Select a level first to see available classes"}
+              <div className="flex flex-col items-center justify-center min-h-[240px] py-10 text-center">
+                <FiFilter className="w-12 h-12 sm:w-16 sm:h-16 text-text/20 mb-3 sm:mb-4" />
+                <p className="text-sm sm:text-base text-text/60 mb-1">No class selected</p>
+                <p className="text-xs sm:text-sm text-text/40">
+                  {selectedLevel ? "Select a class above to view its timetable" : "Select a level first to see available classes"}
                 </p>
               </div>
             )}
@@ -591,23 +598,23 @@ const TimetablePage = () => {
         </>
       ) : (
         /* Teacher View */
-        <div className="flex flex-col gap-6">
-          <div className="bg-surface p-4 rounded-xl border border-muted shadow-sm">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:gap-6">
+          <div className="bg-surface/50 p-3 sm:p-4 rounded-2xl shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                   <FiUser className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-text">My Personal Schedule</h2>
-                  <p className="text-sm text-text/60">Viewing your assigned periods across all classes</p>
+                  <h2 className="text-base sm:text-lg font-bold text-text">My Personal Schedule</h2>
+                  <p className="text-xs sm:text-sm text-text/60">Your assigned periods across all classes</p>
                 </div>
               </div>
-              <div className="w-full md:w-48">
+              <div className="w-full md:w-44">
                 <select
                   value={selectedTerm}
                   onChange={(e) => setSelectedTerm(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-muted bg-bg text-text focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer font-medium"
+                  className="w-full px-3 py-2.5 rounded-xl bg-surface text-text text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
                 >
                   <option value="FIRST">First Term</option>
                   <option value="SECOND">Second Term</option>
@@ -617,16 +624,18 @@ const TimetablePage = () => {
             </div>
           </div>
 
-          <div className="bg-surface p-4 rounded-xl border border-muted shadow-sm flex-1 min-h-[500px]">
+          <div className="bg-surface/50 p-3 sm:p-4 rounded-2xl shadow-sm flex-1 min-h-[360px] sm:min-h-[420px]">
             {loadingSchedule ? (
-              <div className="flex items-center justify-center p-10 h-full">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <div className="flex flex-col items-center justify-center min-h-[280px] py-10">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-sm text-text/60 font-medium">Loading schedule...</p>
               </div>
             ) : (
               <TeacherTimetableDisplay
                 schedule={teacherSchedule}
                 teacherName={user?.name || "Teacher"}
                 term={selectedTerm}
+                schoolName={schoolName || undefined}
               />
             )}
           </div>
