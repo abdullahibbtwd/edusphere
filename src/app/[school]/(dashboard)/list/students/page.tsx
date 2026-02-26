@@ -11,7 +11,9 @@ import {
   UserPlusIcon,
   CreditCardIcon,
 } from "@heroicons/react/24/outline";
+import { FiPlus } from "react-icons/fi";
 import { Filter } from "lucide-react";
+import CreateStudentDialog from "@/components/CreateStudentDialog";
 import StudentRegistrationDialog from "@/components/StudentRegistrationDialog";
 import RecordPaymentDialog from "@/components/RecordPaymentDialog";
 import { useUser } from "@/context/UserContext";
@@ -274,6 +276,12 @@ function TeacherStudentsView({ schoolId, userId }: { schoolId: string; userId: s
 }
 
 // Define student type
+type FeeStatus = {
+  label: string;
+  termsPaid: string[];
+  isFullSessionPaid: boolean;
+};
+
 type Student = {
   id: string;
   firstName: string;
@@ -291,6 +299,7 @@ type Student = {
   currentSession?: string;
   paymentPlan?: string;
   createdAt: string;
+  feeStatus?: FeeStatus;
 };
 
 const columns = [
@@ -299,6 +308,7 @@ const columns = [
   { header: "Level", accessor: "level", className: "hidden lg:table-cell" },
   { header: "Class", accessor: "class", className: "hidden md:table-cell" },
   { header: "Status", accessor: "status", className: "hidden md:table-cell" },
+  { header: "Fee (session)", accessor: "feeStatus", className: "hidden md:table-cell" },
   { header: "Actions", accessor: "action" },
 ];
 
@@ -326,6 +336,7 @@ const StudentPage = () => {
   const [filterRegStatus, setFilterRegStatus] = useState("");
   const [filterPaymentPlan, setFilterPaymentPlan] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [showCreateStudent, setShowCreateStudent] = useState(false);
 
   // Lookups
   const [classes, setClasses] = useState<any[]>([]);
@@ -375,6 +386,11 @@ const StudentPage = () => {
     fetchStudents();
   }, [fetchStudents]);
 
+  // When level changes, clear class filter so we don't keep a class from another level
+  useEffect(() => {
+    setFilterClass("");
+  }, [filterLevel]);
+
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   const handlePageChange = useCallback((page: number) => {
@@ -414,6 +430,26 @@ const StudentPage = () => {
             <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
               Plan: {item.paymentPlan}
             </span>
+          )}
+        </div>
+      </td>
+      <td className="hidden md:table-cell">
+        <div className="flex flex-col gap-1">
+          {item.feeStatus && (
+            <span
+              className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tight w-max ${
+                item.feeStatus.isFullSessionPaid || item.feeStatus.label === "Full session paid"
+                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
+                  : item.feeStatus.label === "Unpaid"
+                  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                  : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+              }`}
+            >
+              {item.feeStatus.label}
+            </span>
+          )}
+          {!item.feeStatus && (
+            <span className="text-[9px] text-muted-foreground italic">—</span>
           )}
         </div>
       </td>
@@ -470,14 +506,11 @@ const StudentPage = () => {
           </h1>
           <div className="flex flex-col md:flex-row w-full md:w-auto items-center gap-2">
             <div className="relative">
-              {/* Note: TableSearch needs its own internal state or search handler, 
-                  for now we'll assume it works with URL which we are not using here directly.
-                  Let's add a manual search if needed, but the user requested search.
-              */}
+          
               <input
                 type="text"
                 placeholder="Search name or ID..."
-                className="bg-background ring-[1.5px] ring-border p-2 rounded-md text-sm w-48 font-medium focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground"
+                className="bg-bg ring-[1.5px] ring-border p-2 rounded-md text-sm w-48 font-medium focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -487,63 +520,113 @@ const StudentPage = () => {
                 onClick={() => setShowFilters(!showFilters)}
                 className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all cursor-pointer border ${showFilters
                   ? 'bg-primary text-white shadow-lg shadow-primary/30 border-primary'
-                  : 'bg-background hover:bg-muted/10 border-border text-foreground'}`}
+                  : 'bg-bg hover:bg-muted/10 border-border text-foreground'}`}
               >
                 <Filter className={`w-4 h-4 ${showFilters ? "text-white" : "text-muted-foreground"}`} />
               </button>
-              <FormModel table="student" type="plus" />
+            <button
+              onClick={() => setShowCreateStudent(true)}
+              className="w-10 h-10 flex items-center justify-center rounded-xl bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/25 border border-primary transition-all cursor-pointer"
+              title="Add Student"
+            >
+              <FiPlus className="w-5 h-5" />
+            </button>
             </div>
           </div>
         </div>
 
         {/* Filter Bar */}
         {showFilters && (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 p-4 bg-muted/5 rounded-2xl border border-muted/10 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 p-4 bg-muted/5 rounded-2xl border border-border animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">Level</label>
-              <select
-                className="ring-[1.5px] ring-border p-2 rounded-lg text-xs font-bold bg-background text-foreground focus:ring-primary outline-none"
-                value={filterLevel}
-                onChange={(e) => setFilterLevel(e.target.value)}
+              <Select
+                value={filterLevel || "__all__"}
+                onValueChange={(v) => setFilterLevel(v === "__all__" ? "" : v)}
               >
-                <option value="">All Levels</option>
-                {levels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
+                <SelectTrigger className="h-9 rounded-lg text-xs font-bold bg-bg text-foreground border-border ring-offset-bg focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                  <SelectValue placeholder="All Levels" />
+                </SelectTrigger>
+                <SelectContent className="bg-bg text-foreground border-border">
+                  <SelectItem value="__all__" className="text-xs font-bold focus:bg-primary/10 focus:text-foreground">
+                    All Levels
+                  </SelectItem>
+                  {levels.map((l) => (
+                    <SelectItem key={l.id} value={l.id} className="text-xs font-bold focus:bg-primary/10 focus:text-foreground">
+                      {l.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">Class</label>
-              <select
-                className="ring-[1.5px] ring-border p-2 rounded-lg text-xs font-bold bg-background text-foreground focus:ring-primary outline-none"
-                value={filterClass}
-                onChange={(e) => setFilterClass(e.target.value)}
+              <Select
+                value={filterClass || "__all__"}
+                onValueChange={(v) => setFilterClass(v === "__all__" ? "" : v)}
+                disabled={!filterLevel}
               >
-                <option value="">All Classes</option>
-                {classes.filter(c => !filterLevel || c.levelId === filterLevel).map(c => <option key={c.id} value={c.id}>{c.className || c.name}</option>)}
-              </select>
+                <SelectTrigger className="h-9 rounded-lg text-xs font-bold bg-bg text-foreground border-border ring-offset-bg focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                  <SelectValue placeholder={filterLevel ? "All Classes" : "Select level first"} />
+                </SelectTrigger>
+                <SelectContent className="bg-bg text-foreground border-border">
+                  <SelectItem value="__all__" className="text-xs font-bold focus:bg-primary/10 focus:text-foreground">
+                    All Classes
+                  </SelectItem>
+                  {filterLevel &&
+                    classes
+                      .filter((c) => c.levelId === filterLevel)
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id} className="text-xs font-bold focus:bg-primary/10 focus:text-foreground">
+                          {c.className || c.name}
+                        </SelectItem>
+                      ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">Registration</label>
-              <select
-                className="ring-[1.5px] ring-border p-2 rounded-lg text-xs font-bold bg-background text-foreground focus:ring-primary outline-none"
-                value={filterRegStatus}
-                onChange={(e) => setFilterRegStatus(e.target.value)}
+              <Select
+                value={filterRegStatus || "__all__"}
+                onValueChange={(v) => setFilterRegStatus(v === "__all__" ? "" : v)}
               >
-                <option value="">All Statuses</option>
-                <option value="registered">Registered</option>
-                <option value="admitted">Admitted (Pending)</option>
-              </select>
+                <SelectTrigger className="h-9 rounded-lg text-xs font-bold bg-bg text-foreground border-border ring-offset-bg focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent className="bg-bg text-foreground border-border">
+                  <SelectItem value="__all__" className="text-xs font-bold focus:bg-primary/10 focus:text-foreground">
+                    All Statuses
+                  </SelectItem>
+                  <SelectItem value="registered" className="text-xs font-bold focus:bg-primary/10 focus:text-foreground">
+                    Registered
+                  </SelectItem>
+                  <SelectItem value="admitted" className="text-xs font-bold focus:bg-primary/10 focus:text-foreground">
+                    Admitted (Pending)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">Payment Plan</label>
-              <select
-                className="ring-[1.5px] ring-border p-2 rounded-lg text-xs font-bold bg-background text-foreground focus:ring-primary outline-none"
-                value={filterPaymentPlan}
-                onChange={(e) => setFilterPaymentPlan(e.target.value)}
+              <Select
+                value={filterPaymentPlan || "__all__"}
+                onValueChange={(v) => setFilterPaymentPlan(v === "__all__" ? "" : v)}
               >
-                <option value="">All Plans</option>
-                <option value="TERM">Per Term</option>
-                <option value="SESSION">Per Session</option>
-              </select>
+                <SelectTrigger className="h-9 rounded-lg text-xs font-bold bg-bg text-foreground border-border ring-offset-bg focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                  <SelectValue placeholder="All Plans" />
+                </SelectTrigger>
+                <SelectContent className="bg-bg text-foreground border-border">
+                  <SelectItem value="__all__" className="text-xs font-bold focus:bg-primary/10 focus:text-foreground">
+                    All Plans
+                  </SelectItem>
+                  <SelectItem value="TERM" className="text-xs font-bold focus:bg-primary/10 focus:text-foreground">
+                    Per Term
+                  </SelectItem>
+                  <SelectItem value="SESSION" className="text-xs font-bold focus:bg-primary/10 focus:text-foreground">
+                    Per Session
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-end">
               <button
@@ -554,7 +637,7 @@ const StudentPage = () => {
                   setFilterPaymentPlan("");
                   setSearchQuery("");
                 }}
-                className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors p-2"
+                className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors p-2"
               >
                 Clear Filters
               </button>
@@ -582,6 +665,14 @@ const StudentPage = () => {
           />
         </div>
       )}
+
+      {/* Create Student Modal */}
+      <CreateStudentDialog
+        isOpen={showCreateStudent}
+        onClose={() => setShowCreateStudent(false)}
+        schoolId={schoolId}
+        onSuccess={fetchStudents}
+      />
 
       {/* Modals */}
       {selectedStudent && (

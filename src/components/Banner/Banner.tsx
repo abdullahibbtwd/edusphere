@@ -44,13 +44,41 @@ const Banner = ({ school }: { school: string }) => {
         const response = await fetch(`/api/schools/by-subdomain/${school}`);
         if (response.ok) {
           const schoolData = await response.json();
-          if (schoolData.content && (schoolData.content.bannerTitle || schoolData.content.bannerImage || schoolData.content.bannerStats)) {
-            setBannerData({
-              bannerTitle: schoolData.content.bannerTitle,
-              bannerImage: schoolData.content.bannerImage,
-              bannerStats: schoolData.content.bannerStats
-            });
+          const content = schoolData.content;
+          const hasBanner = content && (content.bannerTitle || content.bannerImage || (content.bannerStats && content.bannerStats.length > 0));
+          if (!hasBanner) {
+            setLoading(false);
+            return;
           }
+          // Live counts from same API as SchoolManagement (subjects + students arrays)
+          const studentCount = schoolData.students?.length ?? 0;
+          const subjectCount = schoolData.subjects?.length ?? 0;
+          // Use saved bannerStats for structure; inject live student/subject counts to match SchoolManagement
+          const savedStats = content.bannerStats ?? [];
+          const statsWithLiveCounts = savedStats.map((stat: { icon: string; text: string }) => {
+            const t = stat.text || "";
+            if (stat.icon === "GrUserExpert" || t.toLowerCase().includes("students")) {
+              return { icon: stat.icon, text: `${studentCount}+ Students` };
+            }
+            if (stat.icon === "FaBookReader" || t.toLowerCase().includes("subjects")) {
+              return { icon: stat.icon, text: `${subjectCount}+ Subjects` };
+            }
+            return { icon: stat.icon, text: t || "Good Facilities" };
+          });
+          // If no saved stats, build default like SchoolManagement
+          const bannerStats =
+            statsWithLiveCounts.length >= 3
+              ? statsWithLiveCounts
+              : [
+                  { icon: "GrUserExpert", text: `${studentCount}+ Students` },
+                  { icon: "FaBookReader", text: `${subjectCount}+ Subjects` },
+                  { icon: "MdOutlineAccessTime", text: "Good Facilities" },
+                ];
+          setBannerData({
+            bannerTitle: content.bannerTitle ?? "",
+            bannerImage: content.bannerImage ?? undefined,
+            bannerStats,
+          });
         }
       } catch (error) {
         console.error('Error fetching banner data:', error);

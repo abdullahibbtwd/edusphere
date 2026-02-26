@@ -9,11 +9,13 @@ export async function POST(
 ) {
   try {
     const { schoolId } = await params;
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const emailOrPhone = body.email ?? body.emailOrPhone ?? '';
+    const password = body.password;
 
-    if (!email || !password) {
+    if (!emailOrPhone || !password) {
       return NextResponse.json({
-        error: 'Email and password are required'
+        error: 'Email/phone and password are required'
       }, { status: 400 });
     }
 
@@ -40,11 +42,14 @@ export async function POST(
       }, { status: 404 });
     }
 
-    // Find user
-    const user = await prisma.user.findUnique({
+    // Find user by email or phone (students can login with either)
+    const isEmail = String(emailOrPhone).includes('@');
+    const user = await prisma.user.findFirst({
       where: {
-        email,
-        schoolId: school.id
+        schoolId: school.id,
+        ...(isEmail
+          ? { email: emailOrPhone }
+          : { phone: emailOrPhone })
       },
       include: {
         school: {
@@ -59,7 +64,7 @@ export async function POST(
 
     if (!user) {
       return NextResponse.json({
-        error: 'Invalid email or password'
+        error: 'Invalid email/phone or password'
       }, { status: 401 });
     }
 
@@ -75,7 +80,7 @@ export async function POST(
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return NextResponse.json({
-        error: 'Invalid email or password'
+        error: 'Invalid email/phone or password'
       }, { status: 401 });
     }
 

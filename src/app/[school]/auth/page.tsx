@@ -69,7 +69,7 @@ const AuthSystem = () => {
       const response = await fetch(`/api/schools/${schoolId}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ emailOrPhone: email.trim(), password }),
       });
 
       const data = await response.json();
@@ -345,15 +345,17 @@ const AuthSystem = () => {
 
               <div className="mb-4">
                 <label htmlFor="login-email" className="block text-sm font-medium text-[var(--text)] mb-2">
-                  Email
+                  Email or phone
                 </label>
                 <input
                   id="login-email"
-                  type="email"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-3 rounded-lg bg-bg border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-                  placeholder="Enter your email"
+                  placeholder="Email or phone number"
                   required
                 />
               </div>

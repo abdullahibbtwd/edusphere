@@ -30,7 +30,7 @@ const page = async ({ params }: PageProps) => {
       <div className="pt-8 md:pt-16">
         <Hero school={school} />
         <About school={school} />
-        <Subjects school={school} />
+       {/* <Subjects school={school} /> */}
         <Banner school={school} />
         <Facilities school={school} />
         <Campus school={school} />

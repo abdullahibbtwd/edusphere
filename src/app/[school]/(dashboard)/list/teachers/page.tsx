@@ -1119,7 +1119,7 @@ const TeachersPage = () => {
             Teachers
           </h1>
           <p className="text-sm text-text/60 mt-1">
-            Manage your school's teaching staff and assignments.
+            Manage your school&apos;s teaching staff and assignments.
           </p>
         </div>
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -34,6 +35,9 @@ export default function RecordPaymentDialog({
     const [loading, setLoading] = useState(false);
     const [sessions, setSessions] = useState<any[]>([]);
     const [feeStructures, setFeeStructures] = useState<any[]>([]);
+    const [paidTerms, setPaidTerms] = useState<string[]>([]);
+    const [fullSessionPaid, setFullSessionPaid] = useState(false);
+    const [loadingStatus, setLoadingStatus] = useState(false);
 
     const [formData, setFormData] = useState({
         sessionId: "",
@@ -53,6 +57,45 @@ export default function RecordPaymentDialog({
             fetchFeeStructures();
         }
     }, [isOpen, formData.sessionId]);
+
+    useEffect(() => {
+        if (isOpen && formData.sessionId && student.id) {
+            fetchStudentSessionStatus();
+        } else {
+            setPaidTerms([]);
+            setFullSessionPaid(false);
+        }
+    }, [isOpen, formData.sessionId, student.id]);
+
+    const fetchStudentSessionStatus = async () => {
+        try {
+            setLoadingStatus(true);
+            const res = await fetch(
+                `/api/schools/${schoolId}/fees/student-session-status?studentId=${encodeURIComponent(student.id)}&sessionId=${encodeURIComponent(formData.sessionId)}`
+            );
+            if (res.ok) {
+                const data = await res.json();
+                const pTerms = data.paidTerms ?? [];
+                const fPaid = !!data.fullSessionPaid;
+                setPaidTerms(pTerms);
+                setFullSessionPaid(fPaid);
+                const currentPaid = fPaid || pTerms.includes(formData.term);
+                if (currentPaid) {
+                    const unpaid = ["FIRST", "SECOND", "THIRD"].filter((t) => !pTerms.includes(t));
+                    if (!fPaid) unpaid.push("FULL_SESSION");
+                    setFormData((prev) => ({ ...prev, term: unpaid[0] || prev.term }));
+                }
+            } else {
+                setPaidTerms([]);
+                setFullSessionPaid(false);
+            }
+        } catch {
+            setPaidTerms([]);
+            setFullSessionPaid(false);
+        } finally {
+            setLoadingStatus(false);
+        }
+    };
 
     useEffect(() => {
         // Calculate amount based on term and structures
@@ -177,20 +220,35 @@ export default function RecordPaymentDialog({
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
                             <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Term</Label>
-                            <Select
-                                value={formData.term}
-                                onValueChange={(val) => setFormData({ ...formData, term: val })}
-                            >
-                                <SelectTrigger className="bg-bg text-text border-border font-bold">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-bg text-text border-border">
-                                    <SelectItem value="FIRST" className="font-bold">First Term</SelectItem>
-                                    <SelectItem value="SECOND" className="font-bold">Second Term</SelectItem>
-                                    <SelectItem value="THIRD" className="font-bold">Third Term</SelectItem>
-                                    <SelectItem value="FULL_SESSION" className="font-bold text-primary">Full Session</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            {fullSessionPaid ? (
+                                <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-sm font-bold">
+                                    Full session already paid for this session — nothing to record.
+                                </div>
+                            ) : (
+                                <Select
+                                    value={formData.term}
+                                    onValueChange={(val) => setFormData({ ...formData, term: val })}
+                                    disabled={loadingStatus}
+                                >
+                                    <SelectTrigger className="bg-bg text-text border-border font-bold">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-bg text-text border-border">
+                                        <SelectItem value="FIRST" className="font-bold" disabled={paidTerms.includes("FIRST")}>
+                                            First Term {paidTerms.includes("FIRST") ? "(Paid)" : ""}
+                                        </SelectItem>
+                                        <SelectItem value="SECOND" className="font-bold" disabled={paidTerms.includes("SECOND")}>
+                                            Second Term {paidTerms.includes("SECOND") ? "(Paid)" : ""}
+                                        </SelectItem>
+                                        <SelectItem value="THIRD" className="font-bold" disabled={paidTerms.includes("THIRD")}>
+                                            Third Term {paidTerms.includes("THIRD") ? "(Paid)" : ""}
+                                        </SelectItem>
+                                        <SelectItem value="FULL_SESSION" className="font-bold text-primary" disabled={fullSessionPaid}>
+                                            Full Session {fullSessionPaid ? "(Paid)" : ""}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            )}
                         </div>
                         <div className="grid gap-2">
                             <Label className="text-xs font-black uppercase tracking-widest text-text">Payment Method</Label>
@@ -233,10 +291,10 @@ export default function RecordPaymentDialog({
                     </Button>
                     <Button
                         onClick={handleSubmit}
-                        disabled={loading}
+                        disabled={loading || fullSessionPaid}
                         className="bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-xs"
                     >
-                        {loading ? "Recording..." : "Record Payment"}
+                        {loading ? "Recording..." : fullSessionPaid ? "Session paid" : "Record Payment"}
                     </Button>
                 </DialogFooter>
             </DialogContent>
