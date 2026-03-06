@@ -1,38 +1,72 @@
 "use client";
+
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { RadialBarChart, RadialBar, ResponsiveContainer } from "recharts";
 
-const CountChart = () => {
-  // Fetch student statistics
-  const studentStats = {
-    total: 1200,
-    male: 680,
-    female: 520,
-  };
+type StudentStats = { total: number; male: number; female: number };
 
-  // Calculate percentages
-  const total = studentStats?.total || 0;
-  const male = studentStats?.male || 0;
-  const female = studentStats?.female || 0;
+const CountChart = ({ schoolId }: { schoolId?: string }) => {
+  const [studentStats, setStudentStats] = useState<StudentStats | null>(null);
+  const [loading, setLoading] = useState(!!schoolId);
+
+  useEffect(() => {
+    if (!schoolId) {
+      setStudentStats(null);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/schools/${schoolId}/students/stats`)
+      .then((res) => res.json())
+      .then((data: StudentStats) => {
+        if (!cancelled && data != null && typeof data.total === "number") {
+          setStudentStats({
+            total: data.total ?? 0,
+            male: data.male ?? 0,
+            female: data.female ?? 0,
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setStudentStats({ total: 0, male: 0, female: 0 });
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolId]);
+
+  const total = studentStats?.total ?? 0;
+  const male = studentStats?.male ?? 0;
+  const female = studentStats?.female ?? 0;
   const malePercentage = total > 0 ? Math.round((male / total) * 100) : 0;
   const femalePercentage = total > 0 ? Math.round((female / total) * 100) : 0;
 
-  // Data for chart
   const chartData = [
     { name: "Total", count: total, fill: "var(--muted)" },
     { name: "Boys", count: male, fill: "var(--primary)" },
     { name: "Girls", count: female, fill: "var(--cta)" },
   ];
 
+  if (loading) {
+    return (
+      <div className="bg-surface rounded-xl p-4 w-full h-full overflow-hidden flex items-center justify-center">
+        <p className="text-muted">Loading…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-surface rounded-xl p-4 w-full h-full overflow-hidden">
-      {/* TITLE */}
       <div className="flex justify-between items-center">
         <h1 className="text-lg font-semibold text-text">Students</h1>
         <Image src="/moreDark.png" alt="" width={20} height={20} />
       </div>
 
-      {/* Chart */}
       <div className="w-full h-[75%] relative">
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart

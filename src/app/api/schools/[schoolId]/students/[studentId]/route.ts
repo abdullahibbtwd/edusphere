@@ -20,13 +20,13 @@ export async function PATCH(
         // Resolve School
         let school = await prisma.school.findUnique({
             where: { id: schoolId },
-            select: { id: true, subdomain: true }
+            select: { id: true, subdomain: true, name: true }
         });
 
         if (!school) {
             school = await prisma.school.findUnique({
                 where: { subdomain: schoolId, isActive: true },
-                select: { id: true, subdomain: true }
+                select: { id: true, subdomain: true, name: true }
             });
         }
 
@@ -46,17 +46,13 @@ export async function PATCH(
         // Handle initial registration logic if being registered for the first time
         let finalRegNumber = registrationNumber;
         if (isRegistered === true && !student.isRegistered && !finalRegNumber) {
-            // Updated registration number generation: [SchoolChar][Year]/[SequentialNumber]
-            const year = new Date().getFullYear();
+            // Student ID format: {SubdomainFirstLetter}STU-{5-digit number} e.g. ESTU-00001
             const count = await prisma.student.count({
                 where: { schoolId: school.id, isRegistered: true }
             });
-
-            // Get first character of school name
-            const schoolName = school.name || school.subdomain;
-            const prefix = schoolName.charAt(0).toUpperCase();
-
-            finalRegNumber = `${prefix}${year}/${(count + 1).toString().padStart(4, '0')}`;
+            const subdomain = (school.subdomain || school.id).trim();
+            const prefix = subdomain.charAt(0).toUpperCase() || 'S';
+            finalRegNumber = `${prefix}STU-${(count + 1).toString().padStart(5, '0')}`;
         }
 
         const updatedStudent = await prisma.student.update({
@@ -76,7 +72,7 @@ export async function PATCH(
         // Send Registration Email if newly registered
         if (isRegistered === true && !student.isRegistered) {
             try {
-                // I will update email-service.ts next to include this function
+                const schoolName = school.name || school.subdomain || 'School';
                 const { sendStudentRegistrationEmail } = await import('@/lib/email-service');
                 await sendStudentRegistrationEmail(
                     updatedStudent.email || student.email,

@@ -1,10 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
-import { FiUser } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import ThemeButton from '../ThemeButton';
 import { Menu } from 'lucide-react';
+import { useUser } from '@/context/UserContext';
+import { logout } from '@/lib/client-auth';
+
+const FALLBACK_AVATAR = '/avatar.png';
 
 interface NavbarProps {
   onMenuClick?: () => void;
@@ -12,15 +16,24 @@ interface NavbarProps {
 
 export default function Navbar({ onMenuClick }: NavbarProps) {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
   const router = useRouter();
+  const { user, refreshUser } = useUser();
+  const avatarSrc = avatarError || !user?.imageUrl ? FALLBACK_AVATAR : user.imageUrl;
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [user?.imageUrl]);
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      const ok = await logout();
+      if (ok) refreshUser();
       router.push('/');
       router.refresh();
     } catch (error) {
       console.error('Logout failed', error);
+      refreshUser();
       router.push('/');
     }
   };
@@ -42,10 +55,19 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
       <div className="relative flex gap-2 items-center">
         <ThemeButton />
         <button
-          className="flex items-center gap-2 hover:scale-105 cursor-pointer duration-300 ease-in-out transition-all border-2 rounded-full p-2  hover:bg-primary/10 "
+          className="flex items-center gap-2 hover:scale-105 cursor-pointer duration-300 ease-in-out transition-all border-2 rounded-full p-0.5 hover:bg-primary/10 overflow-hidden"
           onClick={() => setShowDropdown(!showDropdown)}
+          aria-label="Profile menu"
         >
-          <FiUser size={24} />
+          <Image
+            src={avatarSrc}
+            alt="Profile"
+            width={36}
+            height={36}
+            className="rounded-full w-9 h-9 object-cover"
+            unoptimized={avatarSrc.startsWith('http')}
+            onError={() => setAvatarError(true)}
+          />
         </button>
 
         {showDropdown && (

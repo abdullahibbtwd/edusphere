@@ -29,7 +29,7 @@ export async function POST(req: Request) {
             );
         }
 
-        // Find user
+        // Find user (include student/teacher for profile image fallback)
         const user = await prisma.user.findUnique({
             where: { email },
             include: {
@@ -40,6 +40,8 @@ export async function POST(req: Request) {
                         subdomain: true,
                     },
                 },
+                student: { select: { profileImagePath: true } },
+                teacher: { select: { img: true } },
             },
         });
 
@@ -85,6 +87,13 @@ export async function POST(req: Request) {
             );
         }
 
+        // Prefer User.imageUrl; fallback to Student.profileImagePath or Teacher.img
+        const imageUrl =
+            user.imageUrl ??
+            (user.student?.profileImagePath || null) ??
+            (user.teacher?.img || null) ??
+            null;
+
         // Create JWT token with user data
         const token = createToken({
             userId: user.id,
@@ -92,7 +101,7 @@ export async function POST(req: Request) {
             name: user.name,
             role: user.role,
             schoolId: user.schoolId,
-            imageUrl: user.imageUrl,
+            imageUrl,
         });
 
         // Prepare user data for response (excluding sensitive fields)
@@ -127,7 +136,7 @@ export async function POST(req: Request) {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                imageUrl: user.imageUrl,
+                imageUrl,
                 schoolId: user.schoolId,
                 schoolName: user.school?.name,
                 schoolSubdomain: user.school?.subdomain,

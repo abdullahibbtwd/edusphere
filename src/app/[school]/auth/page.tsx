@@ -400,7 +400,7 @@ const AuthSystem = () => {
 
               <div className="mt-6 text-center">
                 <p className="text-sm text-text">
-                  Don't have an account?{' '}
+                  Don&apos;t have an account?{' '}
                   <button
                     type="button"
                     className="text-[var(--primary)] hover:underline"
@@ -506,20 +506,22 @@ const AuthSystem = () => {
             <form onSubmit={handleSubmit}>
               <h2 className="text-2xl font-bold text-[var(--text)] mb-6">Reset password</h2>
               <p className="text-text mb-6">
-                Enter your email address and we'll send you a code to reset your password.
+                Enter your email address and we&apos;ll send you a code to reset your password.
               </p>
 
               <div className="mb-6">
                 <label htmlFor="forgot-email" className="block text-sm font-medium text-[var(--text)] mb-2">
-                  Email
+                  Email or phone
                 </label>
                 <input
                   id="forgot-email"
-                  type="email"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-3 rounded-lg bg-bg border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-                  placeholder="Enter your email"
+                  placeholder="Email or phone number"
                   required
                 />
               </div>
@@ -550,7 +552,7 @@ const AuthSystem = () => {
                 {verificationType === 'password-reset' ? 'Verify Reset Code' : 'Verification'}
               </h2>
               <p className="text-text mb-6">
-                We've sent a 6-digit code to <span className="text-[var(--primary)]">
+                We&apos;ve sent a 6-digit code to <span className="text-[var(--primary)]">
                   {verificationType === 'password-reset' ? resetEmail : (registrationEmail || email)}
                 </span>. Enter it below to continue.
               </p>
@@ -588,7 +590,7 @@ const AuthSystem = () => {
 
               <div className="mt-6 text-center">
                 <p className="text-sm text-text">
-                  Didn't receive the code?{' '}
+                  Didn&apos;t receive the code?{' '}
                   <button type="button" className="text-[var(--primary)] hover:underline">
                     Resend
                   </button>

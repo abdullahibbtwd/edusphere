@@ -1,194 +1,267 @@
-"use client"
+"use client";
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import Image from "next/image";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 import { useTheme } from "next-themes";
-import { useState } from 'react';
+import { useState, useEffect } from "react";
 
-// Define TypeScript interfaces
-interface ClassInfo {
-  section: string;
-  name: string;
-}
-
-interface ChartDataItem {
-  name: string;
-  [key: string]: number | string; // Dynamic keys for class sections
-}
-
-// Define types for filter options
-type TermType = "First" | "Second" | "Third";
-type YearType = "2023" | "2024";
-
-const levels = ["JSS1", "JSS2", "JSS3", "SS1", "SS2", "SS3"];
-const classes: ClassInfo[] = [
-  { section: "A", name: "Science" },
-  { section: "B", name: "Commerce" },
-  { section: "C", name: "Arts" },
-  { section: "D", name: "Geography" },
-];
-const terms: TermType[] = ["First", "Second", "Third"];
-const years: YearType[] = ["2023", "2024"];
-
-// Define colors for each class
-const classColors: Record<string, string> = {
-  "A": "#8B5CF6", // Purple
-  "B": "#2DD4BF", // Teal
-  "C": "#F59E0B", // Amber
-  "D": "#EF4444", // Red
+export type FeeChartDataItem = {
+  class: string;
+  levelName: string;
+  classId: string;
+  First: number;
+  Second: number;
+  Third: number;
 };
 
-// Generate sample data with proper typing
-const generateData = (
-  selectedLevel: string, 
-  selectedClass: string, 
-  selectedTerm: TermType, 
-  selectedYear: YearType
-): ChartDataItem[] => {
-  return levels.map(level => {
-    const dataPoint: ChartDataItem = { name: level };
-    
-    classes.forEach(cls => {
-      // Only show data for selected class if one is selected
-      if (!selectedClass || selectedClass === cls.section) {
-        // Generate random payment data (60-95% payment rate)
-        const paymentRate = Math.floor(Math.random() * 36) + 60;
-        dataPoint[cls.section] = paymentRate;
-      }
-    });
-    
-    return dataPoint;
-  });
+type LevelOption = { id: string; name: string };
+type ClassOption = { id: string; name: string };
+type SessionOption = { id: string; name: string };
+
+const TERM_COLORS: Record<string, string> = {
+  First: "#8B5CF6",
+  Second: "#2DD4BF",
+  Third: "#F59E0B",
 };
 
-const SchoolFeesChart = () => {
+const CHART_LIMIT = 15;
+
+const SchoolFeesChart = ({ schoolId }: { schoolId?: string }) => {
   const { theme } = useTheme();
   const isDark = theme === "dark";
-  
-  const [selectedTerm, setSelectedTerm] = useState<TermType>("First");
-  const [selectedYear, setSelectedYear] = useState<YearType>("2024");
-  const [selectedLevel, setSelectedLevel] = useState<string>("");
-  const [selectedClass, setSelectedClass] = useState<string>("");
+
+  const [sessionName, setSessionName] = useState<string | null>(null);
+  const [data, setData] = useState<FeeChartDataItem[]>([]);
+  const [levels, setLevels] = useState<LevelOption[]>([]);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [sessions, setSessions] = useState<SessionOption[]>([]);
+  const [loading, setLoading] = useState(!!schoolId);
+  const [selectedLevelId, setSelectedLevelId] = useState<string>("");
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [selectedSessionId, setSelectedSessionId] = useState<string>("");
 
   const axisTextColor = isDark ? "#e5e7eb" : "#374151";
   const gridColor = isDark ? "#374151" : "#e5e7eb";
-  
-  const chartData = generateData(selectedLevel, selectedClass, selectedTerm, selectedYear);
-  
-  // Custom tooltip formatter function
+
+  useEffect(() => {
+    if (!schoolId) {
+      setData([]);
+      setLevels([]);
+      setClasses([]);
+      setSessions([]);
+      setSessionName(null);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    const params = new URLSearchParams();
+    params.set("limit", String(CHART_LIMIT));
+    if (selectedLevelId) params.set("levelId", selectedLevelId);
+    if (selectedClassId) params.set("classId", selectedClassId);
+    if (selectedSessionId) params.set("sessionId", selectedSessionId);
+    const url = `/api/schools/${schoolId}/fees/chart?${params.toString()}`;
+    fetch(url)
+      .then((res) => res.json())
+      .then(
+        (json: {
+          sessionName?: string;
+          data?: FeeChartDataItem[];
+          levels?: LevelOption[];
+          classes?: ClassOption[];
+          sessions?: SessionOption[];
+        }) => {
+          if (cancelled) return;
+          setSessionName(json.sessionName ?? null);
+          setData(Array.isArray(json.data) ? json.data : []);
+          setLevels(Array.isArray(json.levels) ? json.levels : []);
+          setClasses(Array.isArray(json.classes) ? json.classes : []);
+          setSessions(Array.isArray(json.sessions) ? json.sessions : []);
+          if (selectedSessionId && !json.sessions?.some((s) => s.id === selectedSessionId)) {
+            setSelectedSessionId("");
+          }
+          if (selectedLevelId && !json.levels?.some((l) => l.id === selectedLevelId)) {
+            setSelectedLevelId("");
+            setSelectedClassId("");
+          }
+          if (selectedClassId && !json.classes?.some((c) => c.id === selectedClassId)) {
+            setSelectedClassId("");
+          }
+        }
+      )
+      .catch(() => {
+        if (!cancelled) {
+          setData([]);
+          setLevels([]);
+          setClasses([]);
+          setSessions([]);
+          setSessionName(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolId, selectedLevelId, selectedClassId, selectedSessionId]);
+
+  const chartData = data.map((row) => ({
+    name: row.class,
+    First: row.First,
+    Second: row.Second,
+    Third: row.Third,
+  }));
+
   const formatTooltip = (value: number, name: string): [string, string] => {
-    const classInfo = classes.find(cls => cls.section === name);
-    const displayName = classInfo ? `${name} - ${classInfo.name}` : name;
-    return [`${value}%`, displayName];
+    return [`${value}%`, `${name} Term`];
   };
 
-  // Custom legend formatter function
-  const formatLegend = (value: string): string => {
-    const classInfo = classes.find(cls => cls.section === value);
-    return classInfo ? `${value} - ${classInfo.name}` : value;
-  };
+  if (loading && data.length === 0 && sessions.length === 0) {
+    return (
+      <div className="bg-[var(--surface)] rounded-lg p-4 h-full flex items-center justify-center">
+        <p className="text-[var(--muted)]">Loading fee data…</p>
+      </div>
+    );
+  }
 
   return (
-    <div className='bg-[var(--surface)] rounded-lg p-4 h-full'>
-      {/* Title and Filters */}
-      <div className='flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3'>
-        <h1 className='text-lg font-semibold text-[var(--text)]'>School Fees Payment</h1>
-        
-        <div className='flex flex-wrap gap-2'>
-          <select 
-            value={selectedTerm}
-            onChange={(e) => setSelectedTerm(e.target.value as TermType)}
+    <div className="bg-[var(--surface)] rounded-lg p-4 h-full">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-[var(--text)]">
+            School Fees Payment
+          </h1>
+          {sessionName && (
+            <p className="text-sm text-[var(--muted)] mt-0.5">
+              Session: {sessionName}
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={selectedSessionId}
+            onChange={(e) => setSelectedSessionId(e.target.value)}
             className="bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-md px-2 py-1 text-sm"
           >
-            {terms.map(term => (
-              <option key={term} value={term}>{term} Term</option>
+            <option value="">Current session</option>
+            {sessions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
             ))}
           </select>
-          
-          <select 
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value as YearType)}
-            className="bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-md px-2 py-1 text-sm"
-          >
-            {years.map(year => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
-          
-          <select 
-            value={selectedLevel}
-            onChange={(e) => setSelectedLevel(e.target.value)}
+          <select
+            value={selectedLevelId}
+            onChange={(e) => {
+              setSelectedLevelId(e.target.value);
+              setSelectedClassId("");
+            }}
             className="bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-md px-2 py-1 text-sm"
           >
             <option value="">All Levels</option>
-            {levels.map(level => (
-              <option key={level} value={level}>{level}</option>
+            {levels.map((level) => (
+              <option key={level.id} value={level.id}>
+                {level.name}
+              </option>
             ))}
           </select>
-          
-          <select 
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            className="bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-md px-2 py-1 text-sm"
-          >
-            <option value="">All Classes</option>
-            {classes.map(cls => (
-              <option key={cls.section} value={cls.section}>{cls.section} - {cls.name}</option>
-            ))}
-          </select>
+          {selectedLevelId && (
+            <select
+              value={selectedClassId}
+              onChange={(e) => setSelectedClassId(e.target.value)}
+              className="bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-md px-2 py-1 text-sm"
+            >
+              <option value="">All Classes</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height="85%">
-        <BarChart
-          data={chartData}
-          margin={{ top: 5, right: 30, left: 20, bottom: 20 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
-          <XAxis
-            tickMargin={10}
-            dataKey="name"
-            axisLine={false}
-            tick={{ fill: axisTextColor }}
-            tickLine={false}
-          />
-          <YAxis
-            tickMargin={10}
-            axisLine={false}
-            tick={{ fill: axisTextColor }}
-            tickLine={false}
-            domain={[0, 100]}
-            tickFormatter={(value: number) => `${value}%`}
-          />
-          <Tooltip
-            formatter={formatTooltip}
-            contentStyle={{
-              backgroundColor: isDark ? "#1f2937" : "#ffffff",
-              border: "1px solid var(--border)",
-              borderRadius: "8px",
-              color: axisTextColor,
-            }}
-          />
-          <Legend 
-            align='center'
-            verticalAlign='top'
-            wrapperStyle={{ paddingTop: "10px", paddingBottom: "20px", color: axisTextColor }}
-            formatter={formatLegend}
-          />
-          
-          {(!selectedClass ? classes : classes.filter(cls => cls.section === selectedClass))
-            .map(cls => (
-              <Bar 
-                key={cls.section}
-                dataKey={cls.section}
-                fill={classColors[cls.section]}
-                radius={[4, 4, 0, 0]}
-                name={cls.section}
-              />
-            ))
-          }
-        </BarChart>
-      </ResponsiveContainer>
+      {chartData.length === 0 ? (
+        <div className="h-[85%] flex items-center justify-center text-[var(--muted)]">
+          No fee data for the selected session.
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height="85%">
+          <BarChart
+            data={chartData}
+            margin={{ top: 5, right: 30, left: 20, bottom: 20 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke={gridColor}
+            />
+            <XAxis
+              tickMargin={10}
+              dataKey="name"
+              axisLine={false}
+              tick={{ fill: axisTextColor, fontSize: 11 }}
+              tickLine={false}
+            />
+            <YAxis
+              tickMargin={10}
+              axisLine={false}
+              tick={{ fill: axisTextColor }}
+              tickLine={false}
+              domain={[0, 100]}
+              tickFormatter={(value: number) => `${value}%`}
+            />
+            <Tooltip
+              formatter={formatTooltip}
+              contentStyle={{
+                backgroundColor: isDark ? "#1f2937" : "#ffffff",
+                border: "1px solid var(--border)",
+                borderRadius: "8px",
+                color: axisTextColor,
+              }}
+            />
+            <Legend
+              align="center"
+              verticalAlign="top"
+              wrapperStyle={{
+                paddingTop: "10px",
+                paddingBottom: "20px",
+                color: axisTextColor,
+              }}
+              formatter={(value) => `${value} Term`}
+            />
+            <Bar
+              dataKey="First"
+              fill={TERM_COLORS.First}
+              radius={[4, 4, 0, 0]}
+              name="First"
+            />
+            <Bar
+              dataKey="Second"
+              fill={TERM_COLORS.Second}
+              radius={[4, 4, 0, 0]}
+              name="Second"
+            />
+            <Bar
+              dataKey="Third"
+              fill={TERM_COLORS.Third}
+              radius={[4, 4, 0, 0]}
+              name="Third"
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 };

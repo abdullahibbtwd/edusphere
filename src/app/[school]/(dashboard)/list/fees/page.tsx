@@ -8,7 +8,6 @@ import {
     Bell,
     Settings2,
     Loader2,
-    CheckCircle2,
     Download,
     FileText,
     AlertCircle,
@@ -565,176 +564,135 @@ export default function FeeManagementPage() {
         }
     };
 
+    const configuredCount = levels.filter(l => {
+        const fees = getFeesForLevel(l.id);
+        return fees.length > 0 && fees.some((f: FeeStructure) => f.amount > 0);
+    }).length;
+    const pendingCount = levels.filter(l => {
+        const fees = getFeesForLevel(l.id);
+        return fees.length === 0 || fees.every((f: FeeStructure) => f.amount === 0);
+    }).length;
+
     return (
-        <div className="px-3 py-4 sm:p-6 max-w-7xl mx-auto space-y-5 sm:space-y-8 min-h-screen pb-20">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 bg-card p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm overflow-hidden relative">
-                <div className="absolute top-0 right-0 p-4 sm:p-8 opacity-[0.03] pointer-events-none">
-                    <Wallet size={120} className="sm:w-40 sm:h-40" />
-                </div>
-
-                <div className="space-y-1.5 sm:space-y-2 relative z-10">
-                    <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-                        <div className="p-1.5 sm:p-2 bg-blue-500/10 rounded-lg">
-                            <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
-                        </div>
-                        <span className="text-[10px] sm:text-xs font-semibold sm:font-black uppercase tracking-wider sm:tracking-widest text-blue-500">Finance Control</span>
+        <div className="px-3 py-4 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6 min-h-screen pb-20">
+            {/* Header: compact */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-card p-4 rounded-xl shadow-sm border border-border/50">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 bg-blue-500/10 rounded-lg shrink-0">
+                        <Wallet className="w-5 h-5 text-blue-500" />
                     </div>
-                    <h1 className="text-xl sm:text-3xl md:text-4xl font-bold sm:font-black tracking-tight text-foreground uppercase">Fee Management</h1>
-                    <p className="text-sm sm:text-base text-muted-foreground font-normal sm:font-medium max-w-md">
-                        Configure school fee structures and monitor outstanding balances across all academic levels.
-                    </p>
+                    <div className="min-w-0">
+                        <h1 className="text-lg sm:text-xl font-bold text-foreground uppercase tracking-tight">Fee Management</h1>
+                        <p className="text-xs text-muted-foreground truncate sm:max-w-md">
+                            Configure fee structures by session and level.
+                        </p>
+                    </div>
                 </div>
-
-                <div className="flex flex-wrap gap-2 sm:gap-3 relative z-10">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <Select value={selectedSession} onValueChange={setSelectedSession}>
-                        <SelectTrigger className="w-full sm:w-[200px] h-10 sm:h-12 bg-background font-semibold sm:font-bold text-sm sm:text-base">
-                            <SelectValue placeholder="Academic Session" />
+                        <SelectTrigger className="w-full sm:w-[180px] h-9 bg-background text-sm font-medium">
+                            <SelectValue placeholder="Session" />
                         </SelectTrigger>
                         <SelectContent className="bg-background">
                             {sessions.map(s => (
-                                <SelectItem key={s.id} value={s.id} className="font-semibold">
+                                <SelectItem key={s.id} value={s.id}>
                                     {s.name} {s.isActive ? "(Active)" : ""}
                                 </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
-
                     <Button
                         variant="outline"
-                        size="default"
-                        className="h-10 sm:h-12 font-semibold sm:font-black text-xs uppercase tracking-wider sm:tracking-widest gap-2 w-full sm:w-auto"
+                        size="sm"
+                        className="h-9 gap-1.5 text-xs font-semibold"
                         onClick={() => handleNotifyUnpaid("FIRST")}
                         disabled={notifying || loading}
                     >
-                        {notifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+                        {notifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bell className="w-3.5 h-3.5" />}
                         Notify Unpaid
                     </Button>
                 </div>
             </div>
 
-            {/* Main Content */}
             {loading ? (
-                <div className="h-48 sm:h-64 flex flex-col items-center justify-center gap-3 sm:gap-4 text-muted-foreground">
-                    <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-blue-500" />
-                    <p className="font-semibold sm:font-black uppercase tracking-wider text-xs">Loading structure...</p>
+                <div className="h-40 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                    <p className="text-xs font-medium uppercase tracking-wider">Loading...</p>
                 </div>
             ) : (
                 <>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
-                        {/* Primary Action Card */}
-                        <div className="bg-card rounded-xl sm:rounded-2xl overflow-hidden shadow-sm flex flex-col items-center justify-center p-6 sm:p-8 md:p-12 text-center space-y-4 sm:space-y-6 group">
-                            <div className="p-4 sm:p-5 bg-blue-500/10 rounded-xl sm:rounded-2xl group-hover:scale-105 sm:group-hover:scale-110 transition-transform">
-                                <Settings2 className="w-10 h-10 sm:w-12 sm:h-12 text-blue-500" />
+                    {/* Action bar + stats: one row */}
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                        <div className="flex items-center gap-3 p-3 sm:p-4 bg-card rounded-xl border border-border/50 shadow-sm flex-1 sm:max-w-sm">
+                            <div className="p-2 bg-blue-500/10 rounded-lg shrink-0">
+                                <Settings2 className="w-5 h-5 text-blue-500" />
                             </div>
-                            <div className="space-y-1.5 sm:space-y-2">
-                                <h2 className="text-lg sm:text-xl md:text-2xl font-bold sm:font-black uppercase tracking-tight">Setup Fee Structure</h2>
-                                <p className="text-muted-foreground text-xs sm:text-sm font-normal sm:font-medium max-w-[300px] mx-auto">
-                                    Configure term amounts for all academic levels at once or select specific ones.
-                                </p>
+                            <div className="min-w-0 flex-1">
+                                <h2 className="text-sm font-bold text-foreground">Setup Fee Structure</h2>
+                                <p className="text-[11px] text-muted-foreground">Set term amounts per level for this session.</p>
                             </div>
                             <Button
                                 variant="default"
-                                size="default"
-                                className="h-10 sm:h-12 md:h-14 px-6 sm:px-10 bg-blue-600 hover:bg-blue-700 text-white font-semibold sm:font-black uppercase tracking-wider text-xs gap-2 sm:gap-3 shadow-lg shadow-blue-500/20"
-                                onClick={() => {
-                                    setModalLevelIds([]);
-                                    setIsModalOpen(true);
-                                }}
+                                size="sm"
+                                className="h-9 shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold gap-1.5"
+                                onClick={() => { setModalLevelIds([]); setIsModalOpen(true); }}
                             >
-                                <Settings2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                                Configure Levels
+                                <Settings2 className="w-3.5 h-3.5" />
+                                Configure
                             </Button>
                         </div>
 
-                        {/* Quick Summary Card */}
-                        <div className="bg-card rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
-                            <div className="flex items-center gap-2 mb-1 sm:mb-2">
-                                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
-                                <h3 className="font-semibold sm:font-black uppercase tracking-wider text-xs text-foreground">Current Status</h3>
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                            <div className="flex flex-col p-3 rounded-xl bg-muted/30 border border-border/30">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Levels</span>
+                                <span className="text-lg font-bold text-foreground mt-0.5">{levels.length}</span>
                             </div>
-
-                            <div className="space-y-3 sm:space-y-4">
-                                <div className="flex items-center justify-between p-3 sm:p-4 bg-muted/30 rounded-lg sm:rounded-xl">
-                                    <span className="text-[10px] sm:text-xs font-medium sm:font-bold text-muted-foreground uppercase tracking-wider">Total Levels</span>
-                                    <span className="font-bold sm:font-black text-base sm:text-lg">{levels.length}</span>
-                                </div>
-
-                                <div className="flex items-center justify-between p-3 sm:p-4 bg-muted/30 rounded-lg sm:rounded-xl">
-                                    <span className="text-[10px] sm:text-xs font-medium sm:font-bold text-muted-foreground uppercase tracking-wider">Configured Fees</span>
-                                    <span className="font-bold sm:font-black text-base sm:text-lg text-emerald-500">
-                                        {levels.filter(l => {
-                                            const fees = getFeesForLevel(l.id);
-                                            return fees.length > 0 && fees.some(f => f.amount > 0);
-                                        }).length}
-                                    </span>
-                                </div>
-
-                                <div className="flex items-center justify-between p-3 sm:p-4 bg-amber-500/5 rounded-lg sm:rounded-xl">
-                                    <span className="text-[10px] sm:text-xs font-medium sm:font-bold text-amber-600/80 uppercase tracking-wider">Pending Setup</span>
-                                    <span className="font-bold sm:font-black text-base sm:text-lg text-amber-500">
-                                        {levels.filter(l => {
-                                            const fees = getFeesForLevel(l.id);
-                                            return fees.length === 0 || fees.every(f => f.amount === 0);
-                                        }).length}
-                                    </span>
-                                </div>
+                            <div className="flex flex-col p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Configured</span>
+                                <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{configuredCount}</span>
+                            </div>
+                            <div className="flex flex-col p-3 rounded-xl bg-amber-500/5 border border-amber-500/10">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">Pending</span>
+                                <span className="text-lg font-bold text-amber-600 dark:text-amber-400 mt-0.5">{pendingCount}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Smart Fee Tiers Section */}
+                    {/* Fee Tiers: compact cards */}
                     {levels.length > 0 && (
-                        <div className="mt-6 sm:mt-8 md:mt-12 space-y-4 sm:space-y-6">
-                            <div className="px-0 sm:px-2">
-                                <h3 className="text-sm sm:text-base md:text-lg font-bold sm:font-black uppercase tracking-tight">Configured Fee Tiers</h3>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                        <div className="space-y-3">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Fee tiers by level</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {getFeeTiers().map((tier, idx) => {
                                     const isConfigured = tier.amount > 0;
                                     return (
                                         <div
                                             key={idx}
-                                            className={`p-4 sm:p-6 rounded-xl sm:rounded-2xl transition-all flex flex-col justify-between gap-4 sm:gap-6 ${isConfigured
-                                                ? "bg-card"
-                                                : "bg-muted/10"
-                                                }`}
+                                            className={`p-3 rounded-xl border flex flex-col gap-3 ${isConfigured ? "bg-card border-border/50" : "bg-muted/10 border-border/30"}`}
                                         >
-                                            <div className="space-y-3 sm:space-y-4">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex flex-wrap gap-1.5">
-                                                        {tier.levels.map(l => (
-                                                            <span key={l.id} className="inline-flex items-center px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 text-[10px] font-semibold sm:font-black uppercase">
-                                                                {l.name}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-0.5 sm:space-y-1">
-                                                    <p className="text-[10px] font-semibold sm:font-black uppercase tracking-wider text-muted-foreground">Amount Per Term</p>
-                                                    <p className="text-xl sm:text-2xl font-bold sm:font-black text-foreground">
-                                                        ₦{tier.amount.toLocaleString()}
-                                                    </p>
-                                                    <p className="text-[10px] font-medium sm:font-bold text-muted-foreground uppercase opacity-60">
-                                                        ₦{(tier.amount * 3).toLocaleString()} / YEAR
-                                                    </p>
-                                                </div>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {tier.levels.map(l => (
+                                                    <span key={l.id} className="inline-flex px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                                                        {l.name}
+                                                    </span>
+                                                ))}
                                             </div>
-
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="w-full font-semibold sm:font-black uppercase tracking-wider text-[10px] h-9 sm:h-10 gap-2"
-                                                onClick={() => {
-                                                    setModalLevelIds(tier.levels.map(l => l.id));
-                                                    setIsModalOpen(true);
-                                                }}
-                                            >
-                                                <Settings2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                                                {isConfigured ? "Update Tier" : "Configure Group"}
-                                            </Button>
+                                            <div className="flex items-baseline justify-between gap-2">
+                                                <div>
+                                                    <p className="text-[10px] font-semibold uppercase text-muted-foreground">Per term</p>
+                                                    <p className="text-base font-bold text-foreground">₦{tier.amount.toLocaleString()}</p>
+                                                    <p className="text-[10px] text-muted-foreground">₦{(tier.amount * 3).toLocaleString()}/yr</p>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 text-[10px] font-semibold gap-1.5 shrink-0"
+                                                    onClick={() => { setModalLevelIds(tier.levels.map(l => l.id)); setIsModalOpen(true); }}
+                                                >
+                                                    <Settings2 className="w-3 h-3" />
+                                                    {isConfigured ? "Edit" : "Set"}
+                                                </Button>
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -743,43 +701,6 @@ export default function FeeManagementPage() {
                     )}
                 </>
             )}
-
-            {/* Quick Stats / Info */}
-            {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="p-6 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl flex items-start gap-4">
-                    <div className="p-2 bg-emerald-500/20 rounded-lg">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                    </div>
-                    <div>
-                        <h3 className="font-black uppercase tracking-widest text-xs text-emerald-600 mb-1">Fee Activation</h3>
-                        <p className="text-sm font-medium text-emerald-600/80 leading-snug">
-                            Active fees are automatically applied to student dashboards once they register.
-                        </p>
-                    </div>
-                </div>
-                <div className="p-6 bg-blue-500/5 border border-blue-500/10 rounded-2xl flex items-start gap-4">
-                    <div className="p-2 bg-blue-500/20 rounded-lg">
-                        <ArrowRightLeft className="w-5 h-5 text-blue-500" />
-                    </div>
-                    <div>
-                        <h3 className="font-black uppercase tracking-widest text-xs text-blue-600 mb-1">Automated Plan Detection</h3>
-                        <p className="text-sm font-medium text-blue-600/80 leading-snug">
-                            The system detects full session payments and adjusts student plans accordingly.
-                        </p>
-                    </div>
-                </div>
-                <div className="p-6 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex items-start gap-4">
-                    <div className="p-2 bg-amber-500/20 rounded-lg">
-                        <Bell className="w-5 h-5 text-amber-500" />
-                    </div>
-                    <div>
-                        <h3 className="font-black uppercase tracking-widest text-xs text-amber-600 mb-1">Bursar Reminders</h3>
-                        <p className="text-sm font-medium text-amber-600/80 leading-snug">
-                            Unpaid fee notifications go to both the student's and parent's registered emails.
-                        </p>
-                    </div>
-                </div>
-            </div> */}
 
             <FeeStructureModal
                 isOpen={isModalOpen}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { EventType } from '@prisma/client';
+import { requireRole } from '@/lib/auth-middleware';
 
 async function resolveSchoolId(schoolIdentifier: string): Promise<string | null> {
     // Try as UUID first
@@ -55,17 +56,24 @@ export async function GET(
 }
 
 
-// POST - Create a new Event in a Term
+// POST - Create a new Event in a Term (admin only)
 export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ schoolId: string; termId: string }> }
 ) {
+    const sessionUser = requireRole(request, ['ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     try {
         const { schoolId, termId } = await params;
         const actualSchoolId = await resolveSchoolId(schoolId);
 
         if (!actualSchoolId) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchoolId) {
+            return NextResponse.json({ error: 'Forbidden - You can only manage events for your school' }, { status: 403 });
         }
 
         const body = await request.json();
@@ -113,17 +121,24 @@ export async function POST(
     }
 }
 
-// DELETE - Delete all events for a specific term (Reset/Replace)
+// DELETE - Delete all events for a specific term (admin only)
 export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ schoolId: string; termId: string }> }
 ) {
+    const sessionUser = requireRole(request, ['ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     try {
         const { schoolId, termId } = await params;
         const actualSchoolId = await resolveSchoolId(schoolId);
 
         if (!actualSchoolId) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchoolId) {
+            return NextResponse.json({ error: 'Forbidden - You can only manage events for your school' }, { status: 403 });
         }
 
         // Verify term belongs to school

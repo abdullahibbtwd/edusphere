@@ -17,7 +17,7 @@ import { useUser } from "@/context/UserContext";
 const Navbar = ({ schoolName = "School Name", subdomain }: NavbarProps) => {
 
   const router = useRouter();
-  const { user, role } = useUser();
+  const { user, role, refreshUser } = useUser();
 
   const [sessionSubdomain, setSessionSubdomain] = useState<string>('');
   const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
@@ -50,7 +50,15 @@ const Navbar = ({ schoolName = "School Name", subdomain }: NavbarProps) => {
   }, [subdomain]);
 
   const handleLogout = async () => {
-    await logout();
+    const ok = await logout();
+    if (ok) refreshUser();
+    const targetSubdomain = subdomain || sessionSubdomain;
+    if (targetSubdomain) {
+      router.push(`/${targetSubdomain}`);
+    } else {
+      router.push('/');
+    }
+    router.refresh();
   };
 
   const handleAuthClick = () => {

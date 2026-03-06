@@ -99,7 +99,7 @@ const Sidebar = ({ school }: SidebarProps) => {
           visible: ["admin"],
           badge: pendingApplicantsCount > 0 ? pendingApplicantsCount : null
         },
-        { icon: Hourglass, label: "Screening Time", href: `/${school}/list/screenin-time`, visible: ["admin"] },
+        // { icon: Hourglass, label: "Screening Time", href: `/${school}/list/screenin-time`, visible: ["admin"] },
         { icon: ClipboardList, label: "Exams", href: `/${school}/list/exams`, visible: ["admin", "teacher", "student", "parent"] },
         { icon: ClipboardList, label: "Assignments", href: `/${school}/list/assignments`, visible: [] },
         { icon: GraduationCap, label: "Results", href: `/${school}/list/results`, visible: ["admin", "teacher", "student"] },

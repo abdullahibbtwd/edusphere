@@ -4,18 +4,13 @@ import StudentCalendar from "@/components/Schools/StudentCalendar"
 
 const StudentPage = () => {
   return (
-    <div className="flex-1 p-4 flex gap-4 flex-col xl:flex-row">
+    <div className="flex-1 p-3 sm:p-4 flex flex-col xl:flex-row gap-3 sm:gap-4 min-w-0">
       {/* left */}
-      <div className="w-full xl:w-2/3">
-        <div className="h-full p-4 rounded-md">
-          <h1 className="font-semibold text-xl text-text">
-            My Class Timetable
-          </h1>
-          <StudentCalendar />
-        </div>
+      <div className="w-full xl:w-2/3 min-w-0">
+        <StudentCalendar />
       </div>
       {/* Right */}
-      <div className="w-full xl:w-1/3 flex flex-col gap-4">
+      <div className="w-full xl:w-1/3 flex flex-col gap-3 sm:gap-4 min-w-0">
         <EventCalender />
         <Announcement />
       </div>

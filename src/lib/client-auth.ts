@@ -56,21 +56,20 @@ export function hasAnyRole(roles: string[]): boolean {
 }
 
 /**
- * Logout function (client-side)
+ * Logout function (client-side).
+ * Only calls the API and clears the cookie; does not redirect.
+ * Callers should then call refreshUser() from UserContext and redirect (e.g. router.push).
  */
-export async function logout() {
+export async function logout(): Promise<boolean> {
     try {
         const response = await fetch('/api/auth/logout', {
             method: 'POST',
         });
-
-        if (response.ok) {
-            // Redirect to login or home page
-            window.location.href = '/auth';
-        } else {
-            console.error('Logout failed');
-        }
+        if (response.ok) return true;
+        console.error('Logout failed');
+        return false;
     } catch (error) {
         console.error('Logout error:', error);
+        return false;
     }
 }

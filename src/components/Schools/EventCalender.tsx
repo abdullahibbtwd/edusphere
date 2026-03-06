@@ -1,114 +1,84 @@
-"use client"
+"use client";
 
-import Image from "next/image";
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Calendar from "react-calendar";
-import { useRouter } from "next/navigation";
-import 'react-calendar/dist/Calendar.css';
-
-// Types
+import { useRouter, useParams } from "next/navigation";
+import "react-calendar/dist/Calendar.css";
+import { FiLoader } from "react-icons/fi";
 
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
 
-// Dummy Events Data
-const dummyEvents = [
-  {
-    _id: "1",
-    title: "Orientation Day",
-    date: "2025-08-20",
-    startTime: "09:00 AM",
-    endTime: "12:00 PM",
-    description: "Welcome event for new students.",
-  },
-  {
-    _id: "2",
-    title: "Sports Day",
-    date: "2025-08-22",
-    startTime: "10:00 AM",
-    endTime: "04:00 PM",
-    description: "Annual school sports competition.",
-  },
-  {
-    _id: "3",
-    title: "Science Fair",
-    date: "2025-08-25",
-    startTime: "11:00 AM",
-    endTime: "03:00 PM",
-    description: "Students showcase science projects.",
-  },
-];
+interface SchoolEvent {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}
 
 const EventCalendar = () => {
   const router = useRouter();
+  const params = useParams();
+  const schoolId = params?.school as string;
+
   const [value, onChange] = useState<Value>(new Date());
+  const [events, setEvents] = useState<SchoolEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Get events for the selected date
-  const selectedDate = value instanceof Date ? value.toISOString().split("T")[0] : "";
-  const eventsForSelectedDate = dummyEvents.filter((event) => event.date === selectedDate);
+  const fetchEvents = useCallback(async () => {
+    if (!schoolId) return;
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/schools/${schoolId}/events`);
+      const data = await res.json();
+      if (res.ok && data.events) setEvents(data.events);
+    } catch {
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [schoolId]);
 
-  // Get all dates that have events
-  const eventDates = dummyEvents.map((event) => {
-    const [year, month, day] = event.date.split("-").map(Number);
-    return new Date(year, month - 1, day);
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+  // Get all dates that have events (for calendar tiles)
+  const eventDates = events.map((e) => {
+    const [y, m, d] = e.date.split("-").map(Number);
+    return new Date(y, m - 1, d);
   });
 
+  const selectedDate = value instanceof Date ? value.toISOString().split("T")[0] : "";
+  const eventsForSelectedDate = events.filter((e) => e.date === selectedDate);
+  // Show events for selected date if any, otherwise show upcoming events (sorted by date)
+  const eventsToShow =
+    eventsForSelectedDate.length > 0
+      ? eventsForSelectedDate
+      : [...events].sort((a, b) => a.date.localeCompare(b.date));
+  const displayEvents = eventsToShow.slice(0, 8);
+
   const handleEventClick = () => {
-    router.push("/list/events");
+    router.push(`/${schoolId}/list/events`);
   };
 
   return (
-    <div className="bg-bg p-4 rounded-xl shadow-sm">
+    <div className="bg-surface/80 backdrop-blur-sm rounded-2xl shadow-sm p-4 sm:p-5 ring-1 ring-black/5 dark:ring-white/5">
       <style jsx global>{`
-        /* Base Calendar Styling */
-        .react-calendar {
-          border: none;
-          width: 100%;
-          background-color: white;
-          color: #374151;
-          border-radius: 0.75rem;
-          padding: 8px;
-        }
-        .dark .react-calendar {
-          background-color: #1f2937;
-          color: #e5e7eb;
-        }
-        .react-calendar__tile {
-          border-radius: 8px;
-          padding: 6px;
-        }
-        .react-calendar__tile--now {
-          background: #dbeafe !important;
-          color: #1d4ed8 !important;
-        }
-        .dark .react-calendar__tile--now {
-          background: #374151 !important;
-          color: #93c5fd !important;
-        }
-        .react-calendar__tile--active {
-          background: #3b82f6 !important;
-          color: white !important;
-        }
-        .dark .react-calendar__tile--active {
-          background: #2563eb !important;
-          color: white !important;
-        }
-        .react-calendar__tile--hasEvent {
-          background-color: #edf9f0 !important;
-        }
-        .react-calendar__tile--hasEvent:hover {
-          background-color: #e5f5ea !important;
-        }
-        .react-calendar__tile--hasEvent abbr {
-          color: #16a34a;
-          font-weight: 600;
-        }
-        .dark .react-calendar__tile--hasEvent {
-          background-color: #064e3b !important;
-        }
-        .dark .react-calendar__tile--hasEvent abbr {
-          color: #34d399;
-        }
+        .react-calendar { border: none; width: 100%; background: transparent; color: inherit; border-radius: 0.75rem; padding: 4px; }
+        .dark .react-calendar { color: #e5e7eb; }
+        .react-calendar__tile { border-radius: 8px; padding: 6px; }
+        .react-calendar__tile--now { background: #dbeafe !important; color: #1d4ed8 !important; }
+        .dark .react-calendar__tile--now { background: rgba(59, 130, 246, 0.25) !important; color: #93c5fd !important; }
+        .react-calendar__tile--active { background: #3b82f6 !important; color: white !important; }
+        .dark .react-calendar__tile--active { background: #2563eb !important; color: white !important; }
+        .react-calendar__tile--hasEvent { background: #edf2f7 !important; }
+        .react-calendar__tile--hasEvent:hover { background: #e2e8f0 !important; }
+        .react-calendar__tile--hasEvent abbr { color: #16a34a; font-weight: 600; }
+        .dark .react-calendar__tile--hasEvent { background: rgba(34, 197, 94, 0.15) !important; }
+        .dark .react-calendar__tile--hasEvent abbr { color: #4ade80; }
       `}</style>
 
       <Calendar
@@ -126,44 +96,47 @@ const EventCalendar = () => {
         }}
       />
 
-      <div className="flex items-center justify-between mt-4">
-        <h1 className="text-[16px] font-semibold my-2  ">
-          Upcoming Events
-        </h1>
-        <Image
-          src="/moreDark.png"
-          alt=""
-          width={20}
-          height={20}
-          className="cursor-pointer"
+      <div className="flex items-center justify-between mt-4 mb-3">
+        <h2 className="text-sm font-semibold text-text">Upcoming Events</h2>
+        <button
+          type="button"
           onClick={handleEventClick}
-        />
+          className="text-xs font-medium text-primary hover:underline focus:outline-none"
+        >
+          View all
+        </button>
       </div>
 
-      <div className="flex flex-col gap-2">
-        {dummyEvents && dummyEvents.length > 0 ? (
-          dummyEvents.map((event) => (
-            <div
-              className="p-3 rounded-md border border-gray-200 dark:border-gray-700 border-t-4 odd:border-t-[#C3EBFA] even:border-t-[#CFCEFF] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              key={event._id}
+      <div className="flex flex-col gap-2.5">
+        {loading ? (
+          <div className="flex items-center justify-center py-8 gap-2 text-muted">
+            <FiLoader className="w-4 h-4 animate-spin" />
+            <span className="text-xs">Loading events...</span>
+          </div>
+        ) : events.length > 0 ? (
+          displayEvents.map((event) => (
+            <button
+              type="button"
+              className="text-left rounded-xl p-3 sm:p-3.5 bg-muted/20 hover:bg-muted/40 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
+              key={event.id}
               onClick={handleEventClick}
             >
-              <div className="flex items-center justify-between">
-                <h1 className="font-semibold text-[14px] ">
+              <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                <h3 className="text-sm font-medium text-text truncate">
                   {event.title}
-                </h1>
-                <span className="text-xs">
-                  {event.date} | {event.startTime} - {event.endTime}
+                </h3>
+                <span className="text-[10px] sm:text-xs text-muted shrink-0">
+                  {event.date} | {event.startTime} – {event.endTime}
                 </span>
               </div>
-              <p className="mt-2 text-sm">
+              <p className="text-xs text-text/80 line-clamp-2 leading-relaxed">
                 {event.description}
               </p>
-            </div>
+            </button>
           ))
         ) : (
-          <div className="text-center py-4  text-sm">
-            No events scheduled
+          <div className="rounded-xl bg-muted/20 py-8 text-center">
+            <p className="text-xs text-muted">No events scheduled</p>
           </div>
         )}
       </div>

@@ -58,7 +58,9 @@ export async function POST(
             name: true,
             subdomain: true
           }
-        }
+        },
+        student: { select: { profileImagePath: true } },
+        teacher: { select: { img: true } }
       }
     });
 
@@ -122,13 +124,20 @@ export async function POST(
       maxAge: 7 * 24 * 60 * 60 // 7 days
     });
 
+    // Prefer User.imageUrl; fallback to Student.profileImagePath or Teacher.img
+    const imageUrl =
+      user.imageUrl ??
+      (user.student?.profileImagePath || null) ??
+      (user.teacher?.img || null) ??
+      null;
+
     // Set client-side accessible cookie for UI state
     response.cookies.set('user-session', JSON.stringify({
       userId: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
-      imageUrl: user.imageUrl, // Added if available on user type
+      imageUrl,
       schoolId: user.schoolId,
       schoolName: user.school?.name,
       schoolSubdomain: user.school?.subdomain
