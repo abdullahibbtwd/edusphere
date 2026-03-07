@@ -83,7 +83,7 @@ const Sidebar = ({ school }: SidebarProps) => {
       SchoolName: "School Name",
       items: [
         { icon: Home, label: "Home", href: getHomeHref(), visible: ["admin", "teacher", "student"] },
-        { icon: Users, label: "Teachers", href: `/${school}/list/teachers`, visible: ["admin"] },
+        { icon: Users, label: "Teachers", href: `/${school}/list/teachers`, visible: ["admin", "student"] },
         { icon: School, label: "Schools Management", href: `/${school}/list/management`, visible: ["admin"] },
         { icon: User, label: "Students", href: `/${school}/list/students`, visible: ["admin", "teacher"] },
         { icon: UserCheck, label: "Parents", href: `/${school}/list/parents`, visible: [] },

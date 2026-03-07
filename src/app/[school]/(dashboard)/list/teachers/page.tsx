@@ -4,8 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 
 import Pagination from "@/components/pagination";
-import Table from "@/components/Table";
-import { FiEdit, FiTrash, FiX, FiPlus, FiSave, FiEye, FiEyeOff, FiCheckCircle, FiAlertCircle, FiSearch } from "react-icons/fi";
+import { FiEdit, FiTrash, FiX, FiPlus, FiSave, FiEye, FiEyeOff, FiCheckCircle, FiAlertCircle, FiSearch, FiPhone, FiMail, FiBook } from "react-icons/fi";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -17,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/context/UserContext";
 
 type Teacher = {
   id: string;
@@ -70,18 +70,152 @@ type AssignmentOption = {
   }>;
 };
 
-const columns = [
-  { header: "Teacher Info", accessor: "info" },
-  { header: "Teacher ID", accessor: "teacherId", className: "hidden md:table-cell" },
-  { header: "Assignments", accessor: "assignments", className: "hidden lg:table-cell" },
-  { header: "Contact", accessor: "contact", className: "hidden xl:table-cell" },
-  { header: "Actions", accessor: "action" },
-];
+
+// ─── Student View ─────────────────────────────────────────────────────────────
+
+type StudentTeacher = {
+  id: string; name: string; email: string;
+  phone: string; img: string; sex: string;
+  subjects: { id: string; name: string; code: string }[];
+};
+
+function StudentTeachersView({ schoolId }: { schoolId: string }) {
+  const [teachers, setTeachers] = useState<StudentTeacher[]>([]);
+  const [className, setClassName] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/schools/${schoolId}/teachers/my-teachers`);
+        const data = await res.json();
+        if (res.ok) {
+          setTeachers(data.teachers || []);
+          setClassName(data.student?.className || '');
+        } else {
+          toast.error(data.error || 'Failed to load teachers');
+        }
+      } catch {
+        toast.error('Failed to load teachers');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [schoolId]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[320px] gap-3 text-muted">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm">Loading your teachers…</p>
+      </div>
+    );
+  }
+
+  if (teachers.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[320px] gap-3 text-muted">
+        <FiSearch className="w-10 h-10 opacity-30" />
+        <p className="text-sm font-medium">No teachers assigned to your class yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-text tracking-tight">My Teachers</h1>
+        <p className="text-sm text-muted mt-1">{className} · {teachers.length} teacher{teachers.length !== 1 ? 's' : ''}</p>
+      </div>
+
+      {/* Table */}
+      <div className="bg-surface rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-muted">
+                <th className="px-5 py-3 text-left text-xs font-semibold text-text/40 uppercase tracking-wider">Teacher</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-text/40 uppercase tracking-wider hidden sm:table-cell">Contact</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-text/40 uppercase tracking-wider">Subjects</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teachers.map((t) => (
+                <tr
+                  key={t.id}
+                  className="border-b border-muted last:border-0 hover:bg-muted/20 transition-colors"
+                >
+                  {/* Teacher Info */}
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <Image
+                        src={t.img || '/default-avatar.png'}
+                        alt={t.name}
+                        width={40}
+                        height={40}
+                        className="w-10 h-10 rounded-full object-cover shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-text truncate">{t.name}</p>
+                        <p className="text-xs text-text/40 truncate sm:hidden">{t.email}</p>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Contact */}
+                  <td className="px-5 py-4 hidden sm:table-cell">
+                    <div className="flex flex-col gap-1.5">
+                      <a
+                        href={`mailto:${t.email}`}
+                        className="flex items-center gap-2 text-xs text-text/70 hover:text-text transition-colors"
+                      >
+                        <FiMail className="w-3.5 h-3.5 shrink-0 text-text/30" />
+                        <span className="truncate max-w-[180px]">{t.email}</span>
+                      </a>
+                      {t.phone && (
+                        <a
+                          href={`tel:${t.phone}`}
+                          className="flex items-center gap-2 text-xs text-text/70 hover:text-text transition-colors"
+                        >
+                          <FiPhone className="w-3.5 h-3.5 shrink-0 text-text/30" />
+                          <span>{t.phone}</span>
+                        </a>
+                      )}
+                    </div>
+                  </td>
+
+                  {/* Subjects */}
+                  <td className="px-5 py-4">
+                    <div className="flex flex-wrap gap-1.5">
+                      {t.subjects.map(s => (
+                        <span
+                          key={s.id}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-muted/50 text-text/70 text-xs font-medium"
+                        >
+                          <FiBook className="w-3 h-3 shrink-0 text-text/30" />
+                          {s.name}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 const TeachersPage = () => {
   const params = useParams();
   const router = useRouter();
   const schoolId = params.school as string;
+  const { role } = useUser();
 
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,6 +275,15 @@ const TeachersPage = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Expanded assignment rows
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) =>
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
 
   // Fetch teachers
   const fetchTeachers = useCallback(async () => {
@@ -639,112 +782,112 @@ const TeachersPage = () => {
   const renderRow = (item: Teacher) => (
     <tr
       key={item.id}
-      className="border-b border-muted last:border-0 hover:bg-muted/50 transition-colors text-sm group"
+      className="border-b border-muted/60 last:border-0 hover:bg-muted/20 transition-colors group"
     >
-      {/* Teacher Info */}
-      <td className="p-4">
-        <div className="flex items-center gap-4">
+      {/* Teacher */}
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-3.5">
           <Image
             src={item.img || "/default-avatar.png"}
-            alt=""
-            width={40}
-            height={40}
-            className="w-10 h-10 rounded-full object-cover border border-muted"
+            alt={item.name}
+            width={44}
+            height={44}
+            className="w-11 h-11 rounded-xl object-cover shrink-0"
           />
-          <div className="flex flex-col">
-            <h3 className="font-semibold text-text">{item.name}</h3>
-            <span className="text-xs text-text/60">{item.email}</span>
-            <div className="flex items-center gap-2 mt-1">
-              {item.user ? (
-                <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium border border-emerald-200">
-                  User Account
-                </span>
-              ) : (
-                <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium border border-slate-200">
-                  No Account
-                </span>
-              )}
-              <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium border border-blue-100">
-                {item.sex}
-              </span>
-            </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-text text-sm leading-tight truncate">{item.name}</p>
+            <p className="text-xs text-text/45 mt-0.5 truncate">{item.email}</p>
           </div>
         </div>
       </td>
 
-      {/* Teacher ID */}
-      <td className="hidden md:table-cell p-4 align-top pt-5">
-        <div className="flex flex-col">
-          <span className="font-mono text-xs text-text bg-muted/30 px-2 py-1 rounded w-fit">
-            {item.teacherId}
-          </span>
-          <span className="text-[10px] text-text/50 mt-1">
-            Joined {new Date(item.createdAt).toLocaleDateString()}
+      {/* ID + Joined */}
+      <td className="hidden md:table-cell px-6 py-4">
+        <p className="font-mono text-xs font-medium text-text/70">{item.teacherId}</p>
+        <p className="text-[11px] text-text/35 mt-1">
+          Since {new Date(item.createdAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+        </p>
+      </td>
+
+      {/* Account status */}
+      <td className="hidden sm:table-cell px-6 py-4">
+        <div className="flex items-center gap-2">
+          <span className={cn(
+            "w-1.5 h-1.5 rounded-full shrink-0",
+            item.user ? "bg-text/50" : "bg-text/20"
+          )} />
+          <span className="text-xs text-text/60">
+            {item.user ? "Active account" : "No account"}
           </span>
         </div>
+        <p className="text-[11px] text-text/35 mt-1.5 ml-3.5">{item.sex}</p>
       </td>
 
       {/* Assignments */}
-      <td className="hidden lg:table-cell p-4 align-top pt-5">
-        <div className="flex flex-wrap gap-1 max-w-[280px]">
-          {item.assignments && item.assignments.length > 0 ? (
-            <>
-              {item.assignments.slice(0, 3).map((assignment, index) => (
-                <div
-                  key={index}
-                  className="text-[10px] bg-surface border border-muted px-2 py-1 rounded-md flex items-center gap-1.5 shadow-sm"
-                >
-                  <span className="font-semibold text-primary">{assignment.subjectCode}</span>
-                  <span className="w-px h-3 bg-muted"></span>
-                  <span className="text-text/70">{assignment.fullClassName}</span>
+      <td className="hidden lg:table-cell px-6 py-4">
+        {item.assignments && item.assignments.length > 0 ? (() => {
+          const expanded = expandedRows.has(item.id);
+          const visible = expanded ? item.assignments : item.assignments.slice(0, 2);
+          const hidden = item.assignments.length - 2;
+          return (
+            <div className="flex flex-col gap-1.5 max-w-[280px]">
+              {visible.map((a, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-xs">
+                  <span className="font-mono font-semibold text-text/70 text-[11px] w-14 shrink-0 truncate">{a.subjectCode}</span>
+                  <span className="text-text/40 text-[11px] truncate">{a.fullClassName}</span>
                 </div>
               ))}
-              {item.assignments.length > 3 && (
-                <span className="text-[10px] bg-muted/50 text-text/60 px-2 py-1 rounded-md border border-muted">
-                  +{item.assignments.length - 3} more
-                </span>
+              {hidden > 0 && !expanded && (
+                <button
+                  onClick={() => toggleExpanded(item.id)}
+                  className="text-[11px] text-text/45 hover:text-text/70 text-left cursor-pointer transition-colors w-fit"
+                >
+                  +{hidden} more subject{hidden !== 1 ? "s" : ""}
+                </button>
               )}
-            </>
-          ) : (
-            <span className="text-xs text-text/40 italic flex items-center gap-1">
-              <FiAlertCircle className="w-3 h-3" /> No assignments
-            </span>
-          )}
-        </div>
+              {expanded && (
+                <button
+                  onClick={() => toggleExpanded(item.id)}
+                  className="text-[11px] text-text/45 hover:text-text/70 text-left cursor-pointer transition-colors w-fit"
+                >
+                  Show less
+                </button>
+              )}
+            </div>
+          );
+        })() : (
+          <span className="text-xs text-text/30 italic">No assignments</span>
+        )}
       </td>
 
-      {/* Contact Info */}
-      <td className="hidden xl:table-cell p-4 align-top pt-5">
-        <div className="flex flex-col gap-1">
-          <div className="text-xs font-medium text-text flex items-center gap-2">
-            {item.phone || <span className="text-text/40 italic">No phone</span>}
-          </div>
-          <div className="text-xs text-text/60 truncate max-w-[150px]" title={item.address}>
-            {item.address || <span className="text-text/40 italic">No address</span>}
-          </div>
-        </div>
+      {/* Contact */}
+      <td className="hidden xl:table-cell px-6 py-4">
+        <p className="text-xs text-text/65">{item.phone || <span className="text-text/30">—</span>}</p>
+        <p className="text-[11px] text-text/35 mt-1 truncate max-w-[150px]" title={item.address}>
+          {item.address || "—"}
+        </p>
       </td>
 
       {/* Actions */}
-      <td className="p-4 align-middle">
-        <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-all duration-200">
+      <td className="px-6 py-4">
+        <div className="flex gap-1 justify-end">
           <button
             onClick={() => editTeacher(item)}
-            className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-            title="Edit Teacher"
+            className="p-2 rounded-lg text-text/30 hover:text-text hover:bg-muted/50 transition-all cursor-pointer"
+            title="Edit"
           >
-            <FiEdit className="w-4 h-4" />
+            <FiEdit className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => deleteTeacher(item.id)}
             disabled={deletingTeacher === item.id}
-            className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
-            title="Delete Teacher"
+            className="p-2 rounded-lg text-text/30 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Delete"
           >
             {deletingTeacher === item.id ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
-              <FiTrash className="w-4 h-4" />
+              <FiTrash className="w-3.5 h-3.5" />
             )}
           </button>
         </div>
@@ -1110,83 +1253,87 @@ const TeachersPage = () => {
     </div>
   );
 
+  // Student sees their own teacher list
+  if (role === 'student') {
+    return (
+      <div className="flex flex-col bg-bg p-6 h-full w-full overflow-auto font-poppins text-text animate-in fade-in duration-500">
+        <StudentTeachersView schoolId={schoolId} />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col bg-bg p-6 h-full w-full overflow-hidden font-poppins text-text">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+    <div className="flex flex-col bg-bg px-6 pt-6 pb-6 w-full min-h-full font-poppins text-text overflow-y-auto">
+
+      {/* Page header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text">
-            Teachers
-          </h1>
-          <p className="text-sm text-text/60 mt-1">
-            Manage your school&apos;s teaching staff and assignments.
-          </p>
+          <h1 className="text-xl font-bold text-text">Teachers</h1>
+          <p className="text-sm text-text/40 mt-0.5">Manage your school&apos;s teaching staff and subject assignments.</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row w-full md:w-auto items-center gap-3">
-          <div className="relative w-full sm:w-64 group">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text/40 group-focus-within:text-primary transition-colors">
-              <FiSearch className="w-4 h-4" />
-            </div>
+        <div className="flex w-full md:w-auto items-center gap-2.5">
+          <div className="relative flex-1 md:w-60 group">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text/30 group-focus-within:text-text/60 transition-colors" />
             <input
               type="text"
-              placeholder="Search by name, ID or email..."
-              className="w-full pl-9 pr-4 py-2.5 bg-surface border border-muted rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+              placeholder="Search name, ID or email…"
+              className="w-full pl-9 pr-4 py-2 bg-surface rounded-lg text-sm text-text placeholder:text-text/30 outline-none focus:ring-1 focus:ring-primary/30 transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-
           <button
-            onClick={() => {
-              resetForm();
-              setShowCreateModal(true);
-            }}
-            className="w-full sm:w-auto px-5 py-2.5 bg-primary text-white rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all duration-300 font-medium flex items-center justify-center gap-2 text-sm"
+            onClick={() => { resetForm(); setShowCreateModal(true); }}
+            className="shrink-0 px-4 py-2 bg-primary text-white rounded-lg font-medium flex items-center gap-2 text-sm hover:opacity-90 transition-opacity"
           >
             <FiPlus className="w-4 h-4" />
-            <span>Add Teacher</span>
+            <span className="hidden sm:inline">Add Teacher</span>
+            <span className="sm:hidden">Add</span>
           </button>
         </div>
       </div>
 
-      {/* Content Card */}
-      <div className="flex-1 bg-surface rounded-2xl shadow-sm p-4  flex flex-col overflow-hidden animate-in fade-in duration-700">
-        {/* Table Container */}
-        <div className="flex-1 overflow-auto">
-          {loading ? (
-            <div className="h-full flex flex-col items-center justify-center gap-3 text-text/50">
-              <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-              <p className="text-sm">Loading teachers...</p>
-            </div>
-          ) : teachers.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center gap-4 text-text/40">
-              <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center">
-                <FiSearch className="w-8 h-8" />
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-medium text-text">No teachers found</p>
-                <p className="text-sm mt-1">Try adjusting your search or add a new teacher.</p>
-              </div>
-            </div>
-          ) : (
-            <Table columns={columns} renderRow={renderRow} data={teachers} />
-          )}
-        </div>
+      {/* Table card — grows to fit all rows, no internal scroll */}
+      <div className="bg-surface rounded-xl overflow-hidden">
 
-        {/* Pagination Footer */}
-        <div className="p-4 border-t border-muted bg-surface flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3 text-sm text-text/60">
-            <span>Show</span>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <div className="w-7 h-7 border-2 border-muted border-t-primary rounded-full animate-spin" />
+            <p className="text-sm text-text/40">Loading teachers…</p>
+          </div>
+        ) : teachers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <FiSearch className="w-8 h-8 text-text/20" />
+            <p className="text-sm font-medium text-text/40">No teachers found</p>
+            <p className="text-xs text-text/25">Try adjusting your search or add a new teacher.</p>
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-muted/60">
+                <th className="px-6 py-3 text-left text-[11px] font-semibold text-text/35 uppercase tracking-widest">Teacher</th>
+                <th className="px-6 py-3 text-left text-[11px] font-semibold text-text/35 uppercase tracking-widest hidden md:table-cell">ID</th>
+                <th className="px-6 py-3 text-left text-[11px] font-semibold text-text/35 uppercase tracking-widest hidden sm:table-cell">Account</th>
+                <th className="px-6 py-3 text-left text-[11px] font-semibold text-text/35 uppercase tracking-widest hidden lg:table-cell">Assignments</th>
+                <th className="px-6 py-3 text-left text-[11px] font-semibold text-text/35 uppercase tracking-widest hidden xl:table-cell">Contact</th>
+                <th className="px-6 py-3 w-20" />
+              </tr>
+            </thead>
+            <tbody>{teachers.map((item) => renderRow(item))}</tbody>
+          </table>
+        )}
+
+        {/* Footer */}
+        <div className="px-6 py-3 border-t border-muted/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-text/40">
+            <span>Rows per page</span>
             <Select
               value={limit.toString()}
-              onValueChange={(value) => {
-                setLimit(Number(value));
-                setCurrentPage(1);
-              }}
+              onValueChange={(value) => { setLimit(Number(value)); setCurrentPage(1); }}
             >
-              <SelectTrigger className="w-[70px] h-8 bg-bg border-muted">
-                <SelectValue placeholder="10" />
+              <SelectTrigger className="w-16 h-7 bg-bg text-xs text-text/60">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="10">10</SelectItem>
@@ -1194,15 +1341,12 @@ const TeachersPage = () => {
                 <SelectItem value="50">50</SelectItem>
               </SelectContent>
             </Select>
-            <span>per page</span>
+            <span className="text-text/25">·</span>
+            <span>{teachers.length} result{teachers.length !== 1 ? "s" : ""}</span>
           </div>
 
           {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
           )}
         </div>
       </div>

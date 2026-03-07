@@ -24,7 +24,7 @@ type SubjectWithOccurrences = {
 
 type PlacementTask = SubjectWithOccurrences & {
     occurrenceIndex: number;
-    isDouble: boolean; // Override for this specific task
+    isDouble: boolean; 
 };
 
 const WORKING_DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
@@ -132,16 +132,11 @@ function computeOccurrences(
         requiredOccurrences: 0
     }));
 
-    // CRITICAL FIX: Account for mixed doubles and singles
-    // For double-period subjects, we create max 2 doubles, rest singles
-    // So effective weight = (2 doubles × 2 periods) + (remaining × 1 period)
+
 
     let totalWeight = 0;
     for (const s of subjects) {
         if (s.requiresDoublePeriod) {
-            // Assume this subject will have some occurrences
-            // Strategy: 2 doubles + remaining singles
-            // For now, estimate weight as 1.5 (between 1 and 2)
             totalWeight += 1.5;
         } else {
             totalWeight += 1;

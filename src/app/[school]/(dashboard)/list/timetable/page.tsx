@@ -9,9 +9,10 @@ import CalendarView from "@/components/CalendarView";
 import TimetableConfigForm from "@/components/TimetableConfigForm";
 import TimetableDisplay from "@/components/TimetableDisplay";
 import TeacherTimetableDisplay from "@/components/Schools/TeacherTimetableDisplay";
+import StudentTimetableDisplay from "@/components/Schools/StudentTimetableDisplay";
 import DoublePeriodConfigModal from "@/components/DoublePeriodConfigModal";
 import { useUser } from "@/context/UserContext";
-import { FiCalendar, FiClock, FiEye, FiEdit2, FiFilter, FiZap, FiGrid, FiUser } from "react-icons/fi";
+import { FiCalendar, FiClock, FiEye, FiEdit2, FiFilter, FiZap, FiGrid, FiUser, FiBookOpen } from "react-icons/fi";
 
 const TimetablePage = () => {
   const params = useParams();
@@ -38,6 +39,11 @@ const TimetablePage = () => {
   const [teacherSchedule, setTeacherSchedule] = useState<any>(null);
   const [loadingSchedule, setLoadingSchedule] = useState(false);
   const [schoolName, setSchoolName] = useState<string>("");
+
+  // --- Student view ---
+  const [studentTimetable, setStudentTimetable] = useState<any>(null);
+  const [studentClassName, setStudentClassName] = useState<string>("");
+  const [loadingStudentTimetable, setLoadingStudentTimetable] = useState(false);
 
   useEffect(() => {
     if (!schoolId) return;
@@ -148,10 +154,28 @@ const TimetablePage = () => {
     }
   }, [schoolId, user?.name]);
 
+  const fetchStudentTimetable = useCallback(async (term: string) => {
+    try {
+      setLoadingStudentTimetable(true);
+      const res = await fetch(`/api/schools/${schoolId}/timetable/my-class?term=${term}`);
+      const data = await res.json();
+      if (res.ok) {
+        setStudentTimetable(data.timetable || null);
+        setStudentClassName(data.student?.className || "");
+      } else {
+        setStudentTimetable(null);
+      }
+    } catch {
+      setStudentTimetable(null);
+    } finally {
+      setLoadingStudentTimetable(false);
+    }
+  }, [schoolId]);
+
   useEffect(() => {
     fetchSession();
-    fetchLevels();
-  }, [fetchSession, fetchLevels]);
+    if (role === "admin") fetchLevels();
+  }, [fetchSession, fetchLevels, role]);
 
   useEffect(() => {
     if (selectedLevel) {
@@ -165,12 +189,14 @@ const TimetablePage = () => {
   useEffect(() => {
     if (role === "teacher" && selectedTerm) {
       fetchTeacherSchedule();
-    } else if (selectedClass && selectedTerm) {
+    } else if (role === "student" && selectedTerm) {
+      fetchStudentTimetable(selectedTerm);
+    } else if (role === "admin" && selectedClass && selectedTerm) {
       fetchTimetable(selectedClass, selectedTerm);
-    } else {
+    } else if (role === "admin") {
       setTimetable(null);
     }
-  }, [selectedClass, selectedTerm, fetchTimetable, fetchTeacherSchedule, role]);
+  }, [selectedClass, selectedTerm, fetchTimetable, fetchTeacherSchedule, fetchStudentTimetable, role]);
 
   const handleConfigSaved = async () => {
     setShowConfigForm(false);
@@ -323,7 +349,8 @@ const TimetablePage = () => {
         </div>
       </header>
 
-      {role === "admin" ? (
+      {/* ===== ADMIN VIEW ===== */}
+      {role === "admin" && (
         <>
           {/* Generate section */}
           <section className="rounded-xl border border-border bg-surface p-4 sm:p-6 shadow-sm">
@@ -438,8 +465,10 @@ const TimetablePage = () => {
             )}
           </section>
         </>
-      ) : (
-        /* Teacher view */
+      )}
+
+      {/* ===== TEACHER VIEW ===== */}
+      {role === "teacher" && (
         <div className="flex flex-col gap-6">
           <section className="rounded-xl border border-border bg-surface p-4 sm:p-6 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -477,6 +506,55 @@ const TimetablePage = () => {
               <TeacherTimetableDisplay
                 schedule={teacherSchedule}
                 teacherName={user?.name || "Teacher"}
+                term={selectedTerm}
+                schoolName={schoolName || undefined}
+              />
+            )}
+          </section>
+        </div>
+      )}
+
+      {/* ===== STUDENT VIEW ===== */}
+      {role === "student" && (
+        <div className="flex flex-col gap-6">
+          <section className="rounded-xl border border-border bg-surface p-4 sm:p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <FiBookOpen className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-text">
+                    {studentClassName ? `${studentClassName} — Timetable` : "My class timetable"}
+                  </h2>
+                  <p className="text-xs text-muted">Your weekly class schedule</p>
+                </div>
+              </div>
+              <div className="w-full sm:w-40">
+                <label className="block text-xs font-medium text-muted mb-1">Term</label>
+                <select
+                  value={selectedTerm}
+                  onChange={(e) => setSelectedTerm(e.target.value)}
+                  className="w-full h-9 px-3 rounded-lg bg-bg border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                  <option value="FIRST">First Term</option>
+                  <option value="SECOND">Second Term</option>
+                  <option value="THIRD">Third Term</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-border bg-surface p-4 sm:p-6 shadow-sm min-h-[360px]">
+            {loadingStudentTimetable ? (
+              <div className="flex flex-col items-center justify-center min-h-[280px] py-8">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
+                <p className="text-xs text-muted">Loading timetable...</p>
+              </div>
+            ) : (
+              <StudentTimetableDisplay
+                schedule={studentTimetable?.schedule || {}}
+                className={studentClassName || "My Class"}
                 term={selectedTerm}
                 schoolName={schoolName || undefined}
               />

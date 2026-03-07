@@ -16,7 +16,9 @@ async function resolveSchoolId(schoolIdentifier: string): Promise<string | null>
 }
 
 /**
- * GET - Subjects for the current student's class, with teacher name(s) per subject.
+ * GET - Subjects for the current student's class.
+ * Uses TeacherSubjectClass as the single source of truth — matching
+ * exactly what the timetable and exam timetable generators use.
  * Student role only.
  */
 export async function GET(
@@ -47,69 +49,62 @@ export async function GET(
             return NextResponse.json({ error: 'Student record not found for this school' }, { status: 404 });
         }
 
-        const classId = student.classId;
-        const studentLevel = student.class?.level?.name ?? '';
-        const studentClassName = student.class?.name ?? '';
-
-        const allSubjects = await prisma.subject.findMany({
-            where: { schoolId: actualSchoolId },
+        // Use TeacherSubjectClass as single source of truth — same as timetable & exam generation
+        const assignments = await prisma.teacherSubjectClass.findMany({
+            where: {
+                classId: student.classId,
+                schoolId: actualSchoolId,
+                isActive: true,
+            },
             include: {
-                levels: { select: { name: true } },
-                teacherSubjectClasses: {
-                    where: { classId, isActive: true },
-                    include: { teacher: { select: { id: true, name: true } } }
-                }
-            }
+                subject: {
+                    select: {
+                        id: true,
+                        name: true,
+                        code: true,
+                        creditUnit: true,
+                        term: true,
+                        levels: { select: { name: true } },
+                    }
+                },
+                teacher: { select: { id: true, name: true } },
+            },
+            orderBy: { subject: { name: 'asc' } },
         });
 
-        const filteredSubjects = allSubjects.filter(subject => {
-            if (subject.isGeneral) return true;
-            if (!subject.classAssignment) {
-                const subjectLevels = subject.levels.map(l => l.name);
-                if (subjectLevels.includes('JSS1') && subjectLevels.includes('JSS2') && subjectLevels.includes('JSS3')) {
-                    return studentLevel.startsWith('JSS');
-                }
-                if (subjectLevels.includes('SS1') && subjectLevels.includes('SS2') && subjectLevels.includes('SS3')) {
-                    return studentLevel.startsWith('SS');
-                }
-                if (subjectLevels.includes(studentLevel)) return true;
-            }
-            if (subject.classAssignment) {
-                const [levelType, classSuffix] = subject.classAssignment.split(' Class ');
-                if (levelType === 'Junior' && studentLevel.startsWith('JSS')) {
-                    return studentClassName.endsWith(classSuffix);
-                }
-                if (levelType === 'Senior' && studentLevel.startsWith('SS')) {
-                    return studentClassName.endsWith(classSuffix);
-                }
-            }
-            return false;
-        });
+        // Deduplicate by subjectId (multiple teachers can teach the same subject in a class)
+        const subjectMap = new Map<string, {
+            id: string; name: string; code: string;
+            creditUnit: number; term: string; levelName: string; teacherName: string;
+        }>();
 
-        const subjectsWithTeachers = filteredSubjects.map(subject => {
-            const teachers = subject.teacherSubjectClasses
-                .map(tsc => tsc.teacher.name)
-                .filter(Boolean);
-            const teacherName = teachers.length > 0
-                ? teachers.join(', ')
-                : '-';
-            return {
-                id: subject.id,
-                name: subject.name,
-                code: subject.code,
-                creditUnit: subject.creditUnit,
-                term: subject.term,
-                levelName: subject.levels.length > 0 ? subject.levels[0].name : 'All Levels',
-                teacherName
-            };
-        });
+        for (const a of assignments) {
+            const existing = subjectMap.get(a.subjectId);
+            const teacherName = a.teacher.name;
+            if (existing) {
+                // Append additional teacher if different
+                if (!existing.teacherName.includes(teacherName)) {
+                    existing.teacherName = `${existing.teacherName}, ${teacherName}`;
+                }
+            } else {
+                subjectMap.set(a.subjectId, {
+                    id: a.subject.id,
+                    name: a.subject.name,
+                    code: a.subject.code,
+                    creditUnit: a.subject.creditUnit,
+                    term: a.subject.term,
+                    levelName: a.subject.levels.length > 0 ? a.subject.levels[0].name : 'All Levels',
+                    teacherName,
+                });
+            }
+        }
 
         return NextResponse.json({
-            subjects: subjectsWithTeachers,
+            subjects: Array.from(subjectMap.values()),
             student: {
                 name: `${student.firstName} ${student.lastName}`,
-                class: studentClassName,
-                level: studentLevel
+                class: student.class?.name ?? '',
+                level: student.class?.level?.name ?? '',
             }
         });
     } catch (error) {
