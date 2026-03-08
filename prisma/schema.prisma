@@ -91,6 +91,9 @@ model School {
   timetables            Timetable[]
   users                 User[]
   feeStructures         FeeStructure[]
+  assessmentComponents  AssessmentComponent[]
+  resultSettings        ResultSettings?
+  results               Result[]
 
   @@map("schools")
 }
@@ -265,6 +268,7 @@ model Subject {
   school                School                @relation(fields: [schoolId], references: [id])
   teacherSubjectClasses TeacherSubjectClass[]
   levels                Level[]               @relation("LevelToSubject")
+  results               Result[]
 
   @@map("subjects")
 }
@@ -370,6 +374,7 @@ model Student {
   admissionSession AcademicSession? @relation("AdmissionSession", fields: [admissionSessionId], references: [id])
   currentSession   AcademicSession? @relation("CurrentSession", fields: [currentSessionId], references: [id])
   feeRecords       StudentFee[]
+  results          Result[]
 
   @@index([schoolId])
   @@index([classId])
@@ -538,6 +543,7 @@ model AcademicSession {
   studentsCurrent  Student[]      @relation("CurrentSession")
   feeStructures    FeeStructure[]
   studentFees      StudentFee[]
+  results          Result[]
 
   @@unique([name, schoolId])
   @@index([schoolId])
@@ -554,9 +560,11 @@ model AcademicTerm {
   isActive  Boolean         @default(false)
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
-  events    AcademicEvent[]
-  school    School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  session   AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  events         AcademicEvent[]
+  school         School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  session        AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  results        Result[]
+  resultSettings ResultSettings[]
 
   @@unique([name, sessionId])
   @@index([sessionId])
@@ -662,6 +670,75 @@ model FeePayment {
   studentFee StudentFee @relation(fields: [studentFeeId], references: [id], onDelete: Cascade)
 
   @@map("fee_payments")
+}
+
+model AssessmentComponent {
+  id        String        @id @default(cuid())
+  name      String
+  maxScore  Float
+  order     Int           @default(0)
+  schoolId  String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  scores    ResultScore[]
+
+  @@unique([name, schoolId])
+  @@index([schoolId])
+  @@map("assessment_components")
+}
+
+model ResultSettings {
+  id                String        @id @default(cuid())
+  schoolId          String        @unique
+  promotionAverage  Float         @default(50)
+  publishedTermId   String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  school            School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  publishedTerm     AcademicTerm? @relation(fields: [publishedTermId], references: [id])
+
+  @@map("result_settings")
+}
+
+model Result {
+  id        String        @id @default(cuid())
+  studentId String
+  subjectId String
+  termId    String
+  sessionId String
+  classId   String
+  schoolId  String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  student   Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject   Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  term      AcademicTerm  @relation(fields: [termId], references: [id], onDelete: Cascade)
+  session   AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  scores    ResultScore[]
+
+  @@unique([studentId, subjectId, termId])
+  @@index([studentId])
+  @@index([subjectId])
+  @@index([termId])
+  @@index([schoolId])
+  @@map("results")
+}
+
+model ResultScore {
+  id          String              @id @default(cuid())
+  resultId    String
+  componentId String
+  score       Float               @default(0)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  result      Result              @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  component   AssessmentComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  @@unique([resultId, componentId])
+  @@index([resultId])
+  @@map("result_scores")
 }
 
 enum Role {

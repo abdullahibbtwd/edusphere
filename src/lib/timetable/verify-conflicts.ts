@@ -106,10 +106,10 @@ export async function verifyAllTimetables(schoolId: string, term: string) {
 
     // Print results
     if (conflicts.length === 0) {
-        console.log('✅ NO CONFLICTS FOUND!\n');
+        console.log('NO CONFLICTS FOUND!\n');
         console.log('All teachers are properly scheduled without overlaps.\n');
     } else {
-        console.log(`❌ CONFLICTS FOUND: ${conflicts.length}\n`);
+        console.log(`CONFLICTS FOUND: ${conflicts.length}\n`);
         console.log('═══════════════════════════════════════════════════════════\n');
 
         conflicts.forEach((conflict, index) => {
@@ -139,9 +139,8 @@ export async function verifyAllTimetables(schoolId: string, term: string) {
         stats.totalPeriods++;
     }
 
-    console.log('📈 TEACHER WORKLOAD SUMMARY:\n');
-    console.log('═══════════════════════════════════════════════════════════\n');
-
+    console.log('TEACHER WORKLOAD SUMMARY:\n');
+  
     const sortedTeachers = Array.from(teacherStats.entries())
         .sort((a, b) => b[1].totalPeriods - a[1].totalPeriods);
 
@@ -150,8 +149,7 @@ export async function verifyAllTimetables(schoolId: string, term: string) {
         console.log(`  Classes: ${stats.classes.size}`);
         console.log(`  Total Periods/Week: ${stats.totalPeriods}`);
         console.log(`  Classes: ${Array.from(stats.classes).join(', ')}`);
-        console.log('───────────────────────────────────────────────────────────\n');
-    }
+   }
 
     return {
         hasConflicts: conflicts.length > 0,
