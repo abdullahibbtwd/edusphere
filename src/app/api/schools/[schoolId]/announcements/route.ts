@@ -2,16 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth-middleware';
 import { Role } from '@prisma/client';
-
-async function resolveSchoolId(schoolIdentifier: string): Promise<string | null> {
-  const school = await prisma.school.findFirst({
-    where: {
-      OR: [{ id: schoolIdentifier }, { subdomain: schoolIdentifier, isActive: true }],
-    },
-    select: { id: true },
-  });
-  return school?.id ?? null;
-}
+import { getSchool } from '@/lib/school';
 
 /**
  * GET - List school announcements (optionally filter by viewer role)
@@ -23,7 +14,8 @@ export async function GET(
 ) {
   try {
     const { schoolId } = await params;
-    const actualSchoolId = await resolveSchoolId(schoolId);
+    const resolvedSchool = await getSchool(schoolId);
+    const actualSchoolId = resolvedSchool?.id;
 
     if (!actualSchoolId) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
@@ -78,7 +70,8 @@ export async function POST(
 
   try {
     const { schoolId } = await params;
-    const actualSchoolId = await resolveSchoolId(schoolId);
+    const resolvedSchool = await getSchool(schoolId);
+    const actualSchoolId = resolvedSchool?.id;
 
     if (!actualSchoolId) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });

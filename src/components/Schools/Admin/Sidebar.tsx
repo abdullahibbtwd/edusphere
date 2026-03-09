@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useUser } from "@/context/UserContext";
+import { useSchoolData } from "@/context/SchoolDataContext";
 import {
   Home,
   School,
@@ -32,30 +33,15 @@ interface SidebarProps {
 const Sidebar = ({ school }: SidebarProps) => {
   const { role } = useUser();
   const pathname = usePathname();
-  const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
-  const [dynamicSchoolName, setDynamicSchoolName] = useState<string>("");
+  const { schoolData } = useSchoolData();
+  const schoolLogo = schoolData?.content?.schoolLogo || null;
+  const dynamicSchoolName = schoolData?.name || "";
   const [pendingApplicantsCount, setPendingApplicantsCount] = useState<number>(0);
 
   useEffect(() => {
-    const fetchSchoolData = async () => {
-      if (school) {
-        try {
-          const response = await fetch(`/api/schools/by-subdomain/${school}`);
-          if (response.ok) {
-            const data = await response.json();
-            setSchoolLogo(data.content?.schoolLogo || null);
-            setDynamicSchoolName(data.name || "");
-          }
-        } catch (error) {
-          console.error('Error fetching school data:', error);
-        }
-      }
-    };
-
     const fetchPendingCount = async () => {
       if (school && role === 'admin') {
         try {
-          // fetch with status=PROGRESS and limit=1 to get the totalCount from pagination object efficiently
           const response = await fetch(`/api/schools/${school}/student-applications?status=PROGRESS&limit=1`);
           if (response.ok) {
             const data = await response.json();
@@ -67,7 +53,6 @@ const Sidebar = ({ school }: SidebarProps) => {
       }
     };
 
-    fetchSchoolData();
     fetchPendingCount();
   }, [school, role]);
 

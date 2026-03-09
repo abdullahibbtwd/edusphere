@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSchool } from '@/lib/school';
 
 // GET - Get specific level
 export async function GET(
@@ -9,26 +10,7 @@ export async function GET(
   try {
     const { schoolId, id } = await params;
 
-    // First, try to find the school by ID or subdomain
-    let school;
-    
-    // Try as UUID first (actual school ID)
-    school = await prisma.school.findUnique({
-      where: { id: schoolId },
-      select: { id: true }
-    });
-    
-    // If not found by ID, try as subdomain
-    if (!school) {
-      school = await prisma.school.findUnique({
-        where: { 
-          subdomain: schoolId,
-          isActive: true 
-        },
-        select: { id: true }
-      });
-    }
-
+    const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
@@ -91,26 +73,7 @@ export async function PUT(
     const body = await request.json();
     const { name, description, isActive } = body;
 
-    // First, try to find the school by ID or subdomain
-    let school;
-    
-    // Try as UUID first (actual school ID)
-    school = await prisma.school.findUnique({
-      where: { id: schoolId },
-      select: { id: true }
-    });
-    
-    // If not found by ID, try as subdomain
-    if (!school) {
-      school = await prisma.school.findUnique({
-        where: { 
-          subdomain: schoolId,
-          isActive: true 
-        },
-        select: { id: true }
-      });
-    }
-
+    const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
@@ -197,26 +160,7 @@ export async function DELETE(
   try {
     const { schoolId, id } = await params;
 
-    // First, try to find the school by ID or subdomain
-    let school;
-    
-    // Try as UUID first (actual school ID)
-    school = await prisma.school.findUnique({
-      where: { id: schoolId },
-      select: { id: true }
-    });
-    
-    // If not found by ID, try as subdomain
-    if (!school) {
-      school = await prisma.school.findUnique({
-        where: { 
-          subdomain: schoolId,
-          isActive: true 
-        },
-        select: { id: true }
-      });
-    }
-
+    const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSchool } from '@/lib/school';
 
 export async function GET(
     request: NextRequest,
@@ -8,12 +9,7 @@ export async function GET(
     try {
         const { schoolId } = await params;
 
-        const actualSchoolId = await prisma.school.findFirst({
-            where: {
-                OR: [{ id: schoolId }, { subdomain: schoolId }]
-            },
-            select: { id: true }
-        });
+        const actualSchoolId = await getSchool(schoolId);
 
         if (!actualSchoolId) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });

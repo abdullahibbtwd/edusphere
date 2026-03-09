@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth-middleware';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { getSchool } from '@/lib/school';
 
 // GET - Fetch students for a school
 export async function GET(
@@ -22,16 +23,7 @@ export async function GET(
 
         const skip = (page - 1) * limit;
 
-        const actualSchoolId = await prisma.school.findFirst({
-            where: {
-                OR: [
-                    { id: schoolId },
-                    { subdomain: schoolId }
-                ]
-            },
-            select: { id: true, name: true }
-        });
-
+        const actualSchoolId = await getSchool(schoolId);
         if (!actualSchoolId) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
@@ -191,12 +183,7 @@ export async function POST(
             return NextResponse.json({ error: 'Class is required' }, { status: 400 });
         }
 
-        const actualSchool = await prisma.school.findFirst({
-            where: {
-                OR: [{ id: schoolId }, { subdomain: schoolId }]
-            }
-        });
-
+        const actualSchool = await getSchool(schoolId);
         if (!actualSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSchool } from '@/lib/school';
 
 const TERM_ORDER = ['FIRST', 'SECOND', 'THIRD'] as const;
 const TERM_LABELS: Record<string, string> = {
@@ -19,12 +20,7 @@ export async function GET(
     try {
         const { schoolId } = await params;
 
-        const school = await prisma.school.findFirst({
-            where: {
-                OR: [{ id: schoolId }, { subdomain: schoolId }]
-            },
-            select: { id: true }
-        });
+        const school = await getSchool(schoolId);
         if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }

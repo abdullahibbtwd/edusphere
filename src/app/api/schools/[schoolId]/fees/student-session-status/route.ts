@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth-middleware';
+import { getSchool } from '@/lib/school';
 
 /**
  * GET - For admin: which terms (and full session) are already PAID for a student in a session.
@@ -26,12 +27,7 @@ export async function GET(
             );
         }
 
-        const actualSchool = await prisma.school.findFirst({
-            where: {
-                OR: [{ id: schoolId }, { subdomain: schoolId }]
-            },
-            select: { id: true }
-        });
+        const actualSchool = await getSchool(schoolId);
         if (!actualSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }

@@ -7,8 +7,8 @@ import Facilities from '@/components/Facilities/Facilities'
 import Footer from '@/components/Footer/Footer'
 import Hero from '@/components/HeroSchool/Hero'
 import Navbar from '@/components/Navbar/Navbar'
-import Subjects from '@/components/Subjects/Subject'
 import React from 'react'
+import { SchoolDataProvider } from '@/context/SchoolDataContext'
 
 interface PageProps {
   params: Promise<{
@@ -20,25 +20,26 @@ const page = async ({ params }: PageProps) => {
   const { school } = await params;
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden">
-      {/* Fixed Navbar at page level */}
-      <div className="fixed top-0 left-0 right-0 z-50">
-        <Navbar subdomain={school} />
-      </div>
+    <SchoolDataProvider subdomain={school}>
+      <div className="min-h-screen w-full overflow-x-hidden">
+        {/* Fixed Navbar at page level */}
+        <div className="fixed top-0 left-0 right-0 z-50">
+          <Navbar subdomain={school} />
+        </div>
 
-      {/* Page content with padding to account for fixed navbar */}
-      <div className="pt-8 md:pt-16">
-        <Hero school={school} />
-        <About school={school} />
-       {/* <Subjects school={school} /> */}
-        <Banner school={school} />
-        <Facilities school={school} />
-        <Campus school={school} />
-        <Contact school={school} />
-        <Footer school={school} />
+        {/* Page content with padding to account for fixed navbar */}
+        <div className="pt-8 md:pt-16">
+          <Hero school={school} />
+          <About school={school} />
+          {/* <Subjects school={school} /> */}
+          <Banner school={school} />
+          <Facilities school={school} />
+          <Campus school={school} />
+          <Contact school={school} />
+          <Footer school={school} />
+        </div>
       </div>
-    </div>
-
+    </SchoolDataProvider>
   )
 }
 

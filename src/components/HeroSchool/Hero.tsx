@@ -1,23 +1,11 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { IoIosArrowRoundForward } from "react-icons/io";
 import pattern from "../assets/pattern.svg";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-
-interface SchoolData {
-  id: string;
-  name: string;
-  subdomain: string;
-  content?: {
-    heroTitle: string;
-    heroSubtitle?: string;
-    heroImage?: string;
-    schoolLogo?: string;
-  };
-  isAdmissionsOpen: boolean;
-}
+import { useSchoolData } from "@/context/SchoolDataContext";
 
 const FadeUp = (delay: number) => {
   return {
@@ -90,35 +78,7 @@ const GridBackground = () => {
 
 const Hero = ({ school }: { school: string }) => {
   const router = useRouter();
-  const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchSchoolData = async () => {
-      try {
-        const response = await fetch(`/api/schools/by-subdomain/${school}`);
-        if (response.ok) {
-          const data = await response.json();
-          setSchoolData(data);
-        } else if (response.status === 404) {
-          // School not found, redirect to main domain
-          console.log('School not found, redirecting to main domain');
-          window.location.href = '/';
-          return;
-        }
-      } catch (error) {
-        console.error('Error fetching school data:', error);
-        // On error, redirect to main domain
-        window.location.href = '/';
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (school) {
-      fetchSchoolData();
-    }
-  }, [school]);
+  const { schoolData, loading } = useSchoolData();
 
   if (loading) {
     return (

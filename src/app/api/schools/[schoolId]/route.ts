@@ -1,23 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-async function getActualSchoolId(identifier: string) {
-    // Try as actual ID first
-    let school = await prisma.school.findUnique({
-        where: { id: identifier },
-        select: { id: true }
-    });
-
-    if (!school) {
-        // Try as subdomain
-        school = await prisma.school.findUnique({
-            where: { subdomain: identifier, isActive: true },
-            select: { id: true }
-        });
-    }
-
-    return school?.id || null;
-}
+import { getSchool } from '@/lib/school';
+import redis from '@/lib/redis';
 
 // PATCH - Partial update of school settings
 export async function PATCH(
@@ -33,16 +17,22 @@ export async function PATCH(
             return NextResponse.json({ error: 'Missing isAdmissionsOpen field' }, { status: 400 });
         }
 
-        const actualId = await getActualSchoolId(identifier);
+        const resolvedSchool = await getSchool(identifier);
 
-        if (!actualId) {
+        if (!resolvedSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
 
         const school = await prisma.school.update({
-            where: { id: actualId },
+            where: { id: resolvedSchool.id },
             data: { isAdmissionsOpen },
         });
+
+        // Bust the Redis cache so getSchool reflects the updated value
+        await Promise.all([
+            redis.del(`school:${resolvedSchool.id}`),
+            redis.del(`school:${resolvedSchool.subdomain}`),
+        ]);
 
         return NextResponse.json({
             message: 'School settings updated successfully',
@@ -65,23 +55,19 @@ export async function GET(
     try {
         const { schoolId: identifier } = await params;
 
-        const actualId = await getActualSchoolId(identifier);
+        const resolvedSchool = await getSchool(identifier);
 
-        if (!actualId) {
+        if (!resolvedSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
 
-        const school = await prisma.school.findUnique({
-            where: { id: actualId },
-            select: {
-                id: true,
-                isAdmissionsOpen: true,
-                name: true,
-                subdomain: true,
-            }
+        // isAdmissionsOpen is now part of the cached shape — no extra DB query needed
+        return NextResponse.json({
+            id: resolvedSchool.id,
+            name: resolvedSchool.name,
+            subdomain: resolvedSchool.subdomain,
+            isAdmissionsOpen: resolvedSchool.isAdmissionsOpen,
         });
-
-        return NextResponse.json(school);
     } catch (error) {
         console.error('Error fetching school settings:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useSchoolData } from "@/context/SchoolDataContext";
 
 interface CampusImage {
   id: string;
@@ -15,31 +16,10 @@ interface CampusImage {
   order: number;
 }
 
-const Campus = ({ school }: { school: string }) => {
-  const [campusImages, setCampusImages] = useState<CampusImage[]>([]);
-  const [loading, setLoading] = useState(true);
+const Campus = ({ school: _school }: { school: string }) => {
+  const { schoolData } = useSchoolData();
+  const campusImages: CampusImage[] = (schoolData?.content?.campusImages || []) as CampusImage[];
   const [activeIndex, setActiveIndex] = useState(0);
-
-  useEffect(() => {
-    const fetchCampusImages = async () => {
-      try {
-        const response = await fetch(`/api/schools/by-subdomain/${school}`);
-        if (response.ok) {
-          const schoolData = await response.json();
-          // Use the campusImages from SchoolContent
-          setCampusImages(schoolData.content?.campusImages || []);
-        }
-      } catch (error) {
-        console.error('Error fetching campus images:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (school) {
-      fetchCampusImages();
-    }
-  }, [school]);
 
   // Convert campus images array to display format - only show images with URLs
   const displayCampusImages = campusImages.length > 0
@@ -57,22 +37,6 @@ const Campus = ({ school }: { school: string }) => {
   // Don't render section if no campus images
   if (displayCampusImages.length === 0) {
     return null;
-  }
-
-  if (loading) {
-    return (
-      <section className="py-16 bg-gradient-to-b from-bg to-surface">
-        <div className="container mx-auto px-4">
-          <div className="animate-pulse text-center">
-            <div className="h-12 bg-muted/20 rounded mb-4 w-64 mx-auto"></div>
-            <div className="h-6 bg-muted/10 rounded mb-12 w-96 mx-auto"></div>
-            <div className="relative h-[600px] flex items-center justify-center">
-              <div className="w-[350px] h-[500px] bg-muted/20 rounded-3xl"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-    );
   }
 
   const handleNext = () => {

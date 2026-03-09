@@ -1,28 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { generateTimetableForClass, convertScheduleToJson } from '@/lib/timetable/generator';
-
-/**
- * Resolve school ID from subdomain or UUID
- */
-async function resolveSchoolId(schoolIdentifier: string): Promise<string | null> {
-    let school = await prisma.school.findUnique({
-        where: { id: schoolIdentifier },
-        select: { id: true }
-    });
-
-    if (!school) {
-        school = await prisma.school.findUnique({
-            where: {
-                subdomain: schoolIdentifier,
-                isActive: true
-            },
-            select: { id: true }
-        });
-    }
-
-    return school?.id || null;
-}
+import { getSchool } from '@/lib/school';
 
 /**
  * GET - Fetch existing timetable for a class and term
@@ -44,10 +23,11 @@ export async function GET(
             );
         }
 
-        const schoolId = await resolveSchoolId(schoolIdentifier);
-        if (!schoolId) {
+        const resolvedSchool = await getSchool(schoolIdentifier);
+        if (!resolvedSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
+        const schoolId = resolvedSchool.id;
 
         const timetable = await prisma.timetable.findFirst({
             where: {
@@ -86,10 +66,11 @@ export async function POST(
             );
         }
 
-        const schoolId = await resolveSchoolId(schoolIdentifier);
-        if (!schoolId) {
+        const resolvedSchool2 = await getSchool(schoolIdentifier);
+        if (!resolvedSchool2) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
+        const schoolId = resolvedSchool2.id;
 
         // Generate the timetable
         const schedule = await generateTimetableForClass(schoolId, classId, term);

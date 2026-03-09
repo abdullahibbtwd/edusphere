@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSchool } from '@/lib/school';
 
 // GET - Get available subjects, classes, and levels for teacher assignment
 export async function GET(
@@ -9,33 +10,14 @@ export async function GET(
   try {
     const { schoolId } = await params;
 
-    let school;
-    // Try as UUID first (actual school ID)
-    school = await prisma.school.findUnique({
-      where: { id: schoolId },
-      select: { id: true }
-    });
-
-    // If not found by ID, try as subdomain
-    if (!school) {
-      school = await prisma.school.findUnique({
-        where: {
-          subdomain: schoolId,
-          isActive: true
-        },
-        select: { id: true }
-      });
-    }
-
+    const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    const actualSchoolId = school.id;
-
     // Get all subjects
     const subjects = await prisma.subject.findMany({
-      where: { schoolId: actualSchoolId },
+      where: { schoolId: school.id },
       select: {
         id: true,
         name: true,
@@ -53,7 +35,7 @@ export async function GET(
 
     // Get all classes with their levels
     const classes = await prisma.class.findMany({
-      where: { schoolId: actualSchoolId },
+      where: { schoolId: school.id },
       include: {
         level: {
           select: {
@@ -70,7 +52,7 @@ export async function GET(
 
     // Get all levels
     const levels = await prisma.level.findMany({
-      where: { schoolId: actualSchoolId },
+      where: { schoolId: school.id },
       select: {
         id: true,
         name: true

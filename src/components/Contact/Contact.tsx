@@ -1,49 +1,18 @@
 "use client"
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { FaLocationDot } from "react-icons/fa6";
 import { FaPhone } from "react-icons/fa6";
 import { MdOutlineEmail } from "react-icons/md";
 import { motion } from "framer-motion";
+import { useSchoolData } from "@/context/SchoolDataContext";
 
-interface ContactData {
-  contactAddress: string;
-  contactPhone: string;
-  contactEmail: string;
-}
-
-const Contact = ({ school }: { school: string }) => {
-  const [contactData, setContactData] = useState<ContactData>({
-    contactAddress: "",
-    contactPhone: "",
-    contactEmail: ""
-  });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchContactData = async () => {
-      try {
-        const response = await fetch(`/api/schools/by-subdomain/${school}`);
-        if (response.ok) {
-          const schoolData = await response.json();
-          if (schoolData.content) {
-            setContactData({
-              contactAddress: schoolData.content.contactAddress,
-              contactPhone: schoolData.content.contactPhone,
-              contactEmail: schoolData.content.contactEmail,
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching contact data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (school) {
-      fetchContactData();
-    }
-  }, [school]);
+const Contact = ({ school: _school }: { school: string }) => {
+  const { schoolData } = useSchoolData();
+  const contactData = {
+    contactAddress: schoolData?.content?.contactAddress ?? "",
+    contactPhone: schoolData?.content?.contactPhone ?? "",
+    contactEmail: schoolData?.content?.contactEmail ?? "",
+  };
   return (
     <section className="bg-bg py-10">
       <h1 className="text-3xl text-center pt-3 md:text-4xl font-bold !leading-snug">
@@ -66,7 +35,7 @@ const Contact = ({ school }: { school: string }) => {
                 "
             >
               <FaLocationDot />
-              <p>{loading ? "Loading..." : contactData.contactAddress}</p>
+              <p>{contactData.contactAddress}</p>
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 50 }}
@@ -78,7 +47,7 @@ const Contact = ({ school }: { school: string }) => {
                 "
             >
               <FaPhone />
-              <p>{loading ? "Loading..." : contactData.contactPhone}</p>
+              <p>{contactData.contactPhone}</p>
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 50 }}
@@ -90,7 +59,7 @@ const Contact = ({ school }: { school: string }) => {
                 "
             >
               <MdOutlineEmail />
-              <p>{loading ? "Loading..." : contactData.contactEmail}</p>
+              <p>{contactData.contactEmail}</p>
             </motion.div>
           </div>
         </div>

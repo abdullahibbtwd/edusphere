@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserSession } from '@/lib/client-auth';
 import { cookies } from 'next/headers';
+import { getSchool } from '@/lib/school';
 
 export async function GET(
     request: NextRequest,
@@ -26,17 +27,7 @@ export async function GET(
             return NextResponse.json({ error: 'User ID not found' }, { status: 401 });
         }
 
-        // Find school
-        let school = await prisma.school.findUnique({
-            where: { id: schoolId }
-        });
-
-        if (!school) {
-            school = await prisma.school.findUnique({
-                where: { subdomain: schoolId }
-            });
-        }
-
+        const school = await getSchool(schoolId);
         if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }

@@ -1,27 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-
-/**
- * Resolve school ID from subdomain or UUID
- */
-async function resolveSchoolId(schoolIdentifier: string): Promise<string | null> {
-    let school = await prisma.school.findUnique({
-        where: { id: schoolIdentifier },
-        select: { id: true }
-    });
-
-    if (!school) {
-        school = await prisma.school.findUnique({
-            where: {
-                subdomain: schoolIdentifier,
-                isActive: true
-            },
-            select: { id: true }
-        });
-    }
-
-    return school?.id || null;
-}
+import { getSchool } from '@/lib/school';
 
 /**
  * GET - Fetch all timetables for a school
@@ -35,7 +14,8 @@ export async function GET(
         const { schoolId: schoolIdentifier } = await params;
 
         // Resolve school ID (handle both subdomain and UUID)
-        const schoolId = await resolveSchoolId(schoolIdentifier);
+        const resolvedSchool = await getSchool(schoolIdentifier);
+        const schoolId = resolvedSchool?.id;
 
         if (!schoolId) {
             return NextResponse.json(

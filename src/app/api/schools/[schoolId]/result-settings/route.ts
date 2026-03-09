@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireRole, requireAuth } from '@/lib/auth-middleware';
-
-async function resolveSchool(schoolId: string) {
-    return prisma.school.findFirst({
-        where: { OR: [{ id: schoolId }, { subdomain: schoolId }] },
-    });
-}
+import { getSchool } from '@/lib/school';
 
 // GET result settings for a school
 export async function GET(
@@ -18,7 +13,7 @@ export async function GET(
         const user = requireAuth(request);
         if (user instanceof NextResponse) return user;
 
-        const school = await resolveSchool(schoolId);
+        const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
 
         const settings = await prisma.resultSettings.findUnique({
@@ -51,7 +46,7 @@ export async function PUT(
         const user = requireRole(request, ['ADMIN']);
         if (user instanceof NextResponse) return user;
 
-        const school = await resolveSchool(schoolId);
+        const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
 
         const body = await request.json();

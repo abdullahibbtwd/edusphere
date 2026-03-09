@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth-middleware';
+import { getSchool } from '@/lib/school';
 
 // GET all fee structures for a school
 export async function GET(
@@ -16,16 +17,7 @@ export async function GET(
         const sessionId = searchParams.get('sessionId');
         const classId = searchParams.get('classId');
 
-        // Resolve School
-        const actualSchool = await prisma.school.findFirst({
-            where: {
-                OR: [
-                    { id: schoolId },
-                    { subdomain: schoolId }
-                ]
-            }
-        });
-
+        const actualSchool = await getSchool(schoolId);
         if (!actualSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
@@ -84,16 +76,7 @@ export async function POST(
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        // Resolve School
-        const actualSchool = await prisma.school.findFirst({
-            where: {
-                OR: [
-                    { id: schoolId },
-                    { subdomain: schoolId }
-                ]
-            }
-        });
-
+        const actualSchool = await getSchool(schoolId);
         if (!actualSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }

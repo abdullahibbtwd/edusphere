@@ -1,8 +1,9 @@
 "use client"
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useSchoolData } from "@/context/SchoolDataContext";
 
 interface Facility {
   id?: string;
@@ -13,31 +14,11 @@ interface Facility {
   order?: number;
 }
 
-const Facilities = ({ school }: { school: string }) => {
-  const [facilities, setFacilities] = useState<Facility[]>([]);
-  const [loading, setLoading] = useState(true);
+const Facilities = ({ school: _school }: { school: string }) => {
+  const { schoolData, loading } = useSchoolData();
+  const facilities: Facility[] = schoolData?.content?.facilities || [];
   const [activeIndex, setActiveIndex] = useState(0);
   const [dragStartX, setDragStartX] = useState(0);
-
-  useEffect(() => {
-    const fetchFacilities = async () => {
-      try {
-        const response = await fetch(`/api/schools/by-subdomain/${school}`);
-        if (response.ok) {
-          const schoolData = await response.json();
-          setFacilities(schoolData.content?.facilities || []);
-        }
-      } catch (error) {
-        console.error('Error fetching facilities:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (school) {
-      fetchFacilities();
-    }
-  }, [school]);
 
   if (loading) {
     return (

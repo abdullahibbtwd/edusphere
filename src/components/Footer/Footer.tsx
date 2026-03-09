@@ -1,69 +1,18 @@
 "use client"
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { FaInstagram, FaWhatsapp, FaYoutube } from "react-icons/fa6";
 import { TbWorldWww } from "react-icons/tb";
 import { motion } from "framer-motion";
-interface SchoolData {
-  id: string;
-  name: string;
-  subdomain: string;
-  content?: {
-    heroTitle: string;
-    heroSubtitle?: string;
-    heroImage?: string;
-    schoolLogo?: string;
-  };
-}
+import { useSchoolData } from "@/context/SchoolDataContext";
+
 interface FooterProps {
   school: string;
 }
 
-const Footer = ({ school }: FooterProps) => {
-  const [description, setDescription] = useState("");
-  const [classes, setClasses] = useState<string[]>([]);
-  const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const fetchContent = async () => {
-      try {
-        const response = await fetch(`/api/schools/by-subdomain/${school}`);
-        if (response.ok) {
-          const data = await response.json();
-          setDescription(data.content?.description || "");
-          setClasses(data.content?.classes || []);
-        }
-      } catch (error) {
-        console.error("Error fetching school content:", error);
-      }
-    };
-    if (school) fetchContent();
-  }, [school]);
-  useEffect(() => {
-    const fetchSchoolData = async () => {
-      try {
-        const response = await fetch(`/api/schools/by-subdomain/${school}`);
-        if (response.ok) {
-          const data = await response.json();
-          setSchoolData(data);
-        } else if (response.status === 404) {
-          // School not found, redirect to main domain
-          console.log('School not found, redirecting to main domain');
-          window.location.href = '/';
-          return;
-        }
-      } catch (error) {
-        console.error('Error fetching school data:', error);
-        // On error, redirect to main domain
-        window.location.href = '/';
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (school) {
-      fetchSchoolData();
-    }
-  }, [school]);
+const Footer = ({ school: _school }: FooterProps) => {
+  const { schoolData } = useSchoolData();
+  const description = schoolData?.content?.description || "";
+  const classes: string[] = schoolData?.content?.classes || [];
 
 
   return (

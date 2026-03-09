@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-
-async function resolveSchoolId(identifier: string): Promise<string | null> {
-    let school = await prisma.school.findUnique({ where: { id: identifier }, select: { id: true } });
-    if (!school) {
-        school = await prisma.school.findUnique({ where: { subdomain: identifier, isActive: true }, select: { id: true } });
-    }
-    return school?.id || null;
-}
+import { getSchool } from '@/lib/school';
 
 export async function GET(
     req: NextRequest,
@@ -15,8 +8,9 @@ export async function GET(
 ) {
     try {
         const { schoolId: identifier } = await params;
-        const schoolId = await resolveSchoolId(identifier);
-        if (!schoolId) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        const resolvedSchool = await getSchool(identifier);
+        if (!resolvedSchool) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        const schoolId = resolvedSchool.id;
 
         const { searchParams } = new URL(req.url);
         const classId = searchParams.get('classId');
@@ -53,8 +47,9 @@ export async function DELETE(
 ) {
     try {
         const { schoolId: identifier } = await params;
-        const schoolId = await resolveSchoolId(identifier);
-        if (!schoolId) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        const resolvedSchool = await getSchool(identifier);
+        if (!resolvedSchool) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        const schoolId = resolvedSchool.id;
 
         const { searchParams } = new URL(req.url);
         const term = searchParams.get('term');

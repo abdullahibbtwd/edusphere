@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSchool } from '@/lib/school';
 
 export async function POST(
   request: NextRequest,
@@ -19,23 +20,7 @@ export async function POST(
     const url = new URL(request.url);
     const baseUrl = `${url.protocol}//${url.host}`;
 
-    // Find school
-    let school;
-    school = await prisma.school.findUnique({
-      where: { id: schoolId },
-      select: { id: true, name: true, subdomain: true }
-    });
-
-    if (!school) {
-      school = await prisma.school.findUnique({
-        where: { 
-          subdomain: schoolId,
-          isActive: true 
-        },
-        select: { id: true, name: true, subdomain: true }
-      });
-    }
-
+    const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ 
         error: 'School not found' 

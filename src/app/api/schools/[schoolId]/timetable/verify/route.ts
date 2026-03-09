@@ -1,29 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAllTimetables } from '@/lib/timetable/verify-conflicts';
-
-/**
- * Resolve school ID from subdomain or UUID
- */
-async function resolveSchoolId(schoolIdentifier: string): Promise<string | null> {
-    const { prisma } = await import('@/lib/db');
-
-    let school = await prisma.school.findUnique({
-        where: { id: schoolIdentifier },
-        select: { id: true }
-    });
-
-    if (!school) {
-        school = await prisma.school.findUnique({
-            where: {
-                subdomain: schoolIdentifier,
-                isActive: true
-            },
-            select: { id: true }
-        });
-    }
-
-    return school?.id || null;
-}
+import { getSchool } from '@/lib/school';
 
 /**
  * GET - Verify all timetables for conflicts
@@ -44,7 +21,8 @@ export async function GET(
             );
         }
 
-        const schoolId = await resolveSchoolId(schoolIdentifier);
+        const resolvedSchool = await getSchool(schoolIdentifier);
+        const schoolId = resolvedSchool?.id;
         if (!schoolId) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }

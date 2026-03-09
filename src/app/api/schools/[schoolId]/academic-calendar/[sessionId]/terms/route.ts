@@ -1,27 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { Term } from '@prisma/client';
-
-async function resolveSchoolId(schoolIdentifier: string): Promise<string | null> {
-    // Try as UUID first
-    let school = await prisma.school.findUnique({
-        where: { id: schoolIdentifier },
-        select: { id: true }
-    });
-
-    // If not found by ID, try as subdomain
-    if (!school) {
-        school = await prisma.school.findUnique({
-            where: {
-                subdomain: schoolIdentifier,
-                isActive: true
-            },
-            select: { id: true }
-        });
-    }
-
-    return school?.id || null;
-}
+import { getSchool } from '@/lib/school';
 
 // GET - Fetch terms for a specific session
 export async function GET(
@@ -30,15 +10,14 @@ export async function GET(
 ) {
     try {
         const { schoolId, sessionId } = await params;
-        const actualSchoolId = await resolveSchoolId(schoolId);
-
-        if (!actualSchoolId) {
+        const school = await getSchool(schoolId);
+        if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
 
         const terms = await prisma.academicTerm.findMany({
             where: {
-                schoolId: actualSchoolId,
+                schoolId: school.id,
                 sessionId: sessionId
             },
             include: {
@@ -67,9 +46,8 @@ export async function POST(
 ) {
     try {
         const { schoolId, sessionId } = await params;
-        const actualSchoolId = await resolveSchoolId(schoolId);
-
-        if (!actualSchoolId) {
+        const school = await getSchool(schoolId);
+        if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
 
@@ -86,7 +64,7 @@ export async function POST(
             where: { id: sessionId }
         });
 
-        if (!session || session.schoolId !== actualSchoolId) {
+        if (!session || session.schoolId !== school.id) {
             return NextResponse.json({ error: 'Invalid session' }, { status: 400 });
         }
 
@@ -99,7 +77,7 @@ export async function POST(
             if (isActive) {
                 // Deactivate all other terms in this session (and maybe school?)
                 await tx.academicTerm.updateMany({
-                    where: { schoolId: actualSchoolId },
+                    where: { schoolId: school.id },
                     data: { isActive: false }
                 });
             }
@@ -111,7 +89,7 @@ export async function POST(
                     endDate: new Date(endDate),
                     isActive: isActive || false,
                     sessionId,
-                    schoolId: actualSchoolId
+                    schoolId: school.id
                 }
             });
         });

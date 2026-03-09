@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth-middleware';
-
-async function resolveSchoolId(identifier: string): Promise<string | null> {
-    const school = await prisma.school.findFirst({
-        where: { OR: [{ id: identifier }, { subdomain: identifier, isActive: true }] },
-        select: { id: true },
-    });
-    return school?.id || null;
-}
+import { getSchool } from '@/lib/school';
 
 /**
  * GET - All teachers who teach the current student's class.
@@ -25,13 +18,13 @@ export async function GET(
         const sessionUser = requireRole(request, ['STUDENT']);
         if (sessionUser instanceof NextResponse) return sessionUser;
 
-        const actualSchoolId = await resolveSchoolId(identifier);
-        if (!actualSchoolId) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        const school = await getSchool(identifier);
+        if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
 
         const userId = (sessionUser as { userId: string }).userId;
 
         const student = await prisma.student.findFirst({
-            where: { userId, schoolId: actualSchoolId },
+            where: { userId, schoolId: school.id },
             include: {
                 class: { include: { level: { select: { name: true } } } },
             },
@@ -41,7 +34,7 @@ export async function GET(
 
         // Get all TeacherSubjectClass records for this student's class
         const assignments = await prisma.teacherSubjectClass.findMany({
-            where: { classId: student.classId, schoolId: actualSchoolId, isActive: true },
+            where: { classId: student.classId, schoolId: school.id, isActive: true },
             include: {
                 teacher: {
                     select: {

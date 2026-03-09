@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { hasConflict, type ScheduleEntry } from '@/lib/timetable/conflict-checker';
 import { convertScheduleToJson } from '@/lib/timetable/generator';
+import { getSchool } from '@/lib/school';
 
 type TimeSlot = {
     day: string;
@@ -349,28 +350,6 @@ function solveGlobal(
 }
 
 /**
- * Resolve school ID from subdomain or UUID
- */
-async function resolveSchoolId(schoolIdentifier: string): Promise<string | null> {
-    let school = await prisma.school.findUnique({
-        where: { id: schoolIdentifier },
-        select: { id: true }
-    });
-
-    if (!school) {
-        school = await prisma.school.findUnique({
-            where: {
-                subdomain: schoolIdentifier,
-                isActive: true
-            },
-            select: { id: true }
-        });
-    }
-
-    return school?.id || null;
-}
-
-/**
  * Generate timetables for ALL classes using global task-based scheduler
  */
 export async function POST(
@@ -398,10 +377,11 @@ export async function POST(
             return NextResponse.json({ error: 'Missing term' }, { status: 400 });
         }
 
-        const schoolId = await resolveSchoolId(schoolIdentifier);
-        if (!schoolId) {
+        const resolvedSchool = await getSchool(schoolIdentifier);
+        if (!resolvedSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
+        const schoolId = resolvedSchool.id;
 
         // Fetch config
         const config = await prisma.timetableConfig.findUnique({ where: { schoolId } });

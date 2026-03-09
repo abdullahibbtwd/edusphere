@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSchool } from '@/lib/school';
 
 export async function GET(
     request: NextRequest,
@@ -8,21 +9,7 @@ export async function GET(
     try {
         const { schoolId } = await params;
 
-        let school;
-        // Try as UUID first (actual school ID)
-        school = await prisma.school.findUnique({
-            where: { id: schoolId },
-            select: { id: true }
-        });
-
-        // If not found by ID, try as subdomain
-        if (!school) {
-            school = await prisma.school.findUnique({
-                where: { subdomain: schoolId, isActive: true },
-                select: { id: true }
-            });
-        }
-
+        const school = await getSchool(schoolId);
         if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }

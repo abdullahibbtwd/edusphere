@@ -1,10 +1,11 @@
 "use client"
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { GrUserExpert } from "react-icons/gr";
 import { MdOutlineAccessTime } from "react-icons/md";
 import { FaBookReader } from "react-icons/fa";
 import { motion } from "framer-motion";
 import Image from 'next/image';
+import { useSchoolData } from "@/context/SchoolDataContext";
 
 interface BannerData {
   bannerTitle: string;
@@ -34,63 +35,35 @@ const FadeUp = (delay: number) => {
     },
   };
 };
-const Banner = ({ school }: { school: string }) => {
-  const [bannerData, setBannerData] = useState<BannerData | null>(null);
-  const [loading, setLoading] = useState(true);
+const Banner = ({ school: _school }: { school: string }) => {
+  const { schoolData } = useSchoolData();
+  const content = schoolData?.content;
+  const hasBanner = content && (content.bannerTitle || content.bannerImage || (content.bannerStats && content.bannerStats.length > 0));
 
-  useEffect(() => {
-    const fetchBannerData = async () => {
-      try {
-        const response = await fetch(`/api/schools/by-subdomain/${school}`);
-        if (response.ok) {
-          const schoolData = await response.json();
-          const content = schoolData.content;
-          const hasBanner = content && (content.bannerTitle || content.bannerImage || (content.bannerStats && content.bannerStats.length > 0));
-          if (!hasBanner) {
-            setLoading(false);
-            return;
-          }
-          // Live counts from same API as SchoolManagement (subjects + students arrays)
-          const studentCount = schoolData.students?.length ?? 0;
-          const subjectCount = schoolData.subjects?.length ?? 0;
-          // Use saved bannerStats for structure; inject live student/subject counts to match SchoolManagement
-          const savedStats = content.bannerStats ?? [];
-          const statsWithLiveCounts = savedStats.map((stat: { icon: string; text: string }) => {
-            const t = stat.text || "";
-            if (stat.icon === "GrUserExpert" || t.toLowerCase().includes("students")) {
-              return { icon: stat.icon, text: `${studentCount}+ Students` };
-            }
-            if (stat.icon === "FaBookReader" || t.toLowerCase().includes("subjects")) {
-              return { icon: stat.icon, text: `${subjectCount}+ Subjects` };
-            }
-            return { icon: stat.icon, text: t || "Good Facilities" };
-          });
-          // If no saved stats, build default like SchoolManagement
-          const bannerStats =
-            statsWithLiveCounts.length >= 3
-              ? statsWithLiveCounts
-              : [
-                  { icon: "GrUserExpert", text: `${studentCount}+ Students` },
-                  { icon: "FaBookReader", text: `${subjectCount}+ Subjects` },
-                  { icon: "MdOutlineAccessTime", text: "Good Facilities" },
-                ];
-          setBannerData({
-            bannerTitle: content.bannerTitle ?? "",
-            bannerImage: content.bannerImage ?? undefined,
-            bannerStats,
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching banner data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (school) {
-      fetchBannerData();
+  const studentCount = schoolData?.students?.length ?? 0;
+  const subjectCount = schoolData?.subjects?.length ?? 0;
+  const savedStats = content?.bannerStats ?? [];
+  const statsWithLiveCounts = savedStats.map((stat: { icon: string; text: string }) => {
+    const t = stat.text || "";
+    if (stat.icon === "GrUserExpert" || t.toLowerCase().includes("students")) {
+      return { icon: stat.icon, text: `${studentCount}+ Students` };
     }
-  }, [school]);
+    if (stat.icon === "FaBookReader" || t.toLowerCase().includes("subjects")) {
+      return { icon: stat.icon, text: `${subjectCount}+ Subjects` };
+    }
+    return { icon: stat.icon, text: t || "Good Facilities" };
+  });
+  const bannerStats =
+    statsWithLiveCounts.length >= 3
+      ? statsWithLiveCounts
+      : [
+          { icon: "GrUserExpert", text: `${studentCount}+ Students` },
+          { icon: "FaBookReader", text: `${subjectCount}+ Subjects` },
+          { icon: "MdOutlineAccessTime", text: "Good Facilities" },
+        ];
+  const bannerData: BannerData | null = hasBanner
+    ? { bannerTitle: content!.bannerTitle ?? "", bannerImage: content!.bannerImage ?? undefined, bannerStats }
+    : null;
 
   const getIconComponent = (iconName: string) => {
     switch (iconName) {
@@ -136,7 +109,7 @@ const Banner = ({ school }: { school: string }) => {
           <div className="flex flex-col justify-center p-8">
             <div className="text-center md:text-left space-y-12 ">
               <h1 className="text-3xl md:text-4xl font-bold !leading-snug">
-                {loading ? "Loading..." : bannerData.bannerTitle}
+                {bannerData.bannerTitle}
               </h1>
               <div className="flex flex-col gap-6">
                 {bannerData.bannerStats?.map((stat, index) => (

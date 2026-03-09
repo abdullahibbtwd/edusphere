@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useUser } from "@/context/UserContext";
 import { FiLoader, FiMessageCircle } from "react-icons/fi";
@@ -21,11 +21,18 @@ const Announcement = () => {
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Keep role in a ref so the fetch callback doesn't need it as a dependency.
+  // Without this, role changing null→"student" on mount triggers a second
+  // identical fetch even though the resulting URL is the same.
+  const roleRef = useRef(role);
+  useEffect(() => { roleRef.current = role; }, [role]);
+
   const fetchAnnouncements = useCallback(async () => {
     if (!schoolId) return;
     try {
       setLoading(true);
-      const viewerRole = role === "admin" ? "" : (role || "student");
+      const currentRole = roleRef.current;
+      const viewerRole = currentRole === "admin" ? "" : (currentRole || "student");
       const url = viewerRole
         ? `/api/schools/${schoolId}/announcements?viewerRole=${viewerRole}`
         : `/api/schools/${schoolId}/announcements`;
@@ -39,7 +46,7 @@ const Announcement = () => {
     } finally {
       setLoading(false);
     }
-  }, [schoolId, role]);
+  }, [schoolId]); // role is accessed via ref — no re-fetch on role transitions
 
   useEffect(() => {
     fetchAnnouncements();

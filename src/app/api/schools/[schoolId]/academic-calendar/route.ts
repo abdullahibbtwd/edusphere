@@ -1,26 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-
-async function resolveSchoolId(schoolIdentifier: string): Promise<string | null> {
-    // Try as UUID first
-    let school = await prisma.school.findUnique({
-        where: { id: schoolIdentifier },
-        select: { id: true }
-    });
-
-    // If not found by ID, try as subdomain
-    if (!school) {
-        school = await prisma.school.findUnique({
-            where: {
-                subdomain: schoolIdentifier,
-                isActive: true
-            },
-            select: { id: true }
-        });
-    }
-
-    return school?.id || null;
-}
+import { getSchool } from '@/lib/school';
 
 // GET - Fetch all sessions, ensuring one is active
 export async function GET(
@@ -29,14 +9,13 @@ export async function GET(
 ) {
     try {
         const { schoolId } = await params;
-        const actualSchoolId = await resolveSchoolId(schoolId);
-
-        if (!actualSchoolId) {
+        const school = await getSchool(schoolId);
+        if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
 
         const sessions = await prisma.academicSession.findMany({
-            where: { schoolId: actualSchoolId },
+            where: { schoolId: school.id },
             include: {
                 terms: {
                     orderBy: { startDate: 'asc' },
@@ -66,9 +45,8 @@ export async function POST(
 ) {
     try {
         const { schoolId } = await params;
-        const actualSchoolId = await resolveSchoolId(schoolId);
-
-        if (!actualSchoolId) {
+        const school = await getSchool(schoolId);
+        if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
 
@@ -85,7 +63,7 @@ export async function POST(
             if (isActive) {
                 // Deactivate all other sessions
                 await tx.academicSession.updateMany({
-                    where: { schoolId: actualSchoolId },
+                    where: { schoolId: school.id },
                     data: { isActive: false }
                 });
             }
@@ -96,7 +74,7 @@ export async function POST(
                     startDate: new Date(startDate),
                     endDate: new Date(endDate),
                     isActive: isActive || false,
-                    schoolId: actualSchoolId
+                    schoolId: school.id
                 }
             });
         });

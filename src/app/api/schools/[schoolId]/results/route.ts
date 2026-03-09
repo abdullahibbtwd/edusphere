@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth-middleware';
-
-async function resolveSchool(schoolId: string) {
-    return prisma.school.findFirst({
-        where: { OR: [{ id: schoolId }, { subdomain: schoolId }] },
-    });
-}
+import { getSchool } from '@/lib/school';
 
 /**
  * GET results — role-based filtering:
@@ -27,7 +22,7 @@ export async function GET(
             return NextResponse.json({ error: 'Use /results/my for your results' }, { status: 403 });
         }
 
-        const school = await resolveSchool(schoolId);
+        const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
 
         const { searchParams } = new URL(request.url);
@@ -143,7 +138,7 @@ export async function POST(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        const school = await resolveSchool(schoolId);
+        const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
 
         const body = await request.json();

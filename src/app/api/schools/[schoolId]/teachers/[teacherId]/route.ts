@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSchool } from '@/lib/school';
 
 // GET - Get single teacher with assignments
 export async function GET(
@@ -9,34 +10,15 @@ export async function GET(
   try {
     const { schoolId, teacherId } = await params;
 
-    let school;
-    // Try as UUID first (actual school ID)
-    school = await prisma.school.findUnique({
-      where: { id: schoolId },
-      select: { id: true }
-    });
-
-    // If not found by ID, try as subdomain
-    if (!school) {
-      school = await prisma.school.findUnique({
-        where: {
-          subdomain: schoolId,
-          isActive: true
-        },
-        select: { id: true }
-      });
-    }
-
+    const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    const actualSchoolId = school.id;
-
     const teacher = await prisma.teacher.findUnique({
       where: { 
         id: teacherId,
-        schoolId: actualSchoolId 
+        schoolId: school.id 
       },
       include: {
         user: {
@@ -142,21 +124,7 @@ export async function PUT(
       }, { status: 400 });
     }
 
-    // Find school
-    let school;
-    school = await prisma.school.findUnique({
-      where: { id: schoolId }
-    });
-
-    if (!school) {
-      school = await prisma.school.findUnique({
-        where: {
-          subdomain: schoolId,
-          isActive: true
-        }
-      });
-    }
-
+    const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
@@ -312,21 +280,7 @@ export async function DELETE(
   try {
     const { schoolId, teacherId } = await params;
 
-    // Find school
-    let school;
-    school = await prisma.school.findUnique({
-      where: { id: schoolId }
-    });
-
-    if (!school) {
-      school = await prisma.school.findUnique({
-        where: {
-          subdomain: schoolId,
-          isActive: true
-        }
-      });
-    }
-
+    const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSchool } from '@/lib/school';
 
 /**
  * GET /api/schools/:schoolId/teachers/:teacherId/my-classes
@@ -26,31 +27,18 @@ export async function GET(
         console.log(`[API] Fetching my-classes for ${teacherId} (byUserId: ${byUserId}) in school ${schoolId}`);
 
         // ── Resolve school ──────────────────────────────────────────────────────
-        let school = await prisma.school.findUnique({
-            where: { id: schoolId },
-            select: { id: true },
-        });
-
-        if (!school) {
-            school = await prisma.school.findUnique({
-                where: { subdomain: schoolId, isActive: true },
-                select: { id: true },
-            });
-        }
-
+        const school = await getSchool(schoolId);
         if (!school) {
             console.warn(`[API] School not found: ${schoolId}`);
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
-
-        const actualSchoolId = school.id;
-        console.log(`[API] Resolved actualSchoolId: ${actualSchoolId}`);
+        console.log(`[API] Resolved school.id: ${school.id}`);
 
         // ── Resolve teacher ─────────────────────────────────────────────────────
         const teacher = await prisma.teacher.findFirst({
             where: byUserId
-                ? { userId: teacherId, schoolId: actualSchoolId }
-                : { id: teacherId, schoolId: actualSchoolId },
+                ? { userId: teacherId, schoolId: school.id }
+                : { id: teacherId, schoolId: school.id },
             select: {
                 id: true,
                 name: true,
@@ -61,7 +49,7 @@ export async function GET(
         });
 
         if (!teacher) {
-            console.warn(`[API] Teacher not found for userId/teacherId: ${teacherId} in school ${actualSchoolId}`);
+            console.warn(`[API] Teacher not found for userId/teacherId: ${teacherId} in school ${school.id}`);
             return NextResponse.json({ error: 'Teacher not found' }, { status: 404 });
         }
 
@@ -70,7 +58,7 @@ export async function GET(
         // ── Taught classes ──────────────────────────────────────────────────────
         // Fetch all TeacherSubjectClass rows for this teacher, group by class
         const tscRows = await prisma.teacherSubjectClass.findMany({
-            where: { teacherId: teacher.id, schoolId: actualSchoolId },
+            where: { teacherId: teacher.id, schoolId: school.id },
             include: {
                 subject: { select: { id: true, name: true, code: true } },
                 class: {
@@ -154,7 +142,7 @@ export async function GET(
         const taughtClassIds = new Set(taughtClasses.map((c) => c.id));
 
         const supervisedRaw = await prisma.class.findMany({
-            where: { supervisorId: teacher.id, schoolId: actualSchoolId },
+            where: { supervisorId: teacher.id, schoolId: school.id },
             include: {
                 level: { select: { id: true, name: true } },
                 supervisor: { select: { id: true, name: true } },

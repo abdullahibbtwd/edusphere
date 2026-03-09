@@ -13,6 +13,7 @@ interface NavbarProps {
 
 import { logout } from "@/lib/client-auth";
 import { useUser } from "@/context/UserContext";
+import { useSchoolData } from "@/context/SchoolDataContext";
 
 const Navbar = ({ schoolName = "School Name", subdomain }: NavbarProps) => {
 
@@ -20,34 +21,15 @@ const Navbar = ({ schoolName = "School Name", subdomain }: NavbarProps) => {
   const { user, role, refreshUser } = useUser();
 
   const [sessionSubdomain, setSessionSubdomain] = useState<string>('');
-  const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
-  const [dynamicSchoolName, setDynamicSchoolName] = useState<string>("");
+  const { schoolData } = useSchoolData();
+  const schoolLogo = schoolData?.content?.schoolLogo || null;
+  const dynamicSchoolName = schoolData?.name || "";
 
   useEffect(() => {
     if (user?.schoolSubdomain) {
       setSessionSubdomain(user.schoolSubdomain);
     }
   }, [user]);
-
-  // Fetch school data
-  useEffect(() => {
-    const fetchSchoolData = async () => {
-      if (subdomain) {
-        try {
-          const response = await fetch(`/api/schools/by-subdomain/${subdomain}`);
-          if (response.ok) {
-            const data = await response.json();
-            setSchoolLogo(data.content?.schoolLogo || null);
-            setDynamicSchoolName(data.name || "");
-          }
-        } catch (error) {
-          console.error('Error fetching school data:', error);
-        }
-      }
-    };
-
-    fetchSchoolData();
-  }, [subdomain]);
 
   const handleLogout = async () => {
     const ok = await logout();

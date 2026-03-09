@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
+import { useSchoolData } from "@/context/SchoolDataContext";
 
 interface SchoolContent {
   softSkills?: string[];
@@ -39,29 +40,9 @@ const stagger = (staggerChildren = 0.06, delayChildren = 0) => ({
   },
 });
 
-const Subjects = ({ school }: { school: string }) => {
-  const [schoolContent, setSchoolContent] = useState<SchoolContent | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchSchoolContent = async () => {
-      try {
-        const response = await fetch(`/api/schools/by-subdomain/${school}`);
-        if (response.ok) {
-          const schoolData = await response.json();
-          setSchoolContent(schoolData.content || null);
-        }
-      } catch (error) {
-        console.error('Error fetching school content:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (school) {
-      fetchSchoolContent();
-    }
-  }, [school]);
+const Subjects = ({ school: _school }: { school: string }) => {
+  const { schoolData, loading } = useSchoolData();
+  const schoolContent: SchoolContent | null = schoolData?.content ?? null;
 
   // Get levels based on levelSelection
   const getLevels = () => {

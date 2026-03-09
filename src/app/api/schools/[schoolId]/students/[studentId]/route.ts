@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth-middleware';
+import { getSchool } from '@/lib/school';
 
 // PATCH - Update student details (Registration status, etc.)
 export async function PATCH(
@@ -17,19 +18,7 @@ export async function PATCH(
         const body = await request.json();
         const { isRegistered, registrationNumber, classId, status, isActive, exitReason, graduationDate } = body;
 
-        // Resolve School
-        let school = await prisma.school.findUnique({
-            where: { id: schoolId },
-            select: { id: true, subdomain: true, name: true }
-        });
-
-        if (!school) {
-            school = await prisma.school.findUnique({
-                where: { subdomain: schoolId, isActive: true },
-                select: { id: true, subdomain: true, name: true }
-            });
-        }
-
+        const school = await getSchool(schoolId);
         if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }

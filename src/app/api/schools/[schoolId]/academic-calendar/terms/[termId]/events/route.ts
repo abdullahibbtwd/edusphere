@@ -2,27 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { EventType } from '@prisma/client';
 import { requireRole } from '@/lib/auth-middleware';
-
-async function resolveSchoolId(schoolIdentifier: string): Promise<string | null> {
-    // Try as UUID first
-    let school = await prisma.school.findUnique({
-        where: { id: schoolIdentifier },
-        select: { id: true }
-    });
-
-    // If not found by ID, try as subdomain
-    if (!school) {
-        school = await prisma.school.findUnique({
-            where: {
-                subdomain: schoolIdentifier,
-                isActive: true
-            },
-            select: { id: true }
-        });
-    }
-
-    return school?.id || null;
-}
+import { getSchool } from '@/lib/school';
 
 // GET - Fetch events for a specific term
 export async function GET(
@@ -31,7 +11,8 @@ export async function GET(
 ) {
     try {
         const { schoolId, termId } = await params;
-        const actualSchoolId = await resolveSchoolId(schoolId);
+        const resolvedSchool = await getSchool(schoolId);
+        const actualSchoolId = resolvedSchool?.id;
 
         if (!actualSchoolId) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
@@ -66,7 +47,8 @@ export async function POST(
 
     try {
         const { schoolId, termId } = await params;
-        const actualSchoolId = await resolveSchoolId(schoolId);
+        const resolvedSchool = await getSchool(schoolId);
+        const actualSchoolId = resolvedSchool?.id;
 
         if (!actualSchoolId) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
@@ -131,7 +113,8 @@ export async function DELETE(
 
     try {
         const { schoolId, termId } = await params;
-        const actualSchoolId = await resolveSchoolId(schoolId);
+        const resolvedSchool = await getSchool(schoolId);
+        const actualSchoolId = resolvedSchool?.id;
 
         if (!actualSchoolId) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });

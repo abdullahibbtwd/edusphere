@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth-middleware';
 import { sendStudentAdmissionEmail, sendStudentRejectionEmail } from '@/lib/email-service';
+import { getSchool } from '@/lib/school';
 
 // GET - Get single application details
 export async function GET(
@@ -11,24 +12,7 @@ export async function GET(
   try {
     const { schoolId, applicationId } = await params;
 
-    let school;
-    // Try as UUID first (actual school ID)
-    school = await prisma.school.findUnique({
-      where: { id: schoolId },
-      select: { id: true }
-    });
-
-    // If not found by ID, try as subdomain
-    if (!school) {
-      school = await prisma.school.findUnique({
-        where: {
-          subdomain: schoolId,
-          isActive: true
-        },
-        select: { id: true }
-      });
-    }
-
+    const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
@@ -127,21 +111,7 @@ export async function PUT(
       }, { status: 400 });
     }
 
-    // Find school
-    let school;
-    school = await prisma.school.findUnique({
-      where: { id: schoolId }
-    });
-
-    if (!school) {
-      school = await prisma.school.findUnique({
-        where: {
-          subdomain: schoolId,
-          isActive: true
-        }
-      });
-    }
-
+    const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
@@ -367,21 +337,7 @@ export async function DELETE(
     const sessionUser = requireRole(request, ['ADMIN']);
     if (sessionUser instanceof NextResponse) return sessionUser;
 
-    // Find school
-    let school;
-    school = await prisma.school.findUnique({
-      where: { id: schoolId }
-    });
-
-    if (!school) {
-      school = await prisma.school.findUnique({
-        where: {
-          subdomain: schoolId,
-          isActive: true
-        }
-      });
-    }
-
+    const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }

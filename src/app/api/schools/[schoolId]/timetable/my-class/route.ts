@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth-middleware';
-
-async function resolveSchoolId(schoolIdentifier: string): Promise<string | null> {
-    const school = await prisma.school.findFirst({
-        where: {
-            OR: [
-                { id: schoolIdentifier },
-                { subdomain: schoolIdentifier, isActive: true }
-            ]
-        },
-        select: { id: true }
-    });
-    return school?.id || null;
-}
+import { getSchool } from '@/lib/school';
 
 /**
  * GET - Timetable for the current student's class.
@@ -28,10 +16,11 @@ export async function GET(
         const sessionUser = requireRole(request, ['STUDENT']);
         if (sessionUser instanceof NextResponse) return sessionUser;
 
-        const actualSchoolId = await resolveSchoolId(schoolId);
-        if (!actualSchoolId) {
+        const resolvedSchool = await getSchool(schoolId);
+        if (!resolvedSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
+        const actualSchoolId = resolvedSchool.id;
 
         const userId = (sessionUser as { userId: string }).userId;
         const student = await prisma.student.findFirst({

@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth-middleware';
-
-async function resolveSchool(schoolId: string) {
-    return prisma.school.findFirst({
-        where: { OR: [{ id: schoolId }, { subdomain: schoolId }] },
-    });
-}
+import { getSchool } from '@/lib/school';
 
 /**
  * GET /results/my — student views their own results
@@ -22,7 +17,7 @@ export async function GET(
         const user = requireAuth(request);
         if (user instanceof NextResponse) return user;
 
-        const school = await resolveSchool(schoolId);
+        const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
 
         // Find the student record linked to this user

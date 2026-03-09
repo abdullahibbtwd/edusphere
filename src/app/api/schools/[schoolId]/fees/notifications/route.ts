@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth-middleware';
 import { sendFeeReminderEmail } from '@/lib/email-service';
+import { getSchool } from '@/lib/school';
 
 // POST - Send notifications to students/parents for unpaid fees
 export async function POST(
@@ -20,16 +21,7 @@ export async function POST(
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        // Resolve School
-        const actualSchool = await prisma.school.findFirst({
-            where: {
-                OR: [
-                    { id: schoolId },
-                    { subdomain: schoolId }
-                ]
-            }
-        });
-
+        const actualSchool = await getSchool(schoolId);
         if (!actualSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }

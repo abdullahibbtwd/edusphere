@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth-middleware';
-
-async function resolveSchool(schoolId: string) {
-    return prisma.school.findFirst({
-        where: { OR: [{ id: schoolId }, { subdomain: schoolId }] },
-    });
-}
+import { getSchool } from '@/lib/school';
 
 // GET a single result with all scores
 export async function GET(
@@ -18,7 +13,7 @@ export async function GET(
         const user = requireAuth(request);
         if (user instanceof NextResponse) return user;
 
-        const school = await resolveSchool(schoolId);
+        const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
 
         const result = await prisma.result.findFirst({
@@ -59,7 +54,7 @@ export async function PUT(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        const school = await resolveSchool(schoolId);
+        const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
 
         const result = await prisma.result.findFirst({
@@ -136,7 +131,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        const school = await resolveSchool(schoolId);
+        const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
 
         await prisma.result.delete({ where: { id: resultId } });

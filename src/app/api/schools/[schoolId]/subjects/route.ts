@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSchool } from '@/lib/school';
 
 // GET - Fetch school subjects with class assignments
 export async function GET(
@@ -15,32 +16,13 @@ export async function GET(
     const classId = searchParams.get('classId');
     const skip = (page - 1) * limit;
 
-    let school;
-    // Try as UUID first (actual school ID)
-    school = await prisma.school.findUnique({
-      where: { id: schoolId },
-      select: { id: true }
-    });
-
-    // If not found by ID, try as subdomain
-    if (!school) {
-      school = await prisma.school.findUnique({
-        where: {
-          subdomain: schoolId,
-          isActive: true
-        },
-        select: { id: true }
-      });
-    }
-
+    const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    const actualSchoolId = school.id;
-
     // Build query filter
-    const whereClause: any = { schoolId: actualSchoolId };
+    const whereClause: any = { schoolId: school.id };
 
     if (classId) {
       // Logic for filtering by Class
@@ -105,7 +87,7 @@ export async function GET(
 
     // Fetch all classes for mapping IDs to names efficiently
     const allClasses = await prisma.class.findMany({
-      where: { schoolId: actualSchoolId },
+      where: { schoolId: school.id },
       select: { id: true, name: true }
     });
     const classMap = new Map(allClasses.map(c => [c.id, c.name]));
@@ -215,22 +197,7 @@ export async function POST(
       }, { status: 400 });
     }
 
-    let school;
-    // Try as UUID first (actual school ID)
-    school = await prisma.school.findUnique({
-      where: { id: schoolId }
-    });
-
-    // If not found by ID, try as subdomain
-    if (!school) {
-      school = await prisma.school.findUnique({
-        where: {
-          subdomain: schoolId,
-          isActive: true
-        }
-      });
-    }
-
+    const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }

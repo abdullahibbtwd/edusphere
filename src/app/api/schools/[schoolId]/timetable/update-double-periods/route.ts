@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSchool } from '@/lib/school';
 
 export async function POST(
     request: NextRequest,
@@ -14,21 +15,7 @@ export async function POST(
             return NextResponse.json({ error: 'Invalid updates format' }, { status: 400 });
         }
 
-        let school;
-        // Try as UUID first (actual school ID)
-        school = await prisma.school.findUnique({
-            where: { id: schoolId },
-            select: { id: true }
-        });
-
-        // If not found by ID, try as subdomain
-        if (!school) {
-            school = await prisma.school.findUnique({
-                where: { subdomain: schoolId, isActive: true },
-                select: { id: true }
-            });
-        }
-
+        const school = await getSchool(schoolId);
         if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }

@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-
-async function resolveSchoolId(identifier: string): Promise<string | null> {
-    let school = await prisma.school.findUnique({ where: { id: identifier }, select: { id: true } });
-    if (!school) {
-        school = await prisma.school.findUnique({ where: { subdomain: identifier, isActive: true }, select: { id: true } });
-    }
-    return school?.id || null;
-}
+import { getSchool } from '@/lib/school';
 
 type TimeSlotDef = { startTime: string; endTime: string };
 
@@ -50,8 +43,9 @@ export async function POST(
 ) {
     try {
         const { schoolId: identifier } = await params;
-        const schoolId = await resolveSchoolId(identifier);
-        if (!schoolId) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        const resolvedSchool = await getSchool(identifier);
+        if (!resolvedSchool) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        const schoolId = resolvedSchool.id;
 
         // Admin-only guard
         const sessionCookie = req.cookies.get('user-session');

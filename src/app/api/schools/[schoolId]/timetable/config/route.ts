@@ -1,29 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-
-/**
- * Resolve school ID from subdomain or UUID
- */
-async function resolveSchoolId(schoolIdentifier: string): Promise<string | null> {
-    // Try as UUID first
-    let school = await prisma.school.findUnique({
-        where: { id: schoolIdentifier },
-        select: { id: true }
-    });
-
-    // If not found, try as subdomain
-    if (!school) {
-        school = await prisma.school.findUnique({
-            where: {
-                subdomain: schoolIdentifier,
-                isActive: true
-            },
-            select: { id: true }
-        });
-    }
-
-    return school?.id || null;
-}
+import { getSchool } from '@/lib/school';
 
 export async function GET(
     request: NextRequest,
@@ -33,13 +10,11 @@ export async function GET(
         const { schoolId: schoolIdentifier } = await params;
 
         // Resolve to actual school UUID
-        const schoolId = await resolveSchoolId(schoolIdentifier);
-        if (!schoolId) {
-            return NextResponse.json(
-                { error: 'School not found' },
-                { status: 404 }
-            );
+        const resolvedSchool = await getSchool(schoolIdentifier);
+        if (!resolvedSchool) {
+            return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
+        const schoolId = resolvedSchool.id;
 
         const config = await prisma.timetableConfig.findUnique({
             where: { schoolId }
@@ -74,14 +49,11 @@ export async function POST(
     try {
         const { schoolId: schoolIdentifier } = await params;
 
-        // Resolve to actual school UUID
-        const schoolId = await resolveSchoolId(schoolIdentifier);
-        if (!schoolId) {
-            return NextResponse.json(
-                { error: 'School not found' },
-                { status: 404 }
-            );
+        const resolvedSchool2 = await getSchool(schoolIdentifier);
+        if (!resolvedSchool2) {
+            return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
+        const schoolId = resolvedSchool2.id;
 
         const body = await request.json();
 

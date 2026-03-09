@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSchool } from '@/lib/school';
 
 // POST - Check if user exists by email
 export async function POST(
@@ -16,23 +17,7 @@ export async function POST(
       }, { status: 400 });
     }
 
-    // Find school
-    let school;
-    school = await prisma.school.findUnique({
-      where: { id: schoolId },
-      select: { id: true, name: true }
-    });
-
-    if (!school) {
-      school = await prisma.school.findUnique({
-        where: {
-          subdomain: schoolId,
-          isActive: true
-        },
-        select: { id: true, name: true }
-      });
-    }
-
+    const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }

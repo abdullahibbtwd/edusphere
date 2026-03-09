@@ -1,45 +1,16 @@
 "use client"
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { useSchoolData } from "@/context/SchoolDataContext";
 
-interface AboutData {
-  aboutTitle: string;
-  aboutDescription: string;
-  aboutImage?: string;
-}
+const About = ({ school: _school }: { school: string }) => {
+  const { schoolData } = useSchoolData();
+  const content = schoolData?.content;
+  const aboutData = content && (content.aboutTitle || content.aboutDescription || content.aboutImage)
+    ? { aboutTitle: content.aboutTitle ?? "", aboutDescription: content.aboutDescription ?? "", aboutImage: content.aboutImage }
+    : null;
 
-const About = ({ school }: { school: string }) => {
-  const [aboutData, setAboutData] = useState<AboutData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchAboutData = async () => {
-      try {
-        const response = await fetch(`/api/schools/by-subdomain/${school}`);
-        if (response.ok) {
-          const schoolData = await response.json();
-          if (schoolData.content && (schoolData.content.aboutTitle || schoolData.content.aboutDescription || schoolData.content.aboutImage)) {
-            setAboutData({
-              aboutTitle: schoolData.content.aboutTitle,
-              aboutDescription: schoolData.content.aboutDescription,
-              aboutImage: schoolData.content.aboutImage
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching about data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (school) {
-      fetchAboutData();
-    }
-  }, [school]);
-
-  // Don't render about section if no content exists
   if (!aboutData) {
     return null;
   }
@@ -57,10 +28,10 @@ const About = ({ school }: { school: string }) => {
           viewport={{ once: true }}
         >
           <h2 className="text-4xl mt-4 md:text-6xl font-bold text-text mb-6">
-            {loading ? "Loading..." : aboutData.aboutTitle}
+            {aboutData.aboutTitle}
           </h2>
           <p className="text-lg font-roboto-mono text-text leading-relaxed mb-4">
-            {loading ? "Loading..." : aboutData.aboutDescription}
+            {aboutData.aboutDescription}
           </p>
         </motion.div>
 

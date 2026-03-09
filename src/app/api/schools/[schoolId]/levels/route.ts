@@ -1,29 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-
-/**
- * Helper to resolve school ID from either UUID or subdomain
- */
-async function resolveSchoolId(schoolIdentifier: string): Promise<string | null> {
-  // Try as UUID first (actual school ID)
-  let school = await prisma.school.findUnique({
-    where: { id: schoolIdentifier },
-    select: { id: true }
-  });
-
-  // If not found by ID, try as subdomain
-  if (!school) {
-    school = await prisma.school.findUnique({
-      where: {
-        subdomain: schoolIdentifier,
-        isActive: true
-      },
-      select: { id: true }
-    });
-  }
-
-  return school?.id || null;
-}
+import { getSchool } from '@/lib/school';
 
 /**
  * Helper to fetch levels with all counts
@@ -84,7 +61,8 @@ export async function GET(
     const skip = (page - 1) * limit;
 
     // Resolve school ID
-    const actualSchoolId = await resolveSchoolId(schoolId);
+    const resolvedSchool = await getSchool(schoolId);
+    const actualSchoolId = resolvedSchool?.id;
     if (!actualSchoolId) {
       return NextResponse.json(
         { error: 'School not found' },
@@ -145,7 +123,8 @@ export async function POST(
     }
 
     // Resolve school ID
-    const actualSchoolId = await resolveSchoolId(schoolId);
+    const resolvedSchool = await getSchool(schoolId);
+    const actualSchoolId = resolvedSchool?.id;
     if (!actualSchoolId) {
       return NextResponse.json(
         { error: 'School not found' },

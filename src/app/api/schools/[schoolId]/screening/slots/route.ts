@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-async function resolveSchoolId(identifier: string): Promise<string | null> {
-    let school = await prisma.school.findUnique({ where: { id: identifier }, select: { id: true } });
-    if (!school) {
-        school = await prisma.school.findUnique({ where: { subdomain: identifier, isActive: true }, select: { id: true } });
-    }
-    return school?.id || null;
-}
+import { getSchool } from '@/lib/school';
 
 // GET - list all screening slots for a school
 export async function GET(
@@ -16,8 +9,9 @@ export async function GET(
 ) {
     try {
         const { schoolId: identifier } = await params;
-        const actualId = await resolveSchoolId(identifier);
-        if (!actualId) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        const resolvedSchool = await getSchool(identifier);
+        if (!resolvedSchool) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        const actualId = resolvedSchool.id;
 
         const slots = await prisma.screeningSlot.findMany({
             where: { schoolId: actualId },
@@ -41,8 +35,9 @@ export async function POST(
 ) {
     try {
         const { schoolId: identifier } = await params;
-        const actualId = await resolveSchoolId(identifier);
-        if (!actualId) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        const resolvedSchool = await getSchool(identifier);
+        if (!resolvedSchool) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        const actualId = resolvedSchool.id;
 
         const body = await req.json();
         const { date, startTime, endTime, venue, maxCapacity, generateRange } = body;

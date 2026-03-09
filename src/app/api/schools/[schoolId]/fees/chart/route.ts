@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSchool } from '@/lib/school';
 
 const DEFAULT_LIMIT = 15;
 const MAX_LIMIT = 30;
@@ -19,12 +20,7 @@ export async function GET(
             MAX_LIMIT
         );
 
-        const school = await prisma.school.findFirst({
-            where: {
-                OR: [{ id: schoolId }, { subdomain: schoolId }]
-            },
-            select: { id: true }
-        });
+        const school = await getSchool(schoolId);
         if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
@@ -101,6 +97,40 @@ export async function GET(
               })
             : [];
 
+        const classIds = classes.map((c) => c.id);
+
+        // Single batched query: student count per class (replaces N individual COUNTs)
+        const studentCountRows = await prisma.student.groupBy({
+            by: ['classId'],
+            where: { schoolId: school.id, classId: { in: classIds } },
+            _count: { id: true }
+        });
+        const studentCountMap = new Map(
+            studentCountRows.map((r) => [r.classId, r._count.id])
+        );
+
+        // Single batched query: all paid fees for all classes in this session
+        const allPaidFees = await prisma.studentFee.findMany({
+            where: {
+                sessionId: session.id,
+                status: 'PAID',
+                student: { classId: { in: classIds } }
+            },
+            select: {
+                term: true,
+                studentId: true,
+                student: { select: { classId: true } }
+            }
+        });
+
+        // Group paid fees by classId in memory
+        const feesByClass = new Map<string, { term: string; studentId: string }[]>();
+        for (const f of allPaidFees) {
+            const cid = f.student.classId;
+            if (!feesByClass.has(cid)) feesByClass.set(cid, []);
+            feesByClass.get(cid)!.push({ term: f.term, studentId: f.studentId });
+        }
+
         const data: {
             class: string;
             levelName: string;
@@ -108,56 +138,31 @@ export async function GET(
             First: number;
             Second: number;
             Third: number;
-        }[] = [];
-
-        for (const cls of classes) {
-            const totalStudents = await prisma.student.count({
-                where: { schoolId: school.id, classId: cls.id }
-            });
-
+        }[] = classes.map((cls) => {
+            const totalStudents = studentCountMap.get(cls.id) ?? 0;
             if (totalStudents === 0) {
-                data.push({
-                    class: cls.name,
-                    levelName: cls.level.name,
-                    classId: cls.id,
-                    First: 0,
-                    Second: 0,
-                    Third: 0
-                });
-                continue;
+                return { class: cls.name, levelName: cls.level.name, classId: cls.id, First: 0, Second: 0, Third: 0 };
             }
 
-            const paidFees = await prisma.studentFee.findMany({
-                where: {
-                    sessionId: session.id,
-                    status: 'PAID',
-                    student: { classId: cls.id }
-                },
-                select: { term: true, studentId: true }
-            });
-
+            const fees = feesByClass.get(cls.id) ?? [];
             const firstPaidIds = new Set<string>();
             const secondPaidIds = new Set<string>();
             const thirdPaidIds = new Set<string>();
-            for (const f of paidFees) {
+            for (const f of fees) {
                 if (f.term === 'FIRST' || f.term === 'FULL_SESSION') firstPaidIds.add(f.studentId);
                 if (f.term === 'SECOND' || f.term === 'FULL_SESSION') secondPaidIds.add(f.studentId);
                 if (f.term === 'THIRD' || f.term === 'FULL_SESSION') thirdPaidIds.add(f.studentId);
             }
 
-            const first = Math.round((firstPaidIds.size / totalStudents) * 100);
-            const second = Math.round((secondPaidIds.size / totalStudents) * 100);
-            const third = Math.round((thirdPaidIds.size / totalStudents) * 100);
-
-            data.push({
+            return {
                 class: cls.name,
                 levelName: cls.level.name,
                 classId: cls.id,
-                First: Math.min(100, first),
-                Second: Math.min(100, second),
-                Third: Math.min(100, third)
-            });
-        }
+                First: Math.min(100, Math.round((firstPaidIds.size / totalStudents) * 100)),
+                Second: Math.min(100, Math.round((secondPaidIds.size / totalStudents) * 100)),
+                Third: Math.min(100, Math.round((thirdPaidIds.size / totalStudents) * 100))
+            };
+        });
 
         return NextResponse.json({
             sessionName: session.name,
