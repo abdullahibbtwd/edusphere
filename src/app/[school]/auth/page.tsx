@@ -85,6 +85,18 @@ const AuthSystem = () => {
         return;
       }
 
+      // Block login if user belongs to a different school
+      if (data.user.school?.subdomain && data.user.school.subdomain !== schoolId) {
+        toast.error(
+          `This account belongs to Another School. Please login through your school's portal.`,
+          { duration: 5000 }
+        );
+        setTimeout(() => {
+          window.location.href = `/${data.user.school.subdomain}/auth`;
+        }, 2000);
+        return;
+      }
+
       toast.success('Login successful!');
 
       // Redirect to school dashboard
