@@ -83,15 +83,21 @@ const AuthSystem = () => {
         return;
       }
 
-      toast.success('Login successful!');
-
-      // Cookies are automatically set by the server
-      // Redirect based on user role
+      // School users must login through their school's portal
       if (data.user.school?.subdomain) {
-        router.push(`/${data.user.school.subdomain}`);
-      } else {
-        router.push('/');
+        const schoolName = data.user.school.name || data.user.school.subdomain;
+        toast.error(
+          `This account belongs to another school. Please login through your school's portal.`,
+          { duration: 5000 }
+        );
+        setTimeout(() => {
+          router.push(`/${data.user.school.subdomain}/auth`);
+        }, 2000);
+        return;
       }
+
+      toast.success('Login successful!');
+      router.push('/');
     } catch (error) {
       console.error('Login error:', error);
       toast.error('An error occurred. Please try again.');
