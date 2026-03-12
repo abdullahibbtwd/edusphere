@@ -70,7 +70,14 @@ const AuthSystem = () => {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data: { user?: { school?: { subdomain?: string; name?: string } }; error?: string; requiresVerification?: boolean } = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        toast.error('Invalid response from server. Please try again.');
+        return;
+      }
 
       if (!response.ok) {
         if (data.requiresVerification) {
@@ -84,23 +91,25 @@ const AuthSystem = () => {
       }
 
       // School users must login through their school's portal
-      if (data.user.school?.subdomain) {
+      if (data.user?.school?.subdomain) {
         const schoolName = data.user.school.name || data.user.school.subdomain;
         toast.error(
           `This account belongs to another school. Please login through your school's portal.`,
           { duration: 5000 }
         );
         setTimeout(() => {
-          router.push(`/${data.user.school.subdomain}/auth`);
+          window.location.href = `/${data.user!.school!.subdomain}/auth`;
         }, 2000);
         return;
       }
 
       toast.success('Login successful!');
-      router.push('/');
+      // Full navigation so cookies are sent and no in-flight fetch is aborted
+      window.location.href = '/';
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('An error occurred. Please try again.');
+      const isNetworkError = error instanceof TypeError && (error.message === 'Failed to fetch' || error.message.includes('NetworkError'));
+      toast.error(isNetworkError ? 'Network error. Check your connection and try again.' : 'An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }

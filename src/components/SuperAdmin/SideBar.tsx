@@ -1,6 +1,7 @@
 "use client"
 import React from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Image from "next/image";
 import { motion } from "framer-motion"
 import { FiHome, FiLayers, FiUsers, FiActivity, FiMessageSquare, FiFileText } from "react-icons/fi";
 import { CgProfile } from "react-icons/cg";
@@ -28,13 +29,23 @@ export default function Sidebar() {
            bg-surface text-text shadow-lg flex flex-col"
     >
       {/* Logo */}
-      <div className="md:flex hidden items-center justify-center h-20 border-b border-border">
-        <span
-          className="text-primary font-poppins text-2xl font-bold cursor-pointer"
-          onClick={() => router.push('/admin/home')}
+      <div className="md:flex hidden items-center justify-center gap-2 h-20">
+        <div
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={() => router.push('/dashboard')}
         >
-          EduSphere
-        </span>
+          <Image
+            src="/eduspherelogo1.png"
+            alt="EduSphere Logo"
+            width={36}
+            height={36}
+            className="object-contain"
+          />
+          <span className="font-poppins font-bold text-xl tracking-wide">
+            <span className="text-[var(--primary)]">Edu</span>
+            <span className="text-[var(--text)]">Sphere</span>
+          </span>
+        </div>
       </div>
 
       {/* Navigation Links */}

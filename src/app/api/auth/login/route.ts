@@ -94,14 +94,20 @@ export async function POST(req: Request) {
             (user.teacher?.img || null) ??
             null;
 
-        // Create JWT token with user data
+        // Keep cookies small: don't put long base64/data URLs in JWT or session cookie
+        const shortImageUrl =
+            imageUrl && !imageUrl.startsWith('data:') && imageUrl.length <= 400
+                ? imageUrl
+                : null;
+
+        // Create JWT token with user data (short imageUrl only to avoid header size limit)
         const token = createToken({
             userId: user.id,
             email: user.email,
             name: user.name,
             role: user.role,
             schoolId: user.schoolId,
-            imageUrl,
+            imageUrl: shortImageUrl,
         });
 
         // Prepare user data for response (excluding sensitive fields)
@@ -128,7 +134,7 @@ export async function POST(req: Request) {
             ...cookieOptions,
         });
 
-        // Also set a lighter cookie for client-side access (non-sensitive data only)
+        // Keep user-session cookie small (same as JWT: no long base64 in cookies)
         response.cookies.set({
             name: 'user-session',
             value: JSON.stringify({
@@ -136,12 +142,12 @@ export async function POST(req: Request) {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                imageUrl,
+                imageUrl: shortImageUrl,
                 schoolId: user.schoolId,
                 schoolName: user.school?.name,
                 schoolSubdomain: user.school?.subdomain,
             }),
-            httpOnly: false, // Accessible by JavaScript
+            httpOnly: false,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: maxAge,

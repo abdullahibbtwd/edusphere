@@ -1,172 +1,71 @@
-"use client";
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { verifyToken } from '@/lib/jwt';
+import { prisma } from '@/lib/prisma';
+import ProfilePage from '@/components/shared/ProfilePage';
 
-import { useUser } from "@clerk/nextjs";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  Typography,
-  Avatar,
-  Box,
-  Skeleton,
-  Divider,
-  Paper,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-
-const StyledCard = styled(Card)(({ theme }) => ({
-  width: "100%",
-  margin: "0 auto",
-  marginTop: theme.spacing(4),
-  borderRadius: theme.spacing(2),
-  boxShadow: theme.shadows[3],
-}));
-
-const StyledAvatar = styled(Avatar)(({ theme }) => ({
-  width: 120,
-  height: 120,
-  marginRight: theme.spacing(3),
-  border: `4px solid ${theme.palette.primary.main}`,
-}));
-
-const InfoSection = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(3),
-  marginBottom: theme.spacing(2),
-  borderRadius: theme.spacing(1),
-  backgroundColor: theme.palette.background.default,
-}));
-
-export default function ProfilePage() {
-  const { user, isLoaded } = useUser();
-  const userData = useQuery(api.users.getCurrentUser);
-  const currentStudent = useQuery(api.students.getCurrentStudent);
-  const currentTeacher = useQuery(api.teachers.getCurrentTeacher);
-
-  if (!isLoaded) {
-    return <ProfileSkeleton />;
-  }
-
-  // Get the appropriate ID based on role
-  const getRoleSpecificId = () => {
-    if (userData?.role === "student" && currentStudent) {
-      return currentStudent.applicationNumber;
-    }
-    if (userData?.role === "teacher" && currentTeacher) {
-      return currentTeacher.teacherId;
-    }
-    return null;
-  };
-
-  const roleSpecificId = getRoleSpecificId();
-
-  return (
-    <Box sx={{ p: 3, maxWidth: "1200px", margin: "0 auto" }}>
-      <StyledCard>
-        <CardHeader
-          avatar={
-            <StyledAvatar
-              src={user?.imageUrl || undefined}
-              alt={user?.fullName || "User"}
-            >
-              {user?.fullName?.[0] || "U"}
-            </StyledAvatar>
-          }
-          title={
-            <Typography variant="h4" component="div">
-              {user?.fullName || "User"}
-            </Typography>
-          }
-          subheader={
-            <Typography
-              variant="subtitle1"
-              sx={{ textTransform: "capitalize", color: "primary.main" }}
-            >
-              {user?.primaryEmailAddress?.emailAddress || "No email"}
-            </Typography>
-          }
-        />
-        <Divider />
-        <CardContent>
-          <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, gap: 3 }}>
-            <Box sx={{ flex: 1 }}>
-              <InfoSection>
-                <Typography variant="h6" gutterBottom>
-                  Role Information
-                </Typography>
-                <Typography variant="body1" sx={{ textTransform: "capitalize", color: "text.secondary" }}>
-                  Role: {userData?.role || "User"}
-                </Typography>
-                {roleSpecificId && (
-                  <Typography variant="body1" sx={{ mt: 1, color: "text.secondary" }}>
-                    {userData?.role === "student" ? "Application" : "Teacher"} ID: {roleSpecificId}
-                  </Typography>
-                )}
-                {userData?.role === "student" && currentStudent && (
-                  <>
-                    <Typography variant="body1" sx={{ mt: 1, color: "text.secondary" }}>
-                      Program: {currentStudent.programName || "Not specified"}
-                    </Typography>
-                   
-                  </>
-                )}
-                {userData?.role === "teacher" && currentTeacher && (
-                  <>
-                  
-                    <Typography variant="body1" sx={{ mt: 1, color: "text.secondary" }}>
-                      Courses: {currentTeacher.courseIds?.length || 0}
-                    </Typography>
-                  </>
-                )}
-              </InfoSection>
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <InfoSection>
-                <Typography variant="h6" gutterBottom>
-                  Account Information
-                </Typography>
-                <Typography variant="body1" sx={{ color: "text.secondary" }}>
-                  Email: {user?.primaryEmailAddress?.emailAddress || "No email"}
-                </Typography>
-                <Typography variant="body1" sx={{ mt: 1, color: "text.secondary" }}>
-                  Last Sign In: {user?.lastSignInAt ? new Date(user.lastSignInAt).toLocaleDateString() : "Never"}
-                </Typography>
-                {userData?.role === "student" && currentStudent && (
-                  <Typography variant="body1" sx={{ mt: 1, color: "text.secondary" }}>
-                    Level: {currentStudent.level || "Not specified"}
-                  </Typography>
-                )}
-              </InfoSection>
-            </Box>
-          </Box>
-        </CardContent>
-      </StyledCard>
-    </Box>
-  );
+interface PageProps {
+  params: Promise<{ school: string }>;
 }
 
-function ProfileSkeleton() {
+export default async function SchoolProfilePage({ params }: PageProps) {
+  const { school: subdomain } = await params;
+
+  const cookieStore = await cookies();
+  const token = cookieStore.get('auth-token')?.value;
+  if (!token) redirect(`/${subdomain}/auth`);
+
+  const payload = verifyToken(token);
+  if (!payload) redirect(`/${subdomain}/auth`);
+
+  const school = await prisma.school.findUnique({
+    where: { subdomain },
+    select: { id: true },
+  });
+  if (!school) redirect('/');
+
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    include: {
+      student: { select: { schoolId: true, profileImagePath: true, dob: true, gender: true, address: true, className: true } },
+      teacher: { select: { schoolId: true, img: true, birthday: true, sex: true, address: true } },
+    },
+  });
+
+  if (!user) redirect(`/${subdomain}/auth`);
+
+  const studentInThisSchool = user.student?.schoolId === school.id ? user.student : null;
+  const teacherInThisSchool = user.teacher?.schoolId === school.id ? user.teacher : null;
+
+  const imageUrl =
+    studentInThisSchool?.profileImagePath ||
+    teacherInThisSchool?.img ||
+    user.imageUrl ||
+    null;
+
   return (
-    <Box sx={{ p: 3, maxWidth: "1200px", margin: "0 auto" }}>
-      <StyledCard>
-        <CardHeader
-          avatar={<Skeleton variant="circular" width={120} height={120} />}
-          title={<Skeleton variant="text" width={200} height={40} />}
-          subheader={<Skeleton variant="text" width={100} height={24} />}
-        />
-        <Divider />
-        <CardContent>
-          <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, gap: 3 }}>
-            <Box sx={{ flex: 1 }}>
-              <Skeleton variant="rectangular" height={200} />
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <Skeleton variant="rectangular" height={200} />
-            </Box>
-          </Box>
-        </CardContent>
-      </StyledCard>
-    </Box>
+    <ProfilePage
+      profile={{
+        id: user.id,
+        name: user.name ?? '',
+        email: user.email,
+        phone: user.phone ?? null,
+        imageUrl,
+        role: user.role,
+        isEmailVerified: user.isEmailVerified,
+        createdAt: user.createdAt.toISOString(),
+        ...(studentInThisSchool && {
+          dob: studentInThisSchool.dob?.toISOString() ?? null,
+          gender: studentInThisSchool.gender ?? null,
+          address: studentInThisSchool.address ?? null,
+          className: studentInThisSchool.className ?? null,
+        }),
+        ...(teacherInThisSchool && {
+          dob: teacherInThisSchool.birthday?.toISOString() ?? null,
+          gender: teacherInThisSchool.sex ?? null,
+          address: teacherInThisSchool.address ?? null,
+        }),
+      }}
+    />
   );
-} 
+}

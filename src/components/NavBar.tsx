@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import ThemeButton from './ThemeButton';
 import AuthNavigation from './AuthNavigation';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { isAuthenticated, logout } from '@/lib/client-auth';
 
 export default function Navbar() {
@@ -48,12 +49,22 @@ export default function Navbar() {
         <div className="w-full md:max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center">
-              <span
+              <div
                 onClick={() => router.push('/')}
-                className="text-primary cursor-pointer font-poppins tracking-widest text-lg sm:text-2xl font-bold"
+                className="flex items-center gap- cursor-pointer"
               >
-                EduSphere
-              </span>
+                <Image
+                  src="/eduspherelogo1.png"
+                  alt="EduSphere Logo"
+                  width={48}
+                  height={48}
+                  className="object-contain"
+                />
+                <span className="font-poppins font-bold text-lg tracking-wide">
+                  <span className="text-[var(--primary)]">Edu</span>
+                  <span className="text-[var(--text)]">Sphere</span>
+                </span>
+              </div>
             </div>
             <div className="hidden md:flex items-center space-x-6">
               {navLinks.map((link, index) => (
