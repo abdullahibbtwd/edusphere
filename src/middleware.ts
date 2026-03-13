@@ -35,6 +35,7 @@ export async function middleware(request: NextRequest) {
   let isAuthenticated = false;
   let userRole: string | null = null;
   let userId: string | null = null;
+  let userSchoolSubdomain: string | null = null;
 
   if (token) {
     const payload = await verifyToken(token);
@@ -44,15 +45,16 @@ export async function middleware(request: NextRequest) {
   }
 
   // Fallback to session cookie if token missing or invalid
-  if (!userRole) {
-    try {
-      const sessionCookie = request.cookies.get('user-session')?.value;
-      if (sessionCookie) {
-        const session = JSON.parse(decodeURIComponent(sessionCookie));
+  try {
+    const sessionCookie = request.cookies.get('user-session')?.value;
+    if (sessionCookie) {
+      const session = JSON.parse(decodeURIComponent(sessionCookie));
+      userSchoolSubdomain = session.schoolSubdomain ?? null;
+      if (!userRole) {
         userRole = session.role;
       }
-    } catch { /* ignore malformed cookie */ }
-  }
+    }
+  } catch { /* ignore malformed cookie */ }
 
   const isMainDomain =
     subdomain === 'www' ||
@@ -68,12 +70,28 @@ export async function middleware(request: NextRequest) {
   const isUserAllowedMainRoute =
     pathname === '/' || pathname === '/schoolApplication';
 
+  const pathSegments = pathname.split('/').filter(Boolean);
+  const requestedSchoolSegment = pathSegments[0] ?? null;
+
   // ── Main domain ─────────────────────────────────────────────────
   if (isMainDomain) {
     if (!isAuthenticated && !isPublicRoute) {
       url.pathname = '/';
       return NextResponse.redirect(url);
     }
+
+    // School-bound users can only access their own school path on the main domain.
+    if (
+      isAuthenticated &&
+      userSchoolSubdomain &&
+      !isPublicRoute &&
+      requestedSchoolSegment &&
+      requestedSchoolSegment !== userSchoolSubdomain
+    ) {
+      url.pathname = `/${userSchoolSubdomain}`;
+      return NextResponse.redirect(url);
+    }
+
     // Merge USER + SCHOOL_ADMIN restriction into one check
     if (
       isAuthenticated &&
