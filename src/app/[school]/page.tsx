@@ -7,6 +7,8 @@ import Facilities from '@/components/Facilities/Facilities'
 import Footer from '@/components/Footer/Footer'
 import Hero from '@/components/HeroSchool/Hero'
 import Navbar from '@/components/Navbar/Navbar'
+import { prisma } from '@/lib/prisma'
+import { notFound } from 'next/navigation'
 import React from 'react'
 import { SchoolDataProvider } from '@/context/SchoolDataContext'
 
@@ -18,6 +20,20 @@ interface PageProps {
 
 const page = async ({ params }: PageProps) => {
   const { school } = await params;
+
+  const existingSchool = await prisma.school.findUnique({
+    where: {
+      subdomain: school,
+      isActive: true,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!existingSchool) {
+    notFound();
+  }
 
   return (
     <SchoolDataProvider subdomain={school}>

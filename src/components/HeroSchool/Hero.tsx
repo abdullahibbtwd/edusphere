@@ -145,7 +145,7 @@ const Hero = ({ school }: { school: string }) => {
             {/* Action Button */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
               <button
-                onClick={() => window.location.href = `/${school}/management`}
+                onClick={() => window.location.href = `/${school}//management`}
                 className="group relative inline-flex items-center justify-center gap-3 px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all duration-300 active:scale-95"
               >
                 <svg
