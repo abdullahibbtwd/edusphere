@@ -1,6 +1,5 @@
-import Announcement from "@/components/Announcement";
-import BigCalendar from "@/components/BigCalender";
-import Perfomance from "@/components/Perfomance";
+import Announcement from "@/components/Schools/Announcement";
+import BigCalendar from "@/components/Schools/BigCalendar";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -125,7 +124,6 @@ const Page = () => {
           
             
       </div>
-       <Perfomance/>
         <Announcement/>
       </div>
     </div>

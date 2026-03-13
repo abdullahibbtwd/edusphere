@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
+import {
+  checkSchoolRequestLimit,
+  checkSchoolUserRequestLimit,
+  createRateLimitResponse,
+} from '@/lib/rate-limit';
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret');
 
@@ -17,6 +22,11 @@ export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
   const pathname = url.pathname;
 
+  // Avoid recursion for the internal subdomain lookup used by this middleware.
+  if (pathname.startsWith('/api/check-subdomain-middleware')) {
+    return NextResponse.next();
+  }
+
   const hostnameWithoutPort = hostname.split(':')[0];
   const subdomain = hostnameWithoutPort.split('.')[0];
 
@@ -24,11 +34,13 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value;
   let isAuthenticated = false;
   let userRole: string | null = null;
+  let userId: string | null = null;
 
   if (token) {
     const payload = await verifyToken(token);
     isAuthenticated = !!payload;
     userRole = (payload?.role as string) ?? null;
+    userId = (payload?.userId as string) ?? null;
   }
 
   // Fallback to session cookie if token missing or invalid
@@ -79,13 +91,18 @@ export async function middleware(request: NextRequest) {
 
   // Check cookie cache first — avoids a DB fetch on every request
   const cachedRaw = request.cookies.get(`school-cache:${subdomain}`)?.value;
-  let schoolData: { name: string; isActive: boolean } | null = null;
+  let schoolData: { id: string; name: string; isActive: boolean; planType?: string } | null = null;
 
   if (cachedRaw) {
     try {
-      schoolData = JSON.parse(decodeURIComponent(cachedRaw));
+      const parsed = JSON.parse(decodeURIComponent(cachedRaw));
+      if (parsed?.id && parsed?.name) {
+        schoolData = parsed;
+      }
     } catch { /* ignore malformed cache */ }
-  } else {
+  }
+
+  if (!schoolData) {
     try {
       const baseUrl = `${request.nextUrl.protocol}//${request.nextUrl.host}`;
       const res = await fetch(`${baseUrl}/api/check-subdomain-middleware?subdomain=${subdomain}`);
@@ -104,6 +121,32 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
     return NextResponse.next();
+  }
+
+  const schoolRateLimit = checkSchoolRequestLimit(
+    `school:${schoolData.id}`,
+    schoolData.planType
+  );
+
+  if (!schoolRateLimit.success) {
+    return createRateLimitResponse(
+      schoolRateLimit.retryAfter!,
+      `This school's request limit has been reached for the current minute. Upgrade the plan for a higher limit.`
+    );
+  }
+
+  if (isAuthenticated && userId) {
+    const schoolUserRateLimit = checkSchoolUserRequestLimit(
+      `school-user:${schoolData.id}:${userId}`,
+      schoolData.planType
+    );
+
+    if (!schoolUserRateLimit.success) {
+      return createRateLimitResponse(
+        schoolUserRateLimit.retryAfter!,
+        `This user has reached the request limit for the current minute. Please wait and try again.`
+      );
+    }
   }
 
   // ── School found — handle routing ───────────────────────────────
@@ -150,6 +193,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot|otf)).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot|otf)).*)',
   ],
 };

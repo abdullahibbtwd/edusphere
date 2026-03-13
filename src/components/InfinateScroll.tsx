@@ -1,74 +1,139 @@
-import React from "react";
-import { motion } from "framer-motion";
-import Image from "next/image";
+'use client';
 
+import React, { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import Image from 'next/image';
 
-const Logo = [
-  {
-    id: 1,
-    img: "/logo1.png",
-  },
-  {
-    id: 2,
-   img: "/logo2.jpg",
-  },
-  {
-    id: 3,
-   img:  "/logo3.jpg",
-  },
-  {
-    id: 4,
-  img:  "/logo4.png",
-  },
-  {
-    id: 5,
-  img:  "/logo5.jpg",
-  },
-];
+type CarouselSchool = {
+  id: string;
+  name: string;
+  subdomain: string;
+  logo: string | null;
+};
+
 const sliderVariants = {
   initial: {
     x: 0,
   },
   animate: {
-    x: "-100%",
+    x: '-100%',
     transition: {
       repeat: Infinity,
-      repeatType: "loop",
-      duration: 15,
-      ease: "linear",
+      repeatType: 'loop' as const,
+      duration: 18,
+      ease: 'linear' as const,
     },
   },
 };
 
-const InfinateCarousel = () => {
+function SchoolCard({ school }: { school: CarouselSchool }) {
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  if (school.logo && !logoFailed) {
+    return (
+      <div className="mx-3 flex h-24 min-w-40 items-center justify-center rounded-3xl bg-surface-50 p-2 shadow-sm">
+        <Image
+          width={120}
+          height={120}
+          className="h-full w-full object-contain"
+          src={school.logo}
+          alt={school.name}
+          unoptimized={school.logo.startsWith('http')}
+          onError={() => setLogoFailed(true)}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-7xl py-4 flex flex-col items-center justify-center mx-auto">
-      <p className="md:text-[24px]  font-bold font-poppins text-[12px] text-gray-600 ">
-       Join 20+ Schools
+    <div className="mx-3 flex h-24 min-w-40 items-center justify-center rounded-3xl border border-[var(--border)] bg-[var(--surface)] px-5 shadow-sm">
+      <span className="text-center font-poppins text-sm font-semibold uppercase tracking-[0.2em] text-[var(--primary)]">
+        {school.subdomain}
+      </span>
+    </div>
+  );
+}
+
+const InfinateCarousel = () => {
+  const [schools, setSchools] = useState<CarouselSchool[]>([]);
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const response = await fetch('/api/schools/carousel');
+        const data = await response.json();
+
+        if (!response.ok) {
+          return;
+        }
+
+        setSchools(data.schools ?? []);
+        setCount(data.count ?? 0);
+      } catch (error) {
+        console.error('Failed to fetch carousel schools:', error);
+      }
+    };
+
+    fetchSchools();
+  }, []);
+
+  const displayItems = useMemo(() => {
+    if (schools.length > 0) {
+      return schools;
+    }
+
+    return Array.from({ length: 5 }, (_, index) => ({
+      id: `fallback-${index}`,
+      name: 'EduSphere',
+      subdomain: 'edusphere',
+      logo: '/eduspherelogo1.png',
+    }));
+  }, [schools]);
+
+  const marqueeItems = useMemo(() => {
+    if (displayItems.length >= 5) {
+      return displayItems;
+    }
+
+    return Array.from({ length: 5 }, (_, index) => {
+      const school = displayItems[index % displayItems.length];
+      return {
+        ...school,
+        id: `${school.id}-${index}`,
+      };
+    });
+  }, [displayItems]);
+
+  return (
+    <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-center overflow-hidden py-8">
+      <p className="mb-5 text-center font-poppins text-sm font-bold text-muted md:text-2xl">
+        Join {count} School{count === 1 ? '' : 's'}
       </p>
-      <div className="flex gap-2 lg:gap-24">
+
+      <div className="relative flex w-full overflow-hidden rounded-3xl bg-bg/60 px-2 py-2">
         <motion.div
           initial="initial"
           animate="animate"
           variants={sliderVariants}
-          className="flex justify-between flex-shrink-0  items-center py-2 w-full "
+          className="flex w-max flex-shrink-0 items-center py-2"
         >
-          {Logo.map((log) => (
-            <div className="p-2" key={log.id}>
-             <Image width={120} height={120} className="w-full h-full object-cover" src={log.img} alt="" />
-            </div>
+          {marqueeItems.map((school) => (
+            <SchoolCard key={school.id} school={school} />
           ))}
         </motion.div>
+
         <motion.div
           initial="initial"
           animate="animate"
           variants={sliderVariants}
-          className="flex justify-between  flex-shrink-0 items-center py-2 w-full "
+          className="flex w-max flex-shrink-0 items-center py-2"
         >
-          {Logo.map((log) => (
-            <div className="p-2" key={log.id}>
-              <Image width={120} height={120} className="w-full h-full object-cover" src={log.img} alt="" />
-            </div>
+          {marqueeItems.map((school, index) => (
+            <SchoolCard
+              key={`${school.id}-duplicate-${index}`}
+              school={school}
+            />
           ))}
         </motion.div>
       </div>

@@ -17,7 +17,12 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         subdomain: true,
-        isActive: true
+        isActive: true,
+        subscription: {
+          select: {
+            planType: true,
+          },
+        },
       }
     });
 
@@ -31,7 +36,8 @@ export async function GET(request: NextRequest) {
         id: school.id,
         name: school.name,
         subdomain: school.subdomain,
-        isActive: school.isActive
+        isActive: school.isActive,
+        planType: school.subscription?.planType ?? 'BASIC',
       }
     });
 

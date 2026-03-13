@@ -3,117 +3,153 @@ import { motion } from "framer-motion";
 export default function Pricing() {
   const plans = [
     {
-      title: "Free Plan",
-      price: "₦0",
-      description: "Register your school for free, start managing students instantly.",
+      title: "Free Essentials",
+      badge: "Included",
+      description: "Good for schools that want to get started and run their daily work smoothly.",
       features: [
-        "Full student & teacher management",
-        "Automated timetable creation",
-        "Digital report card generation",
-        "No analytics dashboard",
+        "Register your school and get your own school page",
+        "Manage students and teachers in one place",
+        "Set up levels, classes, subjects, and teacher assignments",
+        "Handle admissions, announcements, and school events",
+        "Set up fees, record payments, and issue receipts",
+        "Manage results and let students view them",
+        "Up to 20 requests per minute for each school user",
       ],
       highlight: false,
     },
     {
-      title: "Premium Plan",
-      price: "₦5,000 / month",
-      description: "Unlock full analytics dashboard and advanced tools.",
+      title: "Upgrade Plans",
+      badge: "Scale Up",
+      description: "Best for growing schools that need more space, more control, and smarter tools.",
       features: [
-        "Everything in Free Plan",
-        "Full analytics dashboard",
-        "Download analytics as PDF",
-        "Advanced performance reports",
+        "Support for more students and more staff",
+        "Better finance and performance insights",
+        "More control over your school website and branding",
+        "Screening setup for admission applicants",
+        "More advanced result publishing and promotion settings",
+        "Faster school-wide timetable and exam setup",
+        "Higher request limits for each school user",
       ],
       highlight: true,
     },
+    {
+      title: "Pay Per Action",
+      badge: "Usage Based",
+      description: "For special actions that may be used only when needed, instead of every month.",
+      features: [
+        "Sending bulk fee reminder messages",
+        "Generating applicant PDFs or summaries",
+        "Re-generating school timetables",
+        "Generating or re-generating exam timetables",
+        "Extra receipt generation or downloads",
+        "Student result viewing",
+        "Special result release or publishing actions",
+      ],
+      highlight: false,
+    },
   ];
 
-  const extraCharges = [
-    { action: "View Report Sheet (per student)", price: "₦500" },
-    { action: "Download Analytics as PDF", price: "₦5,000" },
-    { action: "Unlock Result Viewing Button", price: "₦10,000" },
+  const notes = [
+    "The free plan covers the main tools most schools need every day.",
+    "Upgrade plans are for schools that are growing and need more advanced features.",
+    "Pay-per-action is useful for one-off tasks, so schools only pay when they use them.",
+    "Schools on higher plans get more request capacity than the free plan.",
   ];
 
   return (
     <section
       id="pricing"
-      className="h-max flex flex-col justify-center items-center bg-gray-50 dark:bg-gray-900 text-white px-6 py-16 md:py-24"
+      className="flex h-max flex-col items-center justify-center bg-surface px-6 py-16 md:py-24"
     >
-      {/* Heading */}
       <motion.h2
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="text-4xl md:text-5xl mt-4 md:mt-0 font-bold mb-2 text-center"
+        className="mt-4 mb-2 text-center text-4xl font-bold text-[var(--text)] md:mt-0 md:text-5xl"
       >
-        Pricing <span className="text-primary">Plans</span>
+        Pricing <span className="text-[var(--primary)]">Structure</span>
       </motion.h2>
 
       <motion.p
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="text-lg text-muted mb-8 text-center max-w-2xl"
+        className="mb-10 max-w-3xl text-center text-lg text-[var(--muted)]"
       >
-        Start for free, then pay only for the features you need to unlock your
-        school’s full potential.
+        Start with the essentials for free, upgrade when your school needs more advanced tools,
+        and only pay per action for a few special features that are used occasionally.
       </motion.p>
 
-      {/* Plans */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl w-full">
+      <div className="grid w-full max-w-6xl grid-cols-1 gap-8 lg:grid-cols-3">
         {plans.map((plan, index) => (
           <motion.div
             key={index}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: index * 0.1 }}
-            className={`rounded-2xl p-8 border transition-all ${
+            className={`rounded-3xl p-8 transition-all ${
               plan.highlight
-                ? "border-primary bg-gray-50 dark:bg-gray-900/10"
-                : "border-border bg-gray-50 dark:bg-gray-900"
-            } shadow-lg hover:shadow-xl`}
+                ? "border border-[var(--primary)] bg-[var(--surface)] shadow-xl"
+                : "border border-[var(--border)] bg-[var(--surface)] shadow-lg"
+            } hover:-translate-y-1 hover:shadow-xl`}
           >
-            <h3 className="text-2xl font-bold mb-4">{plan.title}</h3>
-            <p className="text-4xl font-bold text-primary mb-4">{plan.price}</p>
-            <p className="text-muted mb-6">{plan.description}</p>
-            <ul className="space-y-3 mb-6">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <h3 className="text-2xl font-bold text-[var(--text)]">{plan.title}</h3>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  plan.highlight
+                    ? "bg-[var(--primary)] text-white"
+                    : "bg-[var(--bg)] text-[var(--primary)]"
+                }`}
+              >
+                {plan.badge}
+              </span>
+            </div>
+
+            <p className="mb-6 min-h-16 text-[var(--muted)]">{plan.description}</p>
+
+            <ul className="mb-8 space-y-3">
               {plan.features.map((feature, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <span className="text-primary">✔</span> {feature}
+                <li key={i} className="flex items-start gap-3 text-[var(--text)]">
+                  <span className="mt-0.5 text-[var(--primary)]">✔</span>
+                  <span>{feature}</span>
                 </li>
               ))}
             </ul>
+
             <button
-              className={`w-full py-3 rounded-xl font-semibold cursor-pointer  transition-all duration-500 ease-in-out ${
+              className={`w-full cursor-pointer rounded-2xl py-3 font-semibold transition-all duration-300 ${
                 plan.highlight
-                  ? "bg-white text-primary hover:bg-gray-300"
-                  : "border border-white text-white hover:bg-gray-100/10 hover:text-white"
+                  ? "border border-[var(--primary)] bg-[var(--primary)] text-white hover:opacity-90"
+                  : "border border-[var(--border)] text-text hover:bg-bg"
               }`}
             >
-              Get Started
+              {plan.title === "Free Essentials"
+                ? "Start Free"
+                : plan.title === "Upgrade Plans"
+                ? "Explore Upgrades"
+                : "Choose Usage Billing"}
             </button>
           </motion.div>
         ))}
       </div>
-
-      {/* Extra Charges */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1 }}
-        className="mt-6 max-w-3xl w-full"
+        className="mt-8 w-full max-w-4xl"
       >
-        <h4 className="text-2xl font-bold mb-4 text-center">
-          Pay-per-Feature Options
+          <h4 className="mb-4 text-center text-2xl font-bold text-text">
+          How It Works
         </h4>
-        <div className="bg-gray-900/10 border border-border rounded-2xl overflow-hidden shadow-lg">
-          {extraCharges.map((item, idx) => (
+        <div className="overflow-hidden rounded-3xl bg-surface shadow-lg">
+          {notes.map((item, idx) => (
             <div
               key={idx}
-              className="flex justify-between items-center px-6 py-4 border-b border-border last:border-none"
+              className="flex items-start gap-3 px-6 py-4 last:border-none"
             >
-              <span>{item.action}</span>
-              <span className="font-semibold text-primary">{item.price}</span>
+              <span className="text-primary">•</span>
+              <span className="text-text">{item}</span>
             </div>
           ))}
         </div>

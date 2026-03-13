@@ -3,7 +3,7 @@ import React from 'react'
 import { GrUserExpert } from "react-icons/gr";
 import { MdOutlineAccessTime } from "react-icons/md";
 import { FaBookReader } from "react-icons/fa";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import Image from 'next/image';
 import { useSchoolData } from "@/context/SchoolDataContext";
 
@@ -16,7 +16,7 @@ interface BannerData {
   }>;
 }
 
-const FadeUp = (delay: number) => {
+const FadeUp = (delay: number): Variants => {
   return {
     initial: {
       opacity: 0,
@@ -26,11 +26,11 @@ const FadeUp = (delay: number) => {
       opacity: 1,
       y: 0,
       transition: {
-        type: "spring",
+        type: "spring" as const,
         stiffness: 100,
         duration: 0.5,
         delay: delay,
-        ease: "easeInOut",
+        ease: "easeInOut" as const,
       },
     },
   };

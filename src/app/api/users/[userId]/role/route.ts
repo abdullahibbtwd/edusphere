@@ -8,7 +8,7 @@ import { requireAuth } from '@/lib/auth-middleware';
  */
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: { userId: string } }
+    { params }: { params: Promise<{ userId: string }> }
 ) {
     // Check authentication
     const user = requireAuth(request);
@@ -23,7 +23,7 @@ export async function PATCH(
     }
 
     try {
-        const { userId } = params;
+        const { userId } = await params;
         const body = await request.json();
         const { role } = body;
 

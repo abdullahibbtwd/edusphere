@@ -112,6 +112,43 @@ export const loginSchoolLimiter = new RateLimiter(10, 60000); // 10 requests per
 export const otpLimiter = new RateLimiter(3, 60000); // 3 requests per minute
 export const registerLimiter = new RateLimiter(5, 60000); // 5 requests per minute
 export const resultUploadLimiter = new RateLimiter(20, 60000); // 20 requests per minute
+export const schoolFreeRequestLimiter = new RateLimiter(500, 60000);
+export const schoolPremiumRequestLimiter = new RateLimiter(1500, 60000);
+export const schoolEnterpriseRequestLimiter = new RateLimiter(5000, 60000);
+export const schoolUserFreeRequestLimiter = new RateLimiter(20, 60000);
+export const schoolUserPremiumRequestLimiter = new RateLimiter(60, 60000);
+export const schoolUserEnterpriseRequestLimiter = new RateLimiter(120, 60000);
+
+export function checkSchoolRequestLimit(
+    identifier: string,
+    planType?: string | null
+) {
+    // Free/basic schools stay on the base limit. Higher plans get more room.
+    if (planType === 'ENTERPRISE') {
+        return schoolEnterpriseRequestLimiter.check(identifier);
+    }
+
+    if (planType === 'PREMIUM') {
+        return schoolPremiumRequestLimiter.check(identifier);
+    }
+
+    return schoolFreeRequestLimiter.check(identifier);
+}
+
+export function checkSchoolUserRequestLimit(
+    identifier: string,
+    planType?: string | null
+) {
+    if (planType === 'ENTERPRISE') {
+        return schoolUserEnterpriseRequestLimiter.check(identifier);
+    }
+
+    if (planType === 'PREMIUM') {
+        return schoolUserPremiumRequestLimiter.check(identifier);
+    }
+
+    return schoolUserFreeRequestLimiter.check(identifier);
+}
 
 /**
  * Extract IP address from request headers

@@ -1,3 +1,4 @@
+export {};
 
 // Mock types
 type ScheduleEntry = {

@@ -1,20 +1,44 @@
-import Redis from 'ioredis';
+import { Redis } from '@upstash/redis';
 
 declare global {
-  // eslint-disable-next-line no-var
   var __redis: Redis | undefined;
 }
 
-// Use a global variable so the connection survives HMR in dev.
-// The `??=` assignment is synchronous, so there is no race between
-// simultaneously-compiled routes.
-globalThis.__redis ??= new Redis(process.env.REDIS_URL!, { lazyConnect: false });
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-globalThis.__redis.on('error', (err) => console.error('Redis error:', err));
+if (redisUrl && redisToken && !globalThis.__redis) {
+  globalThis.__redis = new Redis({
+    url: redisUrl,
+    token: redisToken,
+  });
+}
 
-// Only log on the first genuine connect, not on every reconnect
-globalThis.__redis.once('connect', () => console.log('Redis connected ✓'));
+const client = globalThis.__redis;
 
-const redis = globalThis.__redis;
+const redis = {
+  async get<T = string>(key: string): Promise<T | null> {
+    if (!client) return null;
+    try {
+      return await client.get<T>(key);
+    } catch (error) {
+      console.error('Redis get error:', error);
+      return null;
+    }
+  },
+  async set(key: string, value: string, ttl?: number) {
+    if (!client) return null;
+    try {
+      if (ttl) {
+        return await client.set(key, value, { ex: ttl });
+      }
+
+      return await client.set(key, value);
+    } catch (error) {
+      console.error('Redis set error:', error);
+      return null;
+    }
+  },
+};
 
 export default redis;

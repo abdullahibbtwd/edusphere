@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
     const { status } = body;
 
@@ -26,7 +26,7 @@ export async function PATCH(
       );
     }
 
-    const application = await db.studentApplication.update({
+    const application = await prisma.studentApplication.update({
       where: { id },
       data: { status },
     });
@@ -43,12 +43,12 @@ export async function PATCH(
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
-    const application = await db.studentApplication.findUnique({
+    const application = await prisma.studentApplication.findUnique({
       where: { id },
       include: {
         class: true,

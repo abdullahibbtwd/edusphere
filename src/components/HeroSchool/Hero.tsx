@@ -45,7 +45,7 @@ const GridBackground = () => {
       <motion.div
         initial={{ top: "-10%" }}
         animate={{ top: "110%" }}
-        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+        transition={{ duration: 3, repeat: Infinity, ease: "linear" as const }}
         className="absolute left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent shadow-[0_0_10px_rgb(var(--primary-rgb)/0.5)]"
       />
 
@@ -53,7 +53,7 @@ const GridBackground = () => {
       <motion.div
         initial={{ top: "110%" }}
         animate={{ top: "-10%" }}
-        transition={{ duration: 4, repeat: Infinity, ease: "linear", delay: 1.5 }}
+        transition={{ duration: 4, repeat: Infinity, ease: "linear" as const, delay: 1.5 }}
         className="absolute left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent shadow-[0_0_10px_rgb(var(--primary-rgb)/0.5)]"
       />
 
@@ -61,7 +61,7 @@ const GridBackground = () => {
       <motion.div
         initial={{ left: "-10%" }}
         animate={{ left: "110%" }}
-        transition={{ duration: 3.5, repeat: Infinity, ease: "linear", delay: 0.5 }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: "linear" as const, delay: 0.5 }}
         className="absolute top-0 h-full w-[1px] bg-gradient-to-b from-transparent via-primary/50 to-transparent shadow-[0_0_10px_rgb(var(--primary)/0.5)]"
       />
 
@@ -69,7 +69,7 @@ const GridBackground = () => {
       <motion.div
         initial={{ left: "-20%" }}
         animate={{ left: "120%" }}
-        transition={{ duration: 5, repeat: Infinity, ease: "linear", delay: 2 }}
+        transition={{ duration: 5, repeat: Infinity, ease: "linear" as const, delay: 2 }}
         className="absolute top-0 h-full w-[1px] bg-gradient-to-b from-transparent via-primary/30 to-transparent"
       />
     </div>

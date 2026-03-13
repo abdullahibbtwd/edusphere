@@ -1,3 +1,4 @@
+export {};
 
 // Mock types
 type TimeSlot = { day: string; period: number; };
