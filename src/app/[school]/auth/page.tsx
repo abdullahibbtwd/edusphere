@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { useRouter, useParams } from "next/navigation";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 
 const AuthSystem = () => {
   const { theme } = useTheme();
@@ -22,6 +23,11 @@ const AuthSystem = () => {
   const [registrationEmail, setRegistrationEmail] = useState('');
   const [resetEmail, setResetEmail] = useState(''); // Email for password reset
   const [verificationType, setVerificationType] = useState<'registration' | 'password-reset'>('registration'); // Track verification purpose
+  const [showLoginPass, setShowLoginPass] = useState(false);
+  const [showRegPass, setShowRegPass] = useState(false);
+  const [showRegConfirmPass, setShowRegConfirmPass] = useState(false);
+  const [showResetPass, setShowResetPass] = useState(false);
+  const [showResetConfirmPass, setShowResetConfirmPass] = useState(false);
 
   const handleVerificationInput = (index: number, value: string) => {
     if (/^\d?$/.test(value)) {
@@ -376,15 +382,26 @@ const AuthSystem = () => {
                 <label htmlFor="login-password" className="block text-sm font-medium text-[var(--text)] mb-2">
                   Password
                 </label>
-                <input
-                  id="login-password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-bg border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-                  placeholder="Enter your password"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    id="login-password"
+                    type={showLoginPass ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-10 rounded-lg bg-bg border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                    placeholder="Enter your password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPass((p) => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--primary)] cursor-pointer"
+                    tabIndex={-1}
+                    aria-label={showLoginPass ? 'Hide password' : 'Show password'}
+                  >
+                    {showLoginPass ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex justify-between items-center mb-6">
@@ -465,30 +482,52 @@ const AuthSystem = () => {
                 <label htmlFor="register-password" className="block text-sm font-medium text-[var(--text)] mb-2">
                   Password
                 </label>
-                <input
-                  id="register-password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-bg border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-                  placeholder="Create a password"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    id="register-password"
+                    type={showRegPass ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-10 rounded-lg bg-bg border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                    placeholder="Create a password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPass((p) => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--primary)] cursor-pointer"
+                    tabIndex={-1}
+                    aria-label={showRegPass ? 'Hide password' : 'Show password'}
+                  >
+                    {showRegPass ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <div className="mb-6">
                 <label htmlFor="register-confirm-password" className="block text-sm font-medium text-[var(--text)] mb-2">
                   Confirm Password
                 </label>
-                <input
-                  id="register-confirm-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-bg border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-                  placeholder="Confirm your password"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    id="register-confirm-password"
+                    type={showRegConfirmPass ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-10 rounded-lg bg-bg border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                    placeholder="Confirm your password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegConfirmPass((p) => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--primary)] cursor-pointer"
+                    tabIndex={-1}
+                    aria-label={showRegConfirmPass ? 'Hide password' : 'Show password'}
+                  >
+                    {showRegConfirmPass ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <button
@@ -628,30 +667,52 @@ const AuthSystem = () => {
                 <label htmlFor="new-password" className="block text-sm font-medium text-[var(--text)] mb-2">
                   New Password
                 </label>
-                <input
-                  id="new-password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-bg border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-                  placeholder="Enter new password"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    id="new-password"
+                    type={showResetPass ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-10 rounded-lg bg-bg border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                    placeholder="Enter new password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPass((p) => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--primary)] cursor-pointer"
+                    tabIndex={-1}
+                    aria-label={showResetPass ? 'Hide password' : 'Show password'}
+                  >
+                    {showResetPass ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <div className="mb-6">
                 <label htmlFor="confirm-new-password" className="block text-sm font-medium text-[var(--text)] mb-2">
                   Confirm New Password
                 </label>
-                <input
-                  id="confirm-new-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-bg border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-                  placeholder="Confirm new password"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    id="confirm-new-password"
+                    type={showResetConfirmPass ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-10 rounded-lg bg-bg border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                    placeholder="Confirm new password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetConfirmPass((p) => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--primary)] cursor-pointer"
+                    tabIndex={-1}
+                    aria-label={showResetConfirmPass ? 'Hide password' : 'Show password'}
+                  >
+                    {showResetConfirmPass ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <button

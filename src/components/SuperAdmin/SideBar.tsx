@@ -25,7 +25,7 @@ export default function Sidebar() {
       initial={{ x: -250 }}
       animate={{ x: 0 }}
       transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-      className="md:h-screen h-[90%] md:mt-0 mt-14 w-72 md:w-64 p-3 md:p-4 
+      className="md:h-screen h-[90%] md:mt-0 mt-14 w-72 md:w-64 px-4 py-4 md:p-4 
            bg-surface text-text shadow-lg flex flex-col"
     >
       {/* Logo */}
@@ -49,7 +49,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 mt-4 px-2 space-y-2">
+      <nav className="flex-1 mt-4 px-1 space-y-2 md:space-y-2.5">
         {links.map((link, index) => {
           const isActive = pathname === link.href;
           return (
@@ -60,13 +60,15 @@ export default function Sidebar() {
               transition={{ type: 'spring', stiffness: 200 }}
             >
               <button
-                className={`flex items-center w-full gap-2 md:gap-3 px-2 md:px-4 py-2 md:py-3 rounded-lg transition-colors cursor-pointer text-left
+                className={`flex items-center w-full gap-3 md:gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors cursor-pointer text-left
                   ${isActive ? 'bg-primary text-white' : 'hover:bg-primary/10'}
                 `}
                 onClick={() => router.push(link.href)}
               >
-                <span className="text-lg md:text-xl flex-shrink-0">{link.icon}</span>
-                <span className="font-medium text-xs md:text-base leading-tight break-words">{link.name}</span>
+                <span className="text-xl md:text-xl flex-shrink-0">{link.icon}</span>
+                <span className="font-medium text-sm md:text-base leading-tight break-words">
+                  {link.name}
+                </span>
               </button>
             </motion.div>
           );

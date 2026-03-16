@@ -1,28 +1,33 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState, useEffect } from 'react';
 import { FiMenu, FiX, FiHome, FiInfo, FiGrid, FiTag, FiMail, FiLogOut } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import { motion,type Variants } from 'framer-motion';
 import ThemeButton from './ThemeButton';
 import AuthNavigation from './AuthNavigation';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { isAuthenticated, logout } from '@/lib/client-auth';
+import { logout } from '@/lib/client-auth';
+import { useUser } from '@/context/UserContext';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
-  const [isAuth, setIsAuth] = useState(false);
-
-  useEffect(() => {
-    setIsAuth(isAuthenticated());
-  }, []);
+  const { user, refreshUser } = useUser();
 
   const handleLogout = async () => {
-    await logout();
-    setIsAuth(false);
-    setIsOpen(false);
-    router.refresh();
+    try {
+      const ok = await logout();
+      if (ok) refreshUser();
+    } catch (error) {
+      console.error('Logout failed', error);
+      refreshUser();
+    } finally {
+      setIsOpen(false);
+      router.push('/');
+      router.refresh();
+    }
   };
 
   const navLinks = [
@@ -33,12 +38,12 @@ export default function Navbar() {
     { name: 'Contact', icon: <FiMail />, href: '#contact' },
   ];
 
-  const sidebarVariants = {
+  const sidebarVariants: Variants = {
     hidden: { x: '100%' },
     visible: { x: 0, transition: { type: 'spring', stiffness: 80, damping: 20 } },
   };
 
-  const linkVariants = {
+  const linkVariants: Variants<number> = {
     hidden: { opacity: 0, x: 20 },
     visible: (i: any) => ({ opacity: 1, x: 0, transition: { delay: i * 0.1, type: 'spring', stiffness: 100 } }),
   };
@@ -79,10 +84,19 @@ export default function Navbar() {
               ))}
               <ThemeButton />
             </div>
-            <div>
+            <div className="hidden md:flex items-center gap-3">
               <AuthNavigation
-                className="px-4 hidden md:flex py-2 rounded-md bg-primary text-white cursor-pointer hover:scale-105 duration-500 ease-in-out transition-all"
+                className="px-4 py-2 rounded-md bg-primary text-white cursor-pointer hover:scale-105 duration-500 ease-in-out transition-all"
               />
+              {user && (
+                <button
+                  onClick={handleLogout}
+                  className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium hover:scale-105 duration-500 ease-in-out transition-all hover:bg-bg transition-colors cursor-pointer"
+                >
+                  <FiLogOut color='red' fontStyle={'bold'} className="w-4 h-4" />
+                
+                </button>
+              )}
             </div>
             <div className="md:hidden flex items-center gap-2">
               <AuthNavigation
@@ -129,7 +143,7 @@ export default function Navbar() {
             </motion.a>
           ))}
 
-          {isAuth && (
+          {user && (
             <motion.button
               custom={navLinks.length}
               initial="hidden"

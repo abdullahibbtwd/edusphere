@@ -223,19 +223,43 @@ export default function ProfilePage({ profile }: { profile: ProfileData }) {
   const handleSaveProfile = async () => {
     setIsSavingProfile(true);
     try {
+      let imageUrlToSave = profile.imageUrl;
+
+      // If a new avatar was selected, upload it to Cloudinary first
+      if (avatarBase64) {
+        const uploadRes = await fetch('/api/profile/avatar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: avatarBase64 }),
+        });
+
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok || !uploadData.url) {
+          toast.error(uploadData.error || 'Failed to upload image');
+          setIsSavingProfile(false);
+          return;
+        }
+
+        imageUrlToSave = uploadData.url;
+      }
+
       const res = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
           phone: phone.trim() || null,
-          imageUrl: avatarBase64 ?? profile.imageUrl,
+          imageUrl: imageUrlToSave,
         }),
       });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error || 'Failed to update profile'); return; }
       toast.success('Profile updated successfully!');
       setAvatarBase64(null);
+      if (avatarPreview && imageUrlToSave) {
+        // Clear preview; the page will typically be refreshed or re-fetched
+        setAvatarPreview(null);
+      }
     } catch {
       toast.error('An error occurred. Please try again.');
     } finally {
@@ -288,7 +312,7 @@ export default function ProfilePage({ profile }: { profile: ProfileData }) {
           <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-8">
             {/* Avatar */}
             <div className="relative flex-shrink-0 group">
-              <div className="w-24 h-24 rounded-2xl border-4 border-[var(--surface)] overflow-hidden bg-gradient-to-br from-[var(--primary)] to-purple-400 flex items-center justify-center shadow-lg">
+              <div className="relative w-24 aspect-square rounded-2xl border-4 border-[var(--surface)] overflow-hidden bg-gradient-to-br from-[var(--primary)] to-purple-400 flex items-center justify-center shadow-lg">
                 {displayImage ? (
                   <Image src={displayImage} alt={name} fill className="object-cover" sizes="96px" />
                 ) : (

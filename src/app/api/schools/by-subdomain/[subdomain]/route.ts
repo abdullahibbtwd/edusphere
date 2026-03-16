@@ -15,7 +15,7 @@ export async function GET(
 
     const cached = await redis.get(CACHE_KEY(subdomain));
     if (cached) {
-      return NextResponse.json(JSON.parse(cached));
+      return NextResponse.json(cached);
     }
 
     const school = await prisma.school.findUnique({

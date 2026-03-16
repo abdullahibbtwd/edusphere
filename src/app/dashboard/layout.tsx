@@ -1,9 +1,10 @@
 "use client";
 import { useState } from "react";
+import { motion } from "framer-motion";
 // trigger rebuild
 import SideBar from "@/components/SuperAdmin/SideBar";
 import Navbar from "@/components/SuperAdmin/Navbar";
-import { Menu, X } from "lucide-react";
+import { X } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -20,18 +21,21 @@ export default function DashboardLayout({
       {/* Mobile Sidebar Backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden transition-opacity duration-300"
           onClick={closeSidebar}
         />
       )}
 
-      {/* Sidebar - Desktop: sticky, Mobile: overlay */}
-      <aside className={`
+      {/* Sidebar - Desktop: sticky, Mobile: animated overlay */}
+      <motion.aside
+        initial={{ x: -280 }}
+        animate={{ x: sidebarOpen ? 0 : -280 }}
+        transition={{ type: "spring", stiffness: 220, damping: 26 }}
+        className={`
         fixed md:sticky top-0 h-screen w-72 md:w-64 bg-surface text-text shadow-lg z-50
-        transition-transform duration-300 ease-in-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         md:translate-x-0
-      `}>
+      `}
+      >
         {/* Mobile Close Button */}
         <button
           onClick={closeSidebar}
@@ -43,7 +47,7 @@ export default function DashboardLayout({
         <div onClick={closeSidebar}>
           <SideBar />
         </div>
-      </aside>
+      </motion.aside>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
