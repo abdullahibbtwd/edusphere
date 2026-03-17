@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
+import CustomSelect from "@/components/ui/CustomSelect";
 
 export type FeeChartDataItem = {
   class: string;
@@ -147,47 +148,41 @@ const SchoolFeesChart = ({ schoolId }: { schoolId?: string }) => {
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <select
+        <div className="flex flex-wrap gap-2 items-center">
+          <CustomSelect
+            options={[
+              { value: "", label: "Current session" },
+              ...sessions.map((s) => ({ value: s.id, label: s.name })),
+            ]}
             value={selectedSessionId}
-            onChange={(e) => setSelectedSessionId(e.target.value)}
-            className="bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-md px-2 py-1 text-sm"
-          >
-            <option value="">Current session</option>
-            {sessions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <select
+            onChange={setSelectedSessionId}
+            placeholder="Current session"
+            className="w-44"
+          />
+          <CustomSelect
+            options={[
+              { value: "", label: "All Levels" },
+              ...levels.map((level) => ({ value: level.id, label: level.name })),
+            ]}
             value={selectedLevelId}
-            onChange={(e) => {
-              setSelectedLevelId(e.target.value);
+            onChange={(val) => {
+              setSelectedLevelId(val);
               setSelectedClassId("");
             }}
-            className="bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-md px-2 py-1 text-sm"
-          >
-            <option value="">All Levels</option>
-            {levels.map((level) => (
-              <option key={level.id} value={level.id}>
-                {level.name}
-              </option>
-            ))}
-          </select>
+            placeholder="All Levels"
+            className="w-44"
+          />
           {selectedLevelId && (
-            <select
+            <CustomSelect
+              options={[
+                { value: "", label: "All Classes" },
+                ...classes.map((c) => ({ value: c.id, label: c.name })),
+              ]}
               value={selectedClassId}
-              onChange={(e) => setSelectedClassId(e.target.value)}
-              className="bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-md px-2 py-1 text-sm"
-            >
-              <option value="">All Classes</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedClassId}
+              placeholder="All Classes"
+              className="w-44"
+            />
           )}
         </div>
       </div>

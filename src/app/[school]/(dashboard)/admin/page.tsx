@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useParams } from "next/navigation"
 import Announcement from "@/components/Schools/Announcement"
 import ProgramsChart from "@/components/Schools/Attendance"
@@ -21,38 +21,38 @@ const AdminPage = () => {
   const [currentSessionName, setCurrentSessionName] = useState<string | null>(null)
   const [classEnrollment, setClassEnrollment] = useState<{ name: string; count: number }[]>([])
 
+  // Prevent race conditions / dev StrictMode double-invocation from overwriting state
+  const requestSeq = useRef(0)
+
   const fetchCounts = useCallback(async () => {
     if (!schoolId) return
+    const seq = ++requestSeq.current
     try {
-      const [studentsRes, teachersRes, calendarRes, enrollmentRes] = await Promise.all([
-        fetch(`/api/schools/${schoolId}/students?page=1&limit=1`),
-        fetch(`/api/schools/${schoolId}/teachers?page=1&limit=1`),
-        fetch(`/api/schools/${schoolId}/academic-calendar`),
-        fetch(`/api/schools/${schoolId}/classes/enrollment?limit=10`)
-      ])
-      const studentsData = await studentsRes.json()
-      const teachersData = await teachersRes.json()
-      const calendarData = await calendarRes.json()
-      const enrollmentData = await enrollmentRes.json()
-      if (studentsRes.ok && studentsData.pagination) {
-        setStudentStats({ total: studentsData.pagination.totalCount ?? 0 })
-      }
-      if (teachersRes.ok && teachersData.pagination) {
-        setTeacherStats({ total: teachersData.pagination.totalCount ?? 0 })
-      }
-      if (calendarRes.ok && Array.isArray(calendarData.sessions)) {
-        const active = calendarData.sessions.find((s: { isActive?: boolean }) => s.isActive)
-        setCurrentSessionName(active?.name ?? null)
-      }
-      if (enrollmentRes.ok && Array.isArray(enrollmentData.data)) {
-        setClassEnrollment(enrollmentData.data)
-      } else {
-        setClassEnrollment([])
+      const res = await fetch(`/api/schools/${schoolId}/dashboard-summary`, {
+        cache: 'no-store',
+      })
+
+      // Ignore stale responses
+      if (seq !== requestSeq.current) return
+
+      const data = await res.json()
+
+      // Ignore stale responses again (in case JSON parsing is slow)
+      if (seq !== requestSeq.current) return
+
+      if (res.ok) {
+        setStudentStats({ total: data.studentTotal ?? 0 })
+        setTeacherStats({ total: data.teacherTotal ?? 0 })
+        setCurrentSessionName(data.currentSessionName ?? null)
+        if (Array.isArray(data.classEnrollment)) {
+          setClassEnrollment(data.classEnrollment)
+        }
       }
     } catch {
-      setStudentStats({ total: 0 })
-      setTeacherStats({ total: 0 })
-      setClassEnrollment([])
+      // If a request fails, don't wipe existing chart data (prevents flicker)
+      if (seq !== requestSeq.current) return
+      setStudentStats((prev) => prev ?? { total: 0 })
+      setTeacherStats((prev) => prev ?? { total: 0 })
     }
   }, [schoolId])
 

@@ -7,7 +7,16 @@ export type CachedSchool = { id: string; name: string; subdomain: string; isAdmi
 
 export async function getSchool(schoolId: string): Promise<CachedSchool | null> {
   const cached = await redis.get(`school:${schoolId}`);
-  if (cached) return JSON.parse(cached) as CachedSchool;
+  if (cached) {
+    if (typeof cached === 'string') {
+      try {
+        return JSON.parse(cached) as CachedSchool;
+      } catch {
+        return null;
+      }
+    }
+    return cached as CachedSchool;
+  }
 
   const isUUID = UUID_RE.test(schoolId);
 
@@ -25,10 +34,10 @@ export async function getSchool(schoolId: string): Promise<CachedSchool | null> 
 
   if (!school) return null;
 
-  // Cache by both id AND subdomain so either lookup hits cache next time
+  // Cache by both id AND subdomain so either lookup hits cache next time (TTL in seconds)
   await Promise.all([
-    redis.set(`school:${school.id}`, JSON.stringify(school), 'EX', 3600),
-    redis.set(`school:${school.subdomain}`, JSON.stringify(school), 'EX', 3600),
+    redis.set(`school:${school.id}`, JSON.stringify(school), 3600),
+    redis.set(`school:${school.subdomain}`, JSON.stringify(school), 3600),
   ]);
 
   return school;

@@ -61,7 +61,7 @@ export async function GET(
 
     const totalPages = Math.ceil(totalCount / limit);
 
-    // Format the response
+    // Format the response (handle null user and null class from optional relations)
     const formattedApplications = applications.map(application => ({
       id: application.id,
       firstName: application.firstName,
@@ -71,13 +71,15 @@ export async function GET(
       applicationNumber: application.applicationNumber,
       applicationDate: application.applicationDate.toISOString(),
       status: application.status,
-      class: {
-        id: application.class.id,
-        name: application.class.name,
-        levelName: application.class.level.name,
-        fullName: `${application.class.level.name}${application.class.name}`
-      },
-      user: application.user,
+      class: application.class
+        ? {
+            id: application.class.id,
+            name: application.class.name,
+            levelName: application.class.level?.name ?? '',
+            fullName: `${application.class.level?.name ?? ''}${application.class.name}`
+          }
+        : null,
+      user: application.user ?? null,
       createdAt: application.createdAt.toISOString(),
       updatedAt: application.updatedAt.toISOString()
     }));

@@ -5,7 +5,7 @@ import { FaEdit, FaTrash, FaChevronDown, FaChevronRight, FaBook } from "react-ic
 import { useState, useCallback, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import CustomSelect from "@/components/ui/CustomSelect";
 import { useUser } from "@/context/UserContext";
 
 // Types for teacher view
@@ -762,56 +762,48 @@ const SubjectsPage = () => {
 
           {/* Level Filter */}
           <div className="w-full md:w-48">
-            <Select
+            <CustomSelect
+              options={[
+                { value: "all", label: "All Levels" },
+                ...(levels.length > 0
+                  ? levels.map((level) => ({ value: level.id, label: level.name }))
+                  : []),
+              ]}
               value={filterLevel}
-              onValueChange={(value) => {
+              onChange={(value) => {
                 setFilterLevel(value);
-                setFilterClass("all"); // Reset class filter when level changes
+                setFilterClass("all");
                 setCurrentPage(1);
               }}
-            >
-              <SelectTrigger className="w-full bg-surface border-muted text-text">
-                <SelectValue placeholder="Filter by Level" />
-              </SelectTrigger>
-              <SelectContent className="bg-surface border-muted text-text">
-                <SelectItem value="all">All Levels</SelectItem>
-                {levels.length > 0 ? (
-                  levels.map((level) => (
-                    <SelectItem key={level.id} value={level.id}>
-                      {level.name}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <div className="p-2 text-sm text-muted-foreground text-center">No levels found</div>
-                )}
-              </SelectContent>
-            </Select>
+              placeholder="Filter by Level"
+              className="w-full"
+            />
           </div>
 
           {/* Class Filter */}
-          <div className="w-full md:w-48">
-            <Select
+          <div
+            className={`w-full md:w-48 ${filterLevel === "all" ? "pointer-events-none opacity-60" : ""}`}
+          >
+            <CustomSelect
+              options={[
+                { value: "all", label: "All Classes" },
+                ...classes
+                  .filter((c) => filterLevel === "all" || c.levelId === filterLevel)
+                  .map((c) => {
+                    const levelName = levels.find((l) => l.id === c.levelId)?.name ?? "";
+                    const displayName = c.name === "C" ? "General" : c.name;
+                    const label = levelName ? `${levelName} ${displayName}` : displayName;
+                    return { value: c.id, label };
+                  }),
+              ]}
               value={filterClass}
-              onValueChange={(value) => {
+              onChange={(value) => {
                 setFilterClass(value);
                 setCurrentPage(1);
               }}
-              disabled={filterLevel === "all"} // Optional: restrict class filtering to selected level
-            >
-              <SelectTrigger className="w-full bg-surface border-muted text-text">
-                <SelectValue placeholder="Filter by Class" />
-              </SelectTrigger>
-              <SelectContent className="bg-surface border-muted text-text">
-                <SelectItem value="all">All Classes</SelectItem>
-                {classes
-                  .filter((c) => filterLevel === "all" || c.levelId === filterLevel)
-                  .map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+              placeholder="Filter by Class"
+              className="w-full"
+            />
           </div>
 
           <button

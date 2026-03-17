@@ -140,8 +140,9 @@ function buildIORedisClient(redisUrl: string): RedisClient {
 
     async set(key: string, value: string, ttl?: number) {
       try {
-        return ttl
-          ? await io.set(key, value, 'EX', ttl)
+        const seconds = ttl != null ? Math.floor(Number(ttl)) : 0;
+        return seconds > 0
+          ? await io.set(key, value, 'EX', seconds)
           : await io.set(key, value);
       } catch (err) {
         console.error('[redis/ioredis] set error:', err);

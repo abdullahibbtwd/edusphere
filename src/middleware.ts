@@ -141,29 +141,31 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const schoolRateLimit = checkSchoolRequestLimit(
-    `school:${schoolData.id}`,
-    schoolData.planType
-  );
+  // Rate limiting (keep strict in production; relaxed in dev to avoid 429s during HMR/StrictMode)
+  const isProd = process.env.NODE_ENV === 'production';
 
-  if (!schoolRateLimit.success) {
-    return createRateLimitResponse(
-      schoolRateLimit.retryAfter!,
-      `This school's request limit has been reached for the current minute. Upgrade the plan for a higher limit.`
-    );
-  }
+  if (isProd) {
+    const schoolRateLimit = checkSchoolRequestLimit(`school:${schoolData.id}`, schoolData.planType);
 
-  if (isAuthenticated && userId) {
-    const schoolUserRateLimit = checkSchoolUserRequestLimit(
-      `school-user:${schoolData.id}:${userId}`,
-      schoolData.planType
-    );
-
-    if (!schoolUserRateLimit.success) {
+    if (!schoolRateLimit.success) {
       return createRateLimitResponse(
-        schoolUserRateLimit.retryAfter!,
-        `This user has reached the request limit for the current minute. Please wait and try again.`
+        schoolRateLimit.retryAfter!,
+        `This school's request limit has been reached for the current minute. Upgrade the plan for a higher limit.`
       );
+    }
+
+    if (isAuthenticated && userId) {
+      const schoolUserRateLimit = checkSchoolUserRequestLimit(
+        `school-user:${schoolData.id}:${userId}`,
+        schoolData.planType
+      );
+
+      if (!schoolUserRateLimit.success) {
+        return createRateLimitResponse(
+          schoolUserRateLimit.retryAfter!,
+          `This user has reached the request limit for the current minute. Please wait and try again.`
+        );
+      }
     }
   }
 

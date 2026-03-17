@@ -25,29 +25,61 @@ export async function GET(
     const whereClause: any = { schoolId: school.id };
 
     if (classId) {
-      // Logic for filtering by Class
-      // 1. Get the class details to find its Level
-      const targetClass = await prisma.class.findUnique({
-        where: { id: classId },
+      // Filter by specific class (e.g. SS1 A): show general + subjects that include this class in classAssignment
+      const targetClass = await prisma.class.findFirst({
+        where: { id: classId, schoolId: school.id },
         select: { id: true, name: true, levelId: true }
       });
 
       if (targetClass) {
+        const name = targetClass.name.trim();
+        const level = targetClass.levelId
+          ? await prisma.level.findUnique({
+              where: { id: targetClass.levelId },
+              select: { name: true }
+            })
+          : null;
+        const levelName = level?.name ?? '';
+
+        // Token match: class name as whole token ("A", "A, C", "C, A", etc.)
+        const tokenMatch =
+          name.length > 0
+            ? [
+                { classAssignment: name },
+                { classAssignment: { startsWith: `${name}, ` } },
+                { classAssignment: { startsWith: `${name},` } },
+                { classAssignment: { endsWith: `, ${name}` } },
+                { classAssignment: { endsWith: `,${name}` } },
+                { classAssignment: { contains: `, ${name}, ` } },
+                { classAssignment: { contains: `,${name},` } },
+                { classAssignment: { contains: `${name},` } },
+                { classAssignment: { contains: `,${name}` } },
+              ]
+            : [];
+
+        // "Level Class" format (e.g. "SS1 A", "SS1A", "JSS1 C") in case classAssignment stores that
+        const levelClassMatch =
+          levelName && name.length > 0
+            ? [
+                { classAssignment: { contains: `${levelName} ${name}` } },
+                { classAssignment: { contains: `${levelName}${name}` } },
+                { classAssignment: { contains: `${levelName}, ${name}` } },
+                { classAssignment: { contains: `, ${levelName} ${name}` } },
+                { classAssignment: { contains: `, ${levelName}${name}` } },
+              ]
+            : [];
+
         whereClause.OR = [
-          { isGeneral: true }, // General subjects apply to everyone
-          { classAssignment: { contains: targetClass.id } }, // Explicit assignment by ID
-          { classAssignment: { contains: targetClass.name } }, // Legacy assignment by Name
-          // Subjects assigned to the class's Level (but not specifically restricted to other classes)
-          // This part is tricky. If a subject is "Specific" to "JSS1" but has NO classAssignment, it usually means "All JSS1".
-          // But our new logic says "Specific" MUST have classIds.
-          // However, we want to include subjects that might be linked to this level broadly. 
-          // For now, let's stick to explicit assignments or general keys.
+          { isGeneral: true },
+          { classAssignment: { contains: targetClass.id } },
+          ...tokenMatch,
+          ...levelClassMatch,
           {
             AND: [
               { levels: { some: { id: targetClass.levelId } } },
-              { classAssignment: null } // If linked to level but no specific class restriction (legacy behavior or generalized)
-            ]
-          }
+              { classAssignment: null },
+            ],
+          },
         ];
       }
     } else if (levelId) {

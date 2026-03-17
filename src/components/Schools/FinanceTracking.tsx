@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
+import CustomSelect from "@/components/ui/CustomSelect";
 
 type RevenuePoint = {
   sessionId: string;
@@ -113,21 +114,17 @@ const FinanceTracking = ({ schoolId }: { schoolId?: string }) => {
             Total revenue: {formatMoney(totalRevenue)}
           </p>
         </div>
-        <div>
-          <label htmlFor="session-select" className="sr-only">Session</label>
-          <select
-            id="session-select"
+        <div aria-label="Session">
+          <CustomSelect
+            options={[
+              { value: "", label: "All time" },
+              ...sessions.map((s) => ({ value: s.id, label: s.name })),
+            ]}
             value={selectedSessionId}
-            onChange={(e) => setSelectedSessionId(e.target.value)}
-            className="bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-md px-3 py-1.5 text-sm"
-          >
-            <option value="">All time</option>
-            {sessions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedSessionId}
+            placeholder="All time"
+            className="w-44"
+          />
         </div>
       </div>
 
