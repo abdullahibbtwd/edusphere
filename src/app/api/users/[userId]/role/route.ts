@@ -28,7 +28,7 @@ export async function PATCH(
         const { role } = body;
 
         // Validate role
-        const validRoles = ['USER', 'SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT'];
+        const validRoles = ['USER', 'SUPER_ADMIN', 'ADMIN', 'TEACHER', 'STUDENT'];
         if (!role || !validRoles.includes(role)) {
             return NextResponse.json(
                 { error: 'Invalid role. Must be one of: ' + validRoles.join(', ') },

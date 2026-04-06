@@ -43,7 +43,8 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
       <div className="flex items-center gap-4">
         {/* Mobile Menu Button */}
         <button
-          onClick={onMenuClick}
+          type="button"
+          onClick={() => onMenuClick?.()}
           className="md:hidden p-2 bg-surface rounded-lg shadow-lg border border-border hover:bg-bg transition-colors"
           aria-label="Open menu"
         >

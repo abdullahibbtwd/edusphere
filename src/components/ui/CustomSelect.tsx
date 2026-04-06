@@ -12,6 +12,9 @@ type CustomSelectProps = {
   onChange: (val: string) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
+  /** `inline`: options stack below the trigger and grow the parent (no inner scroll). */
+  menuVariant?: 'dropdown' | 'inline';
 };
 
 export default function CustomSelect({
@@ -20,6 +23,8 @@ export default function CustomSelect({
   onChange,
   placeholder = 'Select...',
   className = '',
+  disabled = false,
+  menuVariant = 'dropdown',
 }: CustomSelectProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -36,13 +41,25 @@ export default function CustomSelect({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  useEffect(() => {
+    if (disabled) setOpen(false);
+  }, [disabled]);
+
+  const isInline = menuVariant === 'inline';
+
   return (
     <div ref={ref} className={`relative w-56 ${className}`}>
       {/* Trigger */}
       <button
         type="button"
-        onClick={() => setOpen((p) => !p)}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-sm hover:border-[var(--primary)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+        disabled={disabled}
+        aria-disabled={disabled}
+        onClick={() => !disabled && setOpen((p) => !p)}
+        className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--primary)] ${
+          disabled
+            ? 'cursor-not-allowed opacity-50'
+            : 'hover:border-[var(--primary)]'
+        }`}
       >
         <span className="truncate">{selected?.label ?? placeholder}</span>
         <motion.span
@@ -54,17 +71,21 @@ export default function CustomSelect({
         </motion.span>
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown / inline list */}
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            initial={{ opacity: 0, y: isInline ? 0 : -6, scale: isInline ? 1 : 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            exit={{ opacity: 0, y: isInline ? 0 : -6, scale: isInline ? 1 : 0.97 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-lg overflow-hidden"
+            className={
+              isInline
+                ? 'relative z-10 mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-lg overflow-hidden'
+                : 'absolute z-50 mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-lg overflow-hidden'
+            }
           >
-            <ul className="max-h-56 overflow-y-auto py-1">
+            <ul className={isInline ? 'py-1' : 'max-h-56 overflow-y-auto py-1'}>
               {options.map((opt) => {
                 const isActive = opt.value === value;
                 return (

@@ -11,8 +11,22 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useTheme } from "next-themes";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import CustomSelect from "@/components/ui/CustomSelect";
+
+function subscribeNarrow(cb: () => void) {
+  const mq = window.matchMedia("(max-width: 639px)");
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+}
+
+function getIsNarrow() {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
+}
+
+function useIsNarrowScreen() {
+  return useSyncExternalStore(subscribeNarrow, getIsNarrow, () => false);
+}
 
 export type FeeChartDataItem = {
   class: string;
@@ -38,6 +52,7 @@ const CHART_LIMIT = 15;
 const SchoolFeesChart = ({ schoolId }: { schoolId?: string }) => {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const isNarrow = useIsNarrowScreen();
 
   const [sessionName, setSessionName] = useState<string | null>(null);
   const [data, setData] = useState<FeeChartDataItem[]>([]);
@@ -128,27 +143,33 @@ const SchoolFeesChart = ({ schoolId }: { schoolId?: string }) => {
 
   if (loading && data.length === 0 && sessions.length === 0) {
     return (
-      <div className="bg-[var(--surface)] rounded-lg p-4 h-full flex items-center justify-center">
-        <p className="text-[var(--muted)]">Loading fee data…</p>
+      <div className="flex h-full min-h-0 min-w-0 max-w-full items-center justify-center overflow-hidden rounded-lg bg-[var(--surface)] p-4">
+        <p className="text-muted">Loading fee data…</p>
       </div>
     );
   }
 
+  const chartMargin = isNarrow
+    ? { top: 4, right: 4, left: 0, bottom: 56 }
+    : { top: 5, right: 24, left: 8, bottom: 20 };
+
+  const selectClass = "w-full min-w-0 !max-w-full sm:!w-44";
+
   return (
-    <div className="bg-[var(--surface)] rounded-lg p-4 h-full">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-[var(--text)]">
+    <div className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col overflow-hidden rounded-lg bg-[var(--surface)] p-3 sm:p-4">
+      <div className="mb-3 flex w-full min-w-0 shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="truncate text-lg font-semibold text-[var(--text)]">
             School Fees Payment
           </h1>
           {sessionName && (
-            <p className="text-sm text-[var(--muted)] mt-0.5">
+            <p className="mt-0.5 truncate text-sm text-[var(--muted)]">
               Session: {sessionName}
             </p>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:max-w-full sm:flex-row sm:flex-wrap sm:justify-end">
           <CustomSelect
             options={[
               { value: "", label: "Current session" },
@@ -157,7 +178,7 @@ const SchoolFeesChart = ({ schoolId }: { schoolId?: string }) => {
             value={selectedSessionId}
             onChange={setSelectedSessionId}
             placeholder="Current session"
-            className="w-44"
+            className={selectClass}
           />
           <CustomSelect
             options={[
@@ -170,7 +191,7 @@ const SchoolFeesChart = ({ schoolId }: { schoolId?: string }) => {
               setSelectedClassId("");
             }}
             placeholder="All Levels"
-            className="w-44"
+            className={selectClass}
           />
           {selectedLevelId && (
             <CustomSelect
@@ -181,33 +202,39 @@ const SchoolFeesChart = ({ schoolId }: { schoolId?: string }) => {
               value={selectedClassId}
               onChange={setSelectedClassId}
               placeholder="All Classes"
-              className="w-44"
+              className={selectClass}
             />
           )}
         </div>
       </div>
 
       {chartData.length === 0 ? (
-        <div className="h-[85%] flex items-center justify-center text-[var(--muted)]">
+        <div className="flex min-h-[200px] flex-1 items-center justify-center text-[var(--muted)]">
           No fee data for the selected session.
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height="85%">
-          <BarChart
-            data={chartData}
-            margin={{ top: 5, right: 30, left: 20, bottom: 20 }}
-          >
+        <div className="min-h-[200px] w-full min-w-0 flex-1">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <BarChart
+              data={chartData}
+              margin={chartMargin}
+              barCategoryGap={isNarrow ? "12%" : "20%"}
+            >
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
               stroke={gridColor}
             />
             <XAxis
-              tickMargin={10}
+              tickMargin={isNarrow ? 4 : 10}
               dataKey="name"
               axisLine={false}
-              tick={{ fill: axisTextColor, fontSize: 11 }}
+              tick={{ fill: axisTextColor, fontSize: isNarrow ? 10 : 11 }}
               tickLine={false}
+              interval={0}
+              angle={isNarrow ? -35 : 0}
+              textAnchor={isNarrow ? "end" : "middle"}
+              height={isNarrow ? 52 : 30}
             />
             <YAxis
               tickMargin={10}
@@ -230,9 +257,10 @@ const SchoolFeesChart = ({ schoolId }: { schoolId?: string }) => {
               align="center"
               verticalAlign="top"
               wrapperStyle={{
-                paddingTop: "10px",
-                paddingBottom: "20px",
+                paddingTop: isNarrow ? "4px" : "10px",
+                paddingBottom: isNarrow ? "8px" : "20px",
                 color: axisTextColor,
+                fontSize: isNarrow ? 11 : 12,
               }}
               formatter={(value) => `${value} Term`}
             />
@@ -256,6 +284,7 @@ const SchoolFeesChart = ({ schoolId }: { schoolId?: string }) => {
             />
           </BarChart>
         </ResponsiveContainer>
+        </div>
       )}
     </div>
   );

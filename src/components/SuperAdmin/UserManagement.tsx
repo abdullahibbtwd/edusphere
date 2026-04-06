@@ -1,8 +1,10 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { FaUser } from "react-icons/fa";
 import { FiSearch, FiXCircle, FiChevronLeft, FiChevronRight } from "react-icons/fi";
-import { FormControl, InputLabel, MenuItem, Select, Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress } from "@mui/material";
+import { CircularProgress } from "@mui/material";
+import CustomSelect from "@/components/ui/CustomSelect";
+import Modal from "@/components/ui/Modal";
 
 interface User {
   id: string;
@@ -35,6 +37,15 @@ interface PaginationData {
   hasPrevPage: boolean;
 }
 
+/** Matches Prisma `Role` enum — school admins are `ADMIN`, not `SCHOOL_ADMIN`. */
+const ROLE_OPTIONS = [
+  { value: "USER", label: "User" },
+  { value: "SUPER_ADMIN", label: "Super Admin" },
+  { value: "ADMIN", label: "School Admin" },
+  { value: "TEACHER", label: "Teacher" },
+  { value: "STUDENT", label: "Student" },
+];
+
 const UserManagement: React.FC = () => {
   const [filters, setFilters] = useState({ school: "", role: "", search: "" });
   const [users, setUsers] = useState<User[]>([]);
@@ -58,14 +69,6 @@ const UserManagement: React.FC = () => {
 
   // Debounced search
   const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout | null>(null);
-
-  const roles = [
-    { value: "USER", label: "User" },
-    { value: "SUPER_ADMIN", label: "Super Admin" },
-    { value: "SCHOOL_ADMIN", label: "School Admin" },
-    { value: "TEACHER", label: "Teacher" },
-    { value: "STUDENT", label: "Student" },
-  ];
 
   // Fetch schools for filter
   useEffect(() => {
@@ -193,7 +196,30 @@ const UserManagement: React.FC = () => {
   };
 
   const formatRole = (role: string) => {
-    return roles.find(r => r.value === role)?.label || role;
+    return ROLE_OPTIONS.find((r) => r.value === role)?.label || role;
+  };
+
+  const schoolOptions = useMemo(
+    () => [
+      { value: "", label: "All Schools" },
+      ...schools.map((s) => ({ value: s.id, label: s.name })),
+    ],
+    [schools]
+  );
+
+  const roleFilterOptions = useMemo(
+    () => [{ value: "", label: "All Roles" }, ...ROLE_OPTIONS],
+    []
+  );
+
+  const setSchoolFilter = (value: string) => {
+    setFilters((f) => ({ ...f, school: value }));
+    setPagination((p) => ({ ...p, page: 1 }));
+  };
+
+  const setRoleFilter = (value: string) => {
+    setFilters((f) => ({ ...f, role: value }));
+    setPagination((p) => ({ ...p, page: 1 }));
   };
 
   return (
@@ -207,42 +233,28 @@ const UserManagement: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4 bg-surface p-4 rounded-xl shadow">
-        <FormControl className="w-[200px]" size="small">
-          <InputLabel id="school-label">School</InputLabel>
-          <Select
-            labelId="school-label"
-            name="school"
+      <div className="flex flex-col md:flex-row gap-4 bg-surface p-4 rounded-xl shadow md:items-end">
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted">School</span>
+          <CustomSelect
+            options={schoolOptions}
             value={filters.school}
-            onChange={handleFilterChange}
-            label="School"
-          >
-            <MenuItem value="">All Schools</MenuItem>
-            {schools.map((school) => (
-              <MenuItem key={school.id} value={school.id}>
-                {school.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+            onChange={setSchoolFilter}
+            placeholder="All Schools"
+            className="!w-[200px]"
+          />
+        </div>
 
-        <FormControl className="w-[200px]" size="small">
-          <InputLabel id="role-label">Role</InputLabel>
-          <Select
-            labelId="role-label"
-            name="role"
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted">Role</span>
+          <CustomSelect
+            options={roleFilterOptions}
             value={filters.role}
-            onChange={handleFilterChange}
-            label="Role"
-          >
-            <MenuItem value="">All Roles</MenuItem>
-            {roles.map((role) => (
-              <MenuItem key={role.value} value={role.value}>
-                {role.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+            onChange={setRoleFilter}
+            placeholder="All Roles"
+            className="!w-[200px]"
+          />
+        </div>
 
         <div className="flex items-center border border-muted rounded-lg bg-bg px-2 w-full md:w-auto">
           <FiSearch className="text-muted" />
@@ -282,7 +294,7 @@ const UserManagement: React.FC = () => {
       {!loading && (
         <div className="overflow-x-auto bg-surface rounded-xl shadow">
           <table className="w-full border-collapse">
-            <thead className="bg-muted">
+            <thead className="bg-primary">
               <tr className="text-left text-sm">
                 <th className="p-3">User</th>
                 <th className="p-3">Email</th>
@@ -401,43 +413,58 @@ const UserManagement: React.FC = () => {
       )}
 
       {/* Role Change Modal */}
-      <Dialog open={roleModalOpen} onClose={closeRoleModal}>
-        <DialogTitle>Change User Role</DialogTitle>
-        <DialogContent>
-          <div className="pt-2 min-w-[300px]">
-            <p className="mb-4 text-sm text-gray-600">
-              Change role for <strong>{selectedUser?.name || selectedUser?.email}</strong>
-            </p>
-            <FormControl fullWidth>
-              <InputLabel id="new-role-label">New Role</InputLabel>
-              <Select
-                labelId="new-role-label"
-                value={newRole}
-                onChange={(e) => setNewRole(e.target.value)}
-                label="New Role"
-              >
-                {roles.map((role) => (
-                  <MenuItem key={role.value} value={role.value}>
-                    {role.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+      <Modal
+        open={roleModalOpen}
+        onClose={closeRoleModal}
+        title="Change User Role"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={closeRoleModal}
+              disabled={updating}
+              className="px-4 py-2 rounded-lg border border-[var(--border)] text-[var(--text)] hover:bg-[var(--bg)] disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleRoleChange}
+              disabled={updating || newRole === selectedUser?.role}
+              className="px-4 py-2 rounded-lg bg-[var(--primary)] text-white hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none min-w-[120px] inline-flex items-center justify-center transition-opacity"
+            >
+              {updating ? (
+                <span
+                  className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"
+                  aria-hidden
+                />
+              ) : (
+                "Update Role"
+              )}
+            </button>
+          </>
+        }
+      >
+        <div className="min-w-[280px]">
+          <p className="mb-4 text-sm text-muted">
+            Change role for{" "}
+            <strong className="text-[var(--text)]">
+              {selectedUser?.name || selectedUser?.email}
+            </strong>
+          </p>
+          <div className="flex flex-col gap-1 overflow-visible">
+            <span className="text-xs font-medium text-muted">New Role</span>
+            <CustomSelect
+              options={ROLE_OPTIONS}
+              value={newRole}
+              onChange={setNewRole}
+              placeholder="Select role"
+              className="!w-full"
+              menuVariant="inline"
+            />
           </div>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeRoleModal} disabled={updating}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleRoleChange}
-            variant="contained"
-            disabled={updating || newRole === selectedUser?.role}
-          >
-            {updating ? <CircularProgress size={20} /> : "Update Role"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </div>
+      </Modal>
     </div>
   );
 };

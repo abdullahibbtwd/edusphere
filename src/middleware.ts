@@ -8,6 +8,99 @@ import {
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret');
 
+/** First path segments that are app routes on the main host, not school subdomains. */
+const RESERVED_MAIN_PATH_SEGMENTS = new Set([
+  'dashboard',
+  'schoolApplication',
+  'auth',
+  'api',
+]);
+
+/** Safe slug shape for school subdomains (matches typical DNS labels). */
+const SCHOOL_SLUG_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+
+/** Apex host for production path→subdomain (set in env, e.g. `edusphere.com`). */
+function rootDomainFromEnv(): string | undefined {
+  return process.env.NEXT_PUBLIC_ROOT_DOMAIN || process.env.ROOT_DOMAIN;
+}
+
+/**
+ * Target host for `https://<slug>.<base>/...` from the public marketing / deploy host.
+ * - `localhost` → `slug.localhost`
+ * - `www.example.com` → `slug.example.com` (strip `www.`)
+ * - `project.vercel.app` → `slug.project.vercel.app`
+ * - apex `example.com` when host matches ROOT_DOMAIN → `slug.example.com`
+ */
+function getCanonicalSchoolHostname(slug: string, hostnameWithoutPort: string): string | null {
+  if (hostnameWithoutPort === 'localhost') {
+    return `${slug}.localhost`;
+  }
+  if (hostnameWithoutPort.startsWith('www.')) {
+    const base = hostnameWithoutPort.slice(4);
+    if (!base) return null;
+    return `${slug}.${base}`;
+  }
+  if (hostnameWithoutPort.endsWith('.vercel.app')) {
+    return `${slug}.${hostnameWithoutPort}`;
+  }
+  const root = rootDomainFromEnv();
+  if (root && hostnameWithoutPort === root) {
+    return `${slug}.${hostnameWithoutPort}`;
+  }
+  return null;
+}
+
+/** Use HTTPS (or HTTP) from edge proxies (Vercel, etc.) when `request.url` is wrong. */
+function applyForwardedProtocol(dest: URL, request: NextRequest) {
+  const forwarded = request.headers.get('x-forwarded-proto');
+  if (forwarded === 'https' || forwarded === 'http') {
+    dest.protocol = `${forwarded}:`;
+  }
+}
+
+/**
+ * Redirect main-site URLs to the school subdomain after DB check:
+ * `https://www.example.com/elversh/...` → `https://elversh.example.com/...`
+ * Same for localhost, Vercel deploy host, and optional apex domain.
+ */
+async function tryRedirectMainHostToSchoolSubdomain(
+  request: NextRequest,
+  pathname: string,
+  hostnameWithoutPort: string,
+): Promise<NextResponse | null> {
+  const segments = pathname.split('/').filter(Boolean);
+  const slug = segments[0];
+  if (!slug || RESERVED_MAIN_PATH_SEGMENTS.has(slug) || !SCHOOL_SLUG_REGEX.test(slug)) {
+    return null;
+  }
+
+  const targetHost = getCanonicalSchoolHostname(slug, hostnameWithoutPort);
+  if (!targetHost) return null;
+
+  try {
+    const baseUrl = `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+    const res = await fetch(
+      `${baseUrl}/api/check-subdomain-middleware?subdomain=${encodeURIComponent(slug)}`,
+      { cache: 'no-store' },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      exists?: boolean;
+      school?: { isActive?: boolean };
+    };
+    if (!data?.exists || !data.school?.isActive) return null;
+
+    const dest = new URL(request.url);
+    dest.hostname = targetHost;
+    if (request.nextUrl.port) dest.port = request.nextUrl.port;
+    applyForwardedProtocol(dest, request);
+
+    return NextResponse.redirect(dest);
+  } catch {
+    return null;
+  }
+}
+
 async function verifyToken(token: string) {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
@@ -56,11 +149,15 @@ export async function middleware(request: NextRequest) {
     }
   } catch { /* ignore malformed cookie */ }
 
+  const rootDomain = rootDomainFromEnv();
+  const isApexRootDomain = !!rootDomain && hostnameWithoutPort === rootDomain;
+
   const isMainDomain =
     subdomain === 'www' ||
     subdomain === 'localhost' ||
     subdomain === '127' ||
-    hostnameWithoutPort.includes('vercel.app');
+    hostnameWithoutPort.includes('vercel.app') ||
+    isApexRootDomain;
 
   const isPublicRoute =
     pathname === '/' ||
@@ -75,6 +172,13 @@ export async function middleware(request: NextRequest) {
 
   // ── Main domain ─────────────────────────────────────────────────
   if (isMainDomain) {
+    const canonicalSchool = await tryRedirectMainHostToSchoolSubdomain(
+      request,
+      pathname,
+      hostnameWithoutPort,
+    );
+    if (canonicalSchool) return canonicalSchool;
+
     if (!isAuthenticated && !isPublicRoute) {
       url.pathname = '/';
       return NextResponse.redirect(url);
@@ -92,10 +196,10 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // Merge USER + SCHOOL_ADMIN restriction into one check
+    // School-scoped users (USER / school ADMIN) — same main-domain restriction
     if (
       isAuthenticated &&
-      (userRole === 'USER' || userRole === 'SCHOOL_ADMIN') &&
+      (userRole === 'USER' || userRole === 'ADMIN') &&
       !isPublicRoute &&
       !isUserAllowedMainRoute
     ) {

@@ -147,7 +147,7 @@ const Sidebar = ({ school }: SidebarProps) => {
                   >
                     <div className="flex items-center gap-4">
                       <Icon size={18} />
-                      <span className="hidden lg:block text-[14px]">{item.label}</span>
+                      <span className="text-[14px]">{item.label}</span>
                     </div>
                     {(item as any).badge && (
                       <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
