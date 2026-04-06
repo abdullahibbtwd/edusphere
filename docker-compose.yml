@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: edusphere
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d edusphere"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DATABASE_URL: postgresql://postgres:postgres@db:5432/edusphere
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/edusphere
+      # Add other env vars your app needs (copy from .env.local), e.g.:
+      # NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ...
+      # CLERK_SECRET_KEY: ...
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
