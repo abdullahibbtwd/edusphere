@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import redis from '@/lib/redis';
+import { loadSchoolLandingFromDb } from '@/lib/school-landing';
 
 const CACHE_KEY = (subdomain: string) => `school:landing:${subdomain}`;
 const CACHE_TTL = 604800; // 1 week
@@ -18,30 +18,7 @@ export async function GET(
       return NextResponse.json(cached);
     }
 
-    const school = await prisma.school.findUnique({
-      where: {
-        subdomain,
-        isActive: true
-      },
-      include: {
-        content: true,
-        levels: {
-          where: { isActive: true },
-          include: {
-            classes: {
-              orderBy: { name: 'asc' }
-            }
-          },
-          orderBy: { name: 'asc' }
-        },
-        subjects: {
-          orderBy: { name: 'asc' }
-        },
-        students: {
-          select: { id: true }
-        }
-      }
-    });
+    const school = await loadSchoolLandingFromDb(subdomain);
 
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
