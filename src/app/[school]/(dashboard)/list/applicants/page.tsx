@@ -248,7 +248,7 @@ const ApplicantsList = () => {
   };
 
   // Generate PDF for application
-  const generatePdf = async (application: ApplicationDetails) => {
+  const generatePdf = async (application: ApplicationDetails | Application) => {
     try {
       setGeneratingPdf(application.id);
 
@@ -266,7 +266,11 @@ const ApplicantsList = () => {
         className: application.class.name,
       };
 
-      await generateApplicationPdf(pdfData as any, application.applicationNumber, schoolInfo);
+      await generateApplicationPdf(
+        pdfData as unknown as Parameters<typeof generateApplicationPdf>[0],
+        application.applicationNumber,
+        schoolInfo
+      );
       toast.success('PDF generated and downloaded successfully');
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -289,12 +293,12 @@ const ApplicantsList = () => {
   );
 
   return (
-    <div className="p-4 bg-bg dark:bg-surface rounded-lg shadow">
+    <div className="flex flex-col bg-surface p-4 sm:p-6 m-4 mt-0 flex-1 rounded-2xl shadow-sm gap-4 font-poppins text-text [&_button:not(:disabled)]:cursor-pointer">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-        <h2 className="text-xl font-bold text-foreground">Admission Applicants</h2>
+        <h2 className="text-xl font-bold text-text">Admission Applicants</h2>
 
-        <div className="flex items-center gap-3 bg-muted/30 px-4 py-2 rounded-lg border border-border">
-          <span className="text-sm font-medium text-foreground">
+        <div className="flex items-center gap-3 bg-muted/20 px-4 py-2 rounded-lg">
+          <span className="text-sm font-medium text-text">
             Admissions: {isAdmissionsOpen ? 'Open' : 'Closed'}
           </span>
           <button
@@ -317,21 +321,24 @@ const ApplicantsList = () => {
         placeholder="Search by Application Number, Name, or Email"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        className="mb-4 px-4 py-2 border rounded w-full bg-surface dark:bg-bg text-foreground"
+        className="mb-4 w-full h-10 px-4 rounded-lg bg-bg text-text text-sm focus:outline-none transition-all"
       />
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-xl bg-surface shadow-sm">
         {loading ? (
-          <div className="text-center py-8">Loading applications...</div>
+          <div className="flex flex-col items-center justify-center min-h-[220px]">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
+            <p className="text-xs text-muted">Loading applications...</p>
+          </div>
         ) : (
           <table className="min-w-full divide-y divide-border">
-            <thead className="bg-muted dark:bg-muted/30">
+            <thead className="bg-muted/20">
               <tr>
                 {["Applicant", "Application #", "Email", "Phone", "Class", "Status", "Actions"].map((h) => (
                   <th
                     key={h}
-                    className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider"
+                    className="px-6 py-3 text-left text-[11px] font-semibold text-text/60 uppercase tracking-[0.08em]"
                   >
                     {h}
                   </th>
@@ -342,35 +349,34 @@ const ApplicantsList = () => {
               {filteredApplications.map((application, i) => (
                 <tr
                   key={application.id}
-                  className={`${i % 2 === 0 ? "bg-bg dark:bg-surface" : "bg-surface dark:bg-bg"
-                    } hover:bg-muted/50`}
+                  className={`${i % 2 === 0 ? "bg-surface" : "bg-bg"} hover:bg-muted/10 transition-colors`}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-foreground">
+                        <div className="text-sm font-semibold text-text leading-5">
                           {application.firstName} {application.lastName}
                         </div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-xs text-muted mt-0.5">
                           Applied: {new Date(application.applicationDate).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text/80 font-medium">
                     {application.applicationNumber}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text/70">
                     {application.email}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text/70">
                     {application.phone}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text/70">
                     {application.class.fullName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${application.status === 'ADMITTED'
+                    <span className={`inline-flex px-2.5 py-1 text-[11px] font-semibold rounded-full tracking-wide ${application.status === 'ADMITTED'
                       ? 'bg-green-100 text-green-800'
                       : application.status === 'REJECTED'
                         ? 'bg-red-100 text-red-800'
@@ -380,48 +386,51 @@ const ApplicantsList = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex gap-2 items-center">
+                    <div className="grid grid-cols-2 gap-1.5 w-fit">
                       <button
                         onClick={() => fetchApplicationDetails(application.id)}
-                        className="text-indigo-600 hover:text-indigo-900 flex items-center"
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-md text-primary hover:bg-primary/10"
+                        title="View applicant"
+                        aria-label="View applicant"
                       >
-                        <EyeIcon className="h-5 w-5 mr-1" />
-                        View
+                        <EyeIcon className="h-5 w-5" />
                       </button>
                       <button
-                        onClick={() => generatePdf(application as any)}
+                        onClick={() => generatePdf(application)}
                         disabled={generatingPdf === application.id}
-                        className="text-blue-600 hover:text-blue-900 flex items-center disabled:opacity-50"
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-md text-blue-600 hover:bg-blue-500/10 disabled:opacity-50"
                         title="Generate PDF"
+                        aria-label="Generate PDF"
                       >
                         {generatingPdf === application.id ? (
-                          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-1"></div>
+                          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                         ) : (
-                          <DocumentArrowDownIcon className="h-5 w-5 mr-1" />
+                          <DocumentArrowDownIcon className="h-5 w-5" />
                         )}
-                        PDF
                       </button>
                       {application.status === 'PROGRESS' && (
                         <>
                           <button
                             onClick={() => openAdmitDialog(application.id, application.class.id, `${application.firstName} ${application.lastName}`)}
                             disabled={processingApplication === application.id}
-                            className="text-green-600 hover:text-green-900 flex items-center disabled:opacity-50"
+                            className="inline-flex items-center justify-center w-9 h-9 rounded-md text-green-600 hover:bg-green-500/10 disabled:opacity-50"
+                            title="Admit applicant"
+                            aria-label="Admit applicant"
                           >
                             {processingApplication === application.id ? (
-                              <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin mr-1"></div>
+                              <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
                             ) : (
-                              <CheckIcon className="h-5 w-5 mr-1" />
+                              <CheckIcon className="h-5 w-5" />
                             )}
-                            Admit
                           </button>
                           <button
                             onClick={() => handleStatusUpdate(application.id, "REJECTED")}
                             disabled={processingApplication === application.id}
-                            className="text-red-600 hover:text-red-900 flex items-center disabled:opacity-50"
+                            className="inline-flex items-center justify-center w-9 h-9 rounded-md text-red-600 hover:bg-red-500/10 disabled:opacity-50"
+                            title="Reject applicant"
+                            aria-label="Reject applicant"
                           >
-                            <XMarkIcon className="h-5 w-5 mr-1" />
-                            Reject
+                            <XMarkIcon className="h-5 w-5" />
                           </button>
                         </>
                       )}
@@ -437,8 +446,8 @@ const ApplicantsList = () => {
       {/* Admit Confirmation Modal */}
       {admitDialog.isOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-bg dark:bg-surface rounded-lg shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-foreground mb-4">Confirm Admission</h3>
+          <div className="bg-surface rounded-xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-text mb-4">Confirm Admission</h3>
             <p className="text-muted-foreground mb-4">
               Select the class and level to assign to <strong>{admitDialog.applicantName}</strong> before admitting.
             </p>
@@ -453,7 +462,7 @@ const ApplicantsList = () => {
                 <select
                   value={selectedClassId}
                   onChange={(e) => setSelectedClassId(e.target.value)}
-                  className="w-full px-3 py-2 border rounded bg-surface text-foreground"
+                  className="w-full h-10 px-3 rounded-lg bg-bg text-text text-sm focus:outline-none transition-all"
                 >
                   <option value="">Select a class</option>
                   {availableClasses.map((cls) => (
@@ -468,7 +477,7 @@ const ApplicantsList = () => {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setAdmitDialog({ ...admitDialog, isOpen: false })}
-                className="px-4 py-2 border rounded hover:bg-muted text-foreground"
+                className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-text"
               >
                 Cancel
               </button>
@@ -486,8 +495,14 @@ const ApplicantsList = () => {
 
       {/* View Details Modal */}
       {selectedApplicant && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-bg dark:bg-surface rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedApplicant(null)}
+        >
+          <div
+            className="bg-surface rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="px-6 py-6 border-b border-border flex justify-between items-start pr-32">
               <div>
                 <h3 className="text-xl font-bold text-foreground">

@@ -49,7 +49,8 @@ const levelOptions = [
     bgColor: 'bg-primary/10',
     borderColor: 'border-primary/30',
     iconBg: 'bg-primary',
-    iconColor: 'text-white'
+    iconColor: 'text-white',
+    subtitleColor: 'text-primary dark:text-primary-300'
   },
   {
     type: 'SS1-3',
@@ -61,7 +62,8 @@ const levelOptions = [
     bgColor: 'bg-primary-400/10',
     borderColor: 'border-primary-400/30',
     iconBg: 'bg-primary-400',
-    iconColor: 'text-white'
+    iconColor: 'text-white',
+    subtitleColor: 'text-primary-400 dark:text-primary-300'
   },
   {
     type: 'JSS1-SS3',
@@ -73,7 +75,8 @@ const levelOptions = [
     bgColor: 'bg-success/10',
     borderColor: 'border-success/30',
     iconBg: 'bg-success',
-    iconColor: 'text-white'
+    iconColor: 'text-white',
+    subtitleColor: 'text-success dark:text-success'
   }
 ];
 
@@ -384,11 +387,15 @@ const LevelsPage = () => {
           {levels && levels.length > 0 && !loading && (
             <button
               onClick={() => setShowCreationOptions(!showCreationOptions)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:shadow-lg transition-all duration-200 font-medium text-sm cursor-pointer"
-              title="Add More Levels"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm cursor-pointer ${
+                showCreationOptions
+                  ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 dark:bg-red-950/20 dark:text-red-300 dark:border-red-900/40"
+                  : "bg-primary text-white hover:shadow-lg"
+              }`}
+              title={showCreationOptions ? "Close level options" : "Add more levels"}
             >
-              <FaPlus size={16} />
-              <span>Add Levels</span>
+              {showCreationOptions ? <FaTimes size={16} /> : <FaPlus size={16} />}
+              <span>{showCreationOptions ? "Close" : "Add Levels"}</span>
             </button>
           )}
         </div>
@@ -396,9 +403,9 @@ const LevelsPage = () => {
 
       {/* Level Creation Options */}
       {((levels && levels.length === 0 && !loading) || showCreationOptions) && (
-        <div className="bg-bg rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-8 mb-6">
+        <div className="bg-bg rounded-2xl shadow-sm border border-border/60 p-6 sm:p-7 mb-6">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-text mb-2">Create Your School Levels</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-text mb-2">Create Your School Levels</h2>
             <p className="text-text/70 text-sm">Choose a preset structure or create custom levels tailored to your needs</p>
           </div>
 
@@ -409,19 +416,19 @@ const LevelsPage = () => {
               return (
                 <div
                   key={option.type}
-                  className={`group relative ${option.bgColor} ${option.borderColor} border-2 rounded-2xl p-6 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer`}
+                  className={`group relative ${option.bgColor} ${option.borderColor} border rounded-2xl p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer`}
                   onClick={() => handleCreateLevels(option.type, option.title)}
                 >
                   {/* Icon */}
                   <div className="mb-4">
-                    <div className={`w-14 h-14 rounded-xl ${option.iconBg} flex items-center justify-center shadow-lg`}>
-                      <Icon className={option.iconColor} size={24} />
+                    <div className={`w-12 h-12 rounded-lg ${option.iconBg} flex items-center justify-center shadow-sm`}>
+                      <Icon className={option.iconColor} size={20} />
                     </div>
                   </div>
 
                   {/* Content */}
-                  <h3 className="font-bold text-lg text-text mb-1">{option.title}</h3>
-                  <p className={`text-sm font-medium ${option.iconColor} mb-2`}>{option.subtitle}</p>
+                  <h3 className="font-semibold text-base text-text mb-1">{option.title}</h3>
+                  <p className={`text-xs font-medium ${option.subtitleColor} mb-2`}>{option.subtitle}</p>
                   <p className="text-xs text-text/60 mb-4">{option.description}</p>
 
                   {/* Levels Preview */}
@@ -429,13 +436,13 @@ const LevelsPage = () => {
                     {option.levels.slice(0, 3).map((level, idx) => (
                       <span
                         key={idx}
-                        className="text-[10px] px-2 py-1 bg-white/50 dark:bg-gray-800/50 rounded-full text-text/70 font-medium"
+                        className="text-[10px] px-2 py-1 bg-white/70 dark:bg-gray-800/50 rounded-full text-text/70 font-medium"
                       >
                         {level}
                       </span>
                     ))}
                     {option.levels.length > 3 && (
-                      <span className="text-[10px] px-2 py-1 bg-white/50 dark:bg-gray-800/50 rounded-full text-text/70 font-medium">
+                      <span className="text-[10px] px-2 py-1 bg-white/70 dark:bg-gray-800/50 rounded-full text-text/70 font-medium">
                         +{option.levels.length - 3}
                       </span>
                     )}
@@ -444,7 +451,7 @@ const LevelsPage = () => {
                   {/* Button */}
                   <button
                     disabled={creating}
-                    className={`w-full ${option.iconBg} ${option.iconColor} py-2.5 px-4 rounded-xl font-semibold hover:shadow-lg disabled:opacity-50 transition-all duration-200 text-sm cursor-pointer`}
+                    className={`w-full ${option.iconBg} ${option.iconColor} py-2.5 px-4 rounded-xl font-medium hover:shadow-sm disabled:opacity-50 transition-all duration-200 text-sm cursor-pointer`}
                   >
                     {creating ? 'Creating...' : 'Create Levels'}
                   </button>
@@ -454,34 +461,34 @@ const LevelsPage = () => {
 
             {/* Custom Option */}
             <div
-              className="group relative bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 border-2 border-orange-200 dark:border-orange-800 rounded-2xl p-6 hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer"
+              className="group relative bg-orange-50/80 dark:bg-orange-950/20 border border-orange-200/80 dark:border-orange-800 rounded-2xl p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
               onClick={() => setShowCustomModal(true)}
             >
               {/* Icon */}
               <div className="mb-4">
-                <div className="w-14 h-14 rounded-xl bg-cta flex items-center justify-center shadow-lg">
-                  <FaPlus className="text-white" size={24} />
+                <div className="w-12 h-12 rounded-lg bg-cta flex items-center justify-center shadow-sm">
+                  <FaPlus className="text-white" size={20} />
                 </div>
               </div>
 
               {/* Content */}
-              <h3 className="font-bold text-lg text-text mb-1">Custom Levels</h3>
-              <p className="text-sm font-medium text-cta mb-2">Fully Customizable</p>
+              <h3 className="font-semibold text-base text-text mb-1">Custom Levels</h3>
+              <p className="text-xs font-medium text-cta mb-2">Fully Customizable</p>
               <p className="text-xs text-text/60 mb-4">Create your own level structure with custom names</p>
 
               {/* Feature List */}
               <div className="flex flex-wrap gap-1 mb-4">
-                <span className="text-[10px] px-2 py-1 bg-white/50 dark:bg-gray-800/50 rounded-full text-text/70 font-medium">
+                <span className="text-[10px] px-2 py-1 bg-white/70 dark:bg-gray-800/50 rounded-full text-text/70 font-medium">
                   Unlimited
                 </span>
-                <span className="text-[10px] px-2 py-1 bg-white/50 dark:bg-gray-800/50 rounded-full text-text/70 font-medium">
+                <span className="text-[10px] px-2 py-1 bg-white/70 dark:bg-gray-800/50 rounded-full text-text/70 font-medium">
                   Flexible
                 </span>
               </div>
 
               {/* Button */}
               <button
-                className="w-full bg-cta text-white py-2.5 px-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-200 text-sm cursor-pointer"
+                className="w-full bg-cta text-white py-2.5 px-4 rounded-xl font-medium hover:shadow-sm transition-all duration-200 text-sm cursor-pointer"
               >
                 Customize
               </button>
@@ -489,9 +496,9 @@ const LevelsPage = () => {
           </div>
 
           {/* Info Banner */}
-          <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl">
-            <p className="text-sm text-blue-800 dark:text-blue-300 text-center">
-              💡 <span className="font-semibold">Tip:</span> You can always add more levels later or modify existing ones
+          <div className="mt-8 p-4 bg-muted/25 border border-border/60 rounded-xl">
+            <p className="text-sm text-text/80 text-center">
+              <span className="font-medium text-text">Tip:</span> You can always add more levels later or modify existing ones
             </p>
           </div>
         </div>

@@ -6,13 +6,7 @@ import ClassManagementModal from "@/components/ClassManagementModel";
 import { FaEdit, FaTrash, FaCog, FaChalkboardTeacher, FaStar, FaChevronDown, FaChevronUp, FaUserGraduate } from "react-icons/fa";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import CustomSelect from "@/components/ui/CustomSelect";
 import { useUser } from "@/context/UserContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -154,24 +148,24 @@ function TeacherClassView({ schoolId, userId }: { schoolId: string; userId: stri
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-primary">{taughtClasses.length}</p>
+        <div className="rounded-xl p-4 text-center border border-sky-200/80 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/15 shadow-sm">
+          <p className="text-2xl font-bold text-sky-700 dark:text-sky-300">{taughtClasses.length}</p>
           <p className="text-xs text-text/70 mt-1">Classes Teaching</p>
         </div>
-        <div className="bg-success/10 border border-success/20 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-success">
+        <div className="rounded-xl p-4 text-center border border-emerald-200/80 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/15 shadow-sm">
+          <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
             {taughtClasses.filter((c) => c.isSupervised).length + supervisedOnlyClasses.length}
           </p>
           <p className="text-xs text-text/70 mt-1">Head Teacher Of</p>
         </div>
-        <div className="bg-cta/10 border border-cta/20 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-cta">
+        <div className="rounded-xl p-4 text-center border border-violet-200/80 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/15 shadow-sm">
+          <p className="text-2xl font-bold text-violet-700 dark:text-violet-300">
             {allClasses.reduce((s, c) => s + c.studentCount, 0)}
           </p>
           <p className="text-xs text-text/70 mt-1">Total Students</p>
         </div>
-        <div className="bg-accent border border-muted rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-text">
+        <div className="rounded-xl p-4 text-center border border-amber-200/80 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/15 shadow-sm">
+          <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">
             {Array.from(new Set(taughtClasses.flatMap((c) => c.subjects.map((s) => s.id)))).length}
           </p>
           <p className="text-xs text-text/70 mt-1">Subjects Teaching</p>
@@ -712,14 +706,14 @@ const SecondarySchoolPage = () => {
 
   if (!userLoading && role === 'teacher' && user?.userId) {
     return (
-      <div className="flex flex-col bg-surface p-4 m-4 mt-0 flex-1 rounded-lg shadow-sm">
+      <div className="flex flex-col bg-surface p-4 sm:p-6 m-4 mt-0 flex-1 rounded-2xl shadow-sm">
         <TeacherClassView schoolId={schoolId} userId={user.userId} />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col bg-surface p-4 m-4 mt-0 flex-1 rounded-lg shadow-sm">
+    <div className="flex flex-col bg-surface p-4 sm:p-6 m-4 mt-0 flex-1 rounded-2xl shadow-sm">
       {/* Show create buttons when no classes exist OR when Add Class is clicked */}
       {(showCreateForm || (classes && classes.length === 0 && !loading)) && (
         <div className="bg-surface rounded-lg shadow-sm border border-muted p-6 mb-6">
@@ -907,7 +901,7 @@ const SecondarySchoolPage = () => {
                           </button>
                         </div>
                         <p className="text-xs text-text/60 mt-2">
-                          Example: Enter "Alpha", "Beta" with JSS1, JSS2 selected → Creates JSS1 Alpha, JSS1 Beta, JSS2 Alpha, JSS2 Beta
+                          Example: Enter &quot;Alpha&quot;, &quot;Beta&quot; with JSS1, JSS2 selected → Creates JSS1 Alpha, JSS1 Beta, JSS2 Alpha, JSS2 Beta
                         </p>
                       </div>
 
@@ -958,29 +952,29 @@ const SecondarySchoolPage = () => {
       {/* Stats */}
       {classes && classes.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-          <div className="p-3 rounded-lg text-center bg-primary text-text">
-            <p className="text-lg font-bold">{totalJSS1}</p>
-            <p className="text-sm">JSS1 Students</p>
+          <div className="p-3 rounded-xl text-center border border-sky-200/80 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/15 shadow-sm">
+            <p className="text-lg font-bold text-sky-700 dark:text-sky-300">{totalJSS1}</p>
+            <p className="text-xs text-text/70">JSS1 Students</p>
           </div>
-          <div className="p-3 rounded-lg text-center bg-cta text-text">
-            <p className="text-lg font-bold">{totalJSS2}</p>
-            <p className="text-sm">JSS2 Students</p>
+          <div className="p-3 rounded-xl text-center border border-violet-200/80 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/15 shadow-sm">
+            <p className="text-lg font-bold text-violet-700 dark:text-violet-300">{totalJSS2}</p>
+            <p className="text-xs text-text/70">JSS2 Students</p>
           </div>
-          <div className="p-3 rounded-lg text-center bg-success text-text">
-            <p className="text-lg font-bold">{totalJSS3}</p>
-            <p className="text-sm">JSS3 Students</p>
+          <div className="p-3 rounded-xl text-center border border-emerald-200/80 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/15 shadow-sm">
+            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{totalJSS3}</p>
+            <p className="text-xs text-text/70">JSS3 Students</p>
           </div>
-          <div className="p-3 rounded-lg text-center bg-primary-400 text-text">
-            <p className="text-lg font-bold">{totalSS1}</p>
-            <p className="text-sm">SS1 Students</p>
+          <div className="p-3 rounded-xl text-center border border-blue-200/80 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/15 shadow-sm">
+            <p className="text-lg font-bold text-blue-700 dark:text-blue-300">{totalSS1}</p>
+            <p className="text-xs text-text/70">SS1 Students</p>
           </div>
-          <div className="p-3 rounded-lg text-center bg-accent text-text">
-            <p className="text-lg font-bold">{totalSS2}</p>
-            <p className="text-sm">SS2 Students</p>
+          <div className="p-3 rounded-xl text-center border border-amber-200/80 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/15 shadow-sm">
+            <p className="text-lg font-bold text-amber-700 dark:text-amber-300">{totalSS2}</p>
+            <p className="text-xs text-text/70">SS2 Students</p>
           </div>
-          <div className="p-3 rounded-lg text-center bg-muted text-text">
-            <p className="text-lg font-bold">{totalSS3}</p>
-            <p className="text-sm">SS3 Students</p>
+          <div className="p-3 rounded-xl text-center border border-rose-200/80 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/15 shadow-sm">
+            <p className="text-lg font-bold text-rose-700 dark:text-rose-300">{totalSS3}</p>
+            <p className="text-xs text-text/70">SS3 Students</p>
           </div>
         </div>
       )}
@@ -992,25 +986,18 @@ const SecondarySchoolPage = () => {
               Our School Classes
             </h1>
             <div className="flex items-center gap-4">
-              <Select
+              <CustomSelect
                 value={filterLevel === "" ? "all" : filterLevel}
-                onValueChange={(value) => {
+                onChange={(value: string) => {
                   setFilterLevel(value === "all" ? "" : value);
                   setCurrentPage(1);
                 }}
-              >
-                <SelectTrigger className="w-[180px] bg-bg border-muted text-text">
-                  <SelectValue placeholder="All Levels" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Levels</SelectItem>
-                  {levels.map((level) => (
-                    <SelectItem key={level.id} value={level.id}>
-                      {level.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                className="w-[180px]"
+                options={[
+                  { value: "all", label: "All Levels" },
+                  ...levels.map((level) => ({ value: level.id, label: level.name })),
+                ]}
+              />
               <button
                 onClick={() => setShowCreateForm(true)}
                 className="bg-primary text-white px-4 py-2 rounded text-sm hover:opacity-90 cursor-pointer"
@@ -1073,18 +1060,15 @@ const SecondarySchoolPage = () => {
                 <label className="block text-sm font-medium text-text mb-2">
                   Level
                 </label>
-                <select
+                <CustomSelect
                   value={editLevelId}
-                  onChange={(e) => setEditLevelId(e.target.value)}
-                  className="w-full px-3 py-2 border border-muted rounded-lg bg-bg text-text focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">Select Level</option>
-                  {levels.map((level) => (
-                    <option key={level.id} value={level.id}>
-                      {level.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setEditLevelId}
+                  className="w-full"
+                  options={[
+                    { value: "", label: "Select Level" },
+                    ...levels.map((level) => ({ value: level.id, label: level.name })),
+                  ]}
+                />
               </div>
 
               <div className="bg-muted/20 border border-muted/40 rounded p-3">

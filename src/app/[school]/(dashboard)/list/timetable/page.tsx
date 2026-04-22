@@ -11,6 +11,7 @@ import TimetableDisplay from "@/components/TimetableDisplay";
 import TeacherTimetableDisplay from "@/components/Schools/TeacherTimetableDisplay";
 import StudentTimetableDisplay from "@/components/Schools/StudentTimetableDisplay";
 import DoublePeriodConfigModal from "@/components/DoublePeriodConfigModal";
+import CustomSelect from "@/components/ui/CustomSelect";
 import { useUser } from "@/context/UserContext";
 import { FiCalendar, FiClock, FiEye, FiEdit2, FiFilter, FiZap, FiGrid, FiUser, FiBookOpen } from "react-icons/fi";
 
@@ -274,9 +275,14 @@ const TimetablePage = () => {
   const selectedClassData = classes.find((c) => c.id === selectedClass);
   const selectedLevelData = levels.find((l) => l.id === selectedLevel);
   const totalClasses = levels.reduce((sum, level) => sum + (level.classCount || 0), 0);
+  const termOptions = [
+    { value: "FIRST", label: "First Term" },
+    { value: "SECOND", label: "Second Term" },
+    { value: "THIRD", label: "Third Term" },
+  ];
 
   return (
-    <div className="flex flex-col bg-surface p-4 sm:p-6 m-4 mt-0 flex-1 rounded-2xl shadow-sm gap-6 font-poppins text-text">
+    <div className="flex flex-col bg-surface p-4 sm:p-6 m-4 mt-0 flex-1 rounded-2xl shadow-sm gap-6 font-poppins text-text [&_button:not(:disabled)]:cursor-pointer">
       {/* Modals */}
       {showViewCalendar && (
         <CalendarView session={activeSession} onClose={() => setShowViewCalendar(false)} />
@@ -353,7 +359,7 @@ const TimetablePage = () => {
       {role === "admin" && (
         <>
           {/* Generate section */}
-          <section className="rounded-xl border border-border bg-surface p-4 sm:p-6 shadow-sm">
+          <section className="rounded-xl bg-surface p-4 sm:p-6 shadow-sm">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -369,15 +375,12 @@ const TimetablePage = () => {
               <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
                 <div className="w-full sm:w-36">
                   <label className="block text-xs font-medium text-muted mb-1">Term</label>
-                  <select
+                  <CustomSelect
                     value={selectedTerm}
-                    onChange={(e) => setSelectedTerm(e.target.value)}
-                    className="w-full h-9 px-3 rounded-lg bg-bg border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  >
-                    <option value="FIRST">First Term</option>
-                    <option value="SECOND">Second Term</option>
-                    <option value="THIRD">Third Term</option>
-                  </select>
+                    onChange={setSelectedTerm}
+                    className="w-full"
+                    options={termOptions}
+                  />
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -401,7 +404,7 @@ const TimetablePage = () => {
           </section>
 
           {/* View by class */}
-          <section className="rounded-xl border border-border bg-surface p-4 sm:p-6 shadow-sm">
+          <section className="rounded-xl bg-surface p-4 sm:p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <FiFilter className="w-4 h-4 text-primary" />
               <h2 className="text-sm font-semibold text-text">View by class</h2>
@@ -409,36 +412,34 @@ const TimetablePage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Level</label>
-                <select
+                <CustomSelect
                   value={selectedLevel}
-                  onChange={(e) => setSelectedLevel(e.target.value)}
-                  className="w-full h-9 px-3 rounded-lg bg-bg border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                >
-                  <option value="">Select level</option>
-                  {levels.map((level) => (
-                    <option key={level.id} value={level.id}>
-                      {level.name} ({level.classCount || 0} classes)
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedLevel}
+                  className="w-full"
+                  options={[
+                    { value: "", label: "Select level" },
+                    ...levels.map((level) => ({
+                      value: level.id,
+                      label: `${level.name} (${level.classCount || 0} classes)`,
+                    })),
+                  ]}
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Class</label>
-                <select
+                <CustomSelect
                   value={selectedClass}
-                  onChange={(e) => setSelectedClass(e.target.value)}
+                  onChange={setSelectedClass}
                   disabled={!selectedLevel}
-                  className="w-full h-9 px-3 rounded-lg bg-bg border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <option value="">
-                    {selectedLevel ? "Select class" : "Select level first"}
-                  </option>
-                  {classes.map((cls) => (
-                    <option key={cls.id} value={cls.id}>
-                      {cls.levelName} {cls.name}
-                    </option>
-                  ))}
-                </select>
+                  className="w-full"
+                  options={[
+                    { value: "", label: selectedLevel ? "Select class" : "Select level first" },
+                    ...classes.map((cls) => ({
+                      value: cls.id,
+                      label: `${cls.levelName} ${cls.name}`,
+                    })),
+                  ]}
+                />
               </div>
             </div>
 
@@ -455,7 +456,7 @@ const TimetablePage = () => {
                 schoolName={schoolName || undefined}
               />
             ) : (
-              <div className="flex flex-col items-center justify-center min-h-[200px] py-8 text-center rounded-lg bg-muted/20 border border-dashed border-border">
+              <div className="flex flex-col items-center justify-center min-h-[200px] py-8 text-center rounded-lg bg-muted/10">
                 <FiFilter className="w-10 h-10 text-muted mb-2" />
                 <p className="text-sm font-medium text-text mb-0.5">No class selected</p>
                 <p className="text-xs text-muted">
@@ -470,7 +471,7 @@ const TimetablePage = () => {
       {/* ===== TEACHER VIEW ===== */}
       {role === "teacher" && (
         <div className="flex flex-col gap-6">
-          <section className="rounded-xl border border-border bg-surface p-4 sm:p-6 shadow-sm">
+          <section className="rounded-xl bg-surface p-4 sm:p-6 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -483,20 +484,17 @@ const TimetablePage = () => {
               </div>
               <div className="w-full sm:w-40">
                 <label className="block text-xs font-medium text-muted mb-1">Term</label>
-                <select
+                <CustomSelect
                   value={selectedTerm}
-                  onChange={(e) => setSelectedTerm(e.target.value)}
-                  className="w-full h-9 px-3 rounded-lg bg-bg border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                >
-                  <option value="FIRST">First Term</option>
-                  <option value="SECOND">Second Term</option>
-                  <option value="THIRD">Third Term</option>
-                </select>
+                  onChange={setSelectedTerm}
+                  className="w-full"
+                  options={termOptions}
+                />
               </div>
             </div>
           </section>
 
-          <section className="rounded-xl border border-border bg-surface p-4 sm:p-6 shadow-sm min-h-[360px]">
+          <section className="rounded-xl bg-surface p-4 sm:p-6 shadow-sm min-h-[360px]">
             {loadingSchedule ? (
               <div className="flex flex-col items-center justify-center min-h-[280px] py-8">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
@@ -517,7 +515,7 @@ const TimetablePage = () => {
       {/* ===== STUDENT VIEW ===== */}
       {role === "student" && (
         <div className="flex flex-col gap-6">
-          <section className="rounded-xl border border-border bg-surface p-4 sm:p-6 shadow-sm">
+          <section className="rounded-xl bg-surface p-4 sm:p-6 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -532,20 +530,17 @@ const TimetablePage = () => {
               </div>
               <div className="w-full sm:w-40">
                 <label className="block text-xs font-medium text-muted mb-1">Term</label>
-                <select
+                <CustomSelect
                   value={selectedTerm}
-                  onChange={(e) => setSelectedTerm(e.target.value)}
-                  className="w-full h-9 px-3 rounded-lg bg-bg border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                >
-                  <option value="FIRST">First Term</option>
-                  <option value="SECOND">Second Term</option>
-                  <option value="THIRD">Third Term</option>
-                </select>
+                  onChange={setSelectedTerm}
+                  className="w-full"
+                  options={termOptions}
+                />
               </div>
             </div>
           </section>
 
-          <section className="rounded-xl border border-border bg-surface p-4 sm:p-6 shadow-sm min-h-[360px]">
+          <section className="rounded-xl bg-surface p-4 sm:p-6 shadow-sm min-h-[360px]">
             {loadingStudentTimetable ? (
               <div className="flex flex-col items-center justify-center min-h-[280px] py-8">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />

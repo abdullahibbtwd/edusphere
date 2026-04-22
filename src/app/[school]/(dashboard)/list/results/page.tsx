@@ -3,10 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useUser } from "@/context/UserContext";
+import CustomSelect from "@/components/ui/CustomSelect";
 import { toast } from "sonner";
 import {
   FiPlus, FiTrash2, FiEdit2, FiSave, FiX,
-  FiEye, FiEyeOff, FiChevronDown, FiChevronUp, FiCheck, FiAlertCircle,
+  FiEye, FiEyeOff, FiChevronDown, FiChevronUp, FiCheck, FiAlertCircle, FiList, FiSliders,
 } from "react-icons/fi";
 
 type AssessmentComponent = {
@@ -85,31 +86,118 @@ export default function ResultsPage() {
 // ══════════════════════════════════════════════════════════════════════════════
 
 function AdminResultsView({ schoolId }: { schoolId: string }) {
-  const [tab, setTab] = useState<"results" | "config" | "settings">("results");
+  const [tab, setTab] = useState<"results" | "config">("results");
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Results Management</h1>
-        <div className="flex gap-2">
-          {(["results", "config", "settings"] as const).map((t) => (
+    <div className="flex flex-col bg-surface p-4 sm:p-6 m-4 mt-0 flex-1 rounded-2xl shadow-sm gap-4 font-poppins text-text [&_button:not(:disabled)]:cursor-pointer">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold text-text">Results Management</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          {(["results", "config"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
                 tab === t ? "bg-primary text-white" : "bg-surface border border-border text-foreground hover:bg-muted"
               }`}
+              aria-label={t === "results" ? "All Results" : "Assessment Config"}
             >
-              {t === "results" ? "All Results" : t === "config" ? "Assessment Config" : "Settings"}
+              {t === "results" ? <FiList size={14} /> : <FiSliders size={14} />}
+              <span className="hidden sm:inline">{t === "results" ? "All Results" : "Assessment Config"}</span>
             </button>
           ))}
+          <AdminResultVisibilityToggle schoolId={schoolId} />
         </div>
       </div>
 
       {tab === "config" && <AssessmentConfigPanel schoolId={schoolId} />}
-      {tab === "settings" && <ResultSettingsPanel schoolId={schoolId} />}
       {tab === "results" && <AdminResultsTable schoolId={schoolId} />}
     </div>
+  );
+}
+
+function AdminResultVisibilityToggle({ schoolId }: { schoolId: string }) {
+  const [publishedTermId, setPublishedTermId] = useState<string>("");
+  const [promotionAverage, setPromotionAverage] = useState<number>(50);
+  const [terms, setTerms] = useState<AcademicTerm[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [sRes, tRes] = await Promise.all([
+      fetch(`/api/schools/${schoolId}/result-settings`),
+      fetch(`/api/schools/${schoolId}/academic-calendar`),
+    ]);
+    const sData = await sRes.json();
+    const tData = await tRes.json();
+
+    if (sData?.settings) {
+      setPublishedTermId(sData.settings.publishedTermId || "");
+      setPromotionAverage(Number(sData.settings.promotionAverage) || 50);
+    }
+
+    const allTerms: AcademicTerm[] = [];
+    for (const session of tData.sessions || []) {
+      for (const term of session.terms || []) {
+        allTerms.push({ ...term, session: { id: session.id, name: session.name } });
+      }
+    }
+    setTerms(allTerms);
+    setLoading(false);
+  }, [schoolId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function onToggle() {
+    const activeTerm = terms.find((t) => t.isActive);
+    const fallbackTerm = activeTerm || terms[0];
+    if (!publishedTermId && !fallbackTerm) {
+      toast.error("No term available to publish");
+      return;
+    }
+
+    const nextPublishedTermId = publishedTermId ? null : fallbackTerm.id;
+    setSaving(true);
+    const res = await fetch(`/api/schools/${schoolId}/result-settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        promotionAverage,
+        publishedTermId: nextPublishedTermId,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      toast.error(data.error || "Failed to update result visibility");
+      setSaving(false);
+      return;
+    }
+    setPublishedTermId(nextPublishedTermId || "");
+    toast.success(nextPublishedTermId ? "Results visibility turned ON" : "Results visibility turned OFF");
+    setSaving(false);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={loading || saving}
+      className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors disabled:opacity-60 ${
+        publishedTermId
+          ? "bg-green-600 text-white hover:bg-green-700"
+          : "bg-muted text-foreground border border-border hover:bg-muted/70"
+      }`}
+    >
+      {publishedTermId ? <FiEye size={14} /> : <FiEyeOff size={14} />}
+      <span className="hidden sm:inline">
+      {loading || saving
+        ? "Updating..."
+        : publishedTermId
+          ? "Show Results: ON"
+          : "Show Results: OFF"}
+      </span>
+    </button>
   );
 }
 
@@ -177,7 +265,7 @@ function AssessmentConfigPanel({ schoolId }: { schoolId: string }) {
   }
 
   return (
-    <div className="bg-surface rounded-xl border border-border p-6 space-y-4">
+    <div className="rounded-xl bg-surface p-4 sm:p-6 shadow-sm space-y-4">
       <div>
         <h2 className="text-lg font-semibold mb-1">Assessment Components</h2>
         <p className="text-sm text-muted-foreground">
@@ -227,7 +315,7 @@ function AssessmentConfigPanel({ schoolId }: { schoolId: string }) {
                     )}
                   </td>
                   <td className="py-2 px-3 text-center text-muted-foreground">
-                    {totalMax > 0 ? ((c.maxScore / totalMax) * 100).toFixed(1) + "%" : "—"}
+                    {totalMax > 0 ? ((c.maxScore / totalMax) * 100).toFixed(1) + "%" : "N/A"}
                   </td>
                   <td className="py-2 px-3">
                     <div className="flex gap-2 justify-end">
@@ -297,10 +385,13 @@ function AssessmentConfigPanel({ schoolId }: { schoolId: string }) {
         <div className="flex items-center gap-2 text-sm font-medium pt-1 border-t border-border">
           <span className="text-muted-foreground">Total max score:</span>
           <span className={totalMax === 100 ? "text-green-600" : "text-orange-500"}>
-            {totalMax} {totalMax !== 100 && "(not 100 — grades are computed as percentage of total)"}
+            {totalMax} {totalMax !== 100 && "(not 100, grades are computed as percentage of total)"}
           </span>
         </div>
       )}
+      <div className="pt-2">
+        <ResultSettingsPanel schoolId={schoolId} />
+      </div>
     </div>
   );
 }
@@ -308,34 +399,18 @@ function AssessmentConfigPanel({ schoolId }: { schoolId: string }) {
 // ─── Result Settings Panel ─────────────────────────────────────────────────────
 
 function ResultSettingsPanel({ schoolId }: { schoolId: string }) {
-  const [terms, setTerms] = useState<AcademicTerm[]>([]);
   const [promotionAvg, setPromotionAvg] = useState("50");
-  const [publishedTermId, setPublishedTermId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [sRes, tRes] = await Promise.all([
-      fetch(`/api/schools/${schoolId}/result-settings`),
-      fetch(`/api/schools/${schoolId}/academic-calendar`),
-    ]);
+    const sRes = await fetch(`/api/schools/${schoolId}/result-settings`);
     const sData = await sRes.json();
-    const tData = await tRes.json();
 
     if (sData.settings) {
       setPromotionAvg(String(sData.settings.promotionAverage));
-      setPublishedTermId(sData.settings.publishedTermId || "");
     }
-
-    // Flatten all terms from all sessions
-    const allTerms: AcademicTerm[] = [];
-    for (const session of tData.sessions || []) {
-      for (const term of session.terms || []) {
-        allTerms.push({ ...term, session: { id: session.id, name: session.name } });
-      }
-    }
-    setTerms(allTerms);
     setLoading(false);
   }, [schoolId]);
 
@@ -343,12 +418,13 @@ function ResultSettingsPanel({ schoolId }: { schoolId: string }) {
 
   async function save() {
     setSaving(true);
+    const current = await fetch(`/api/schools/${schoolId}/result-settings`).then((r) => r.json());
     const res = await fetch(`/api/schools/${schoolId}/result-settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         promotionAverage: parseFloat(promotionAvg),
-        publishedTermId: publishedTermId || null,
+        publishedTermId: current?.settings?.publishedTermId || null,
       }),
     });
     const data = await res.json();
@@ -359,10 +435,8 @@ function ResultSettingsPanel({ schoolId }: { schoolId: string }) {
 
   if (loading) return <div className="text-sm text-muted-foreground animate-pulse p-4">Loading…</div>;
 
-  const published = terms.find((t) => t.id === publishedTermId);
-
   return (
-    <div className="bg-surface rounded-xl border border-border p-6 space-y-6">
+    <div className="rounded-xl bg-surface p-4 sm:p-6 shadow-sm space-y-6">
       <div>
         <h2 className="text-lg font-semibold mb-1">Result Settings</h2>
         <p className="text-sm text-muted-foreground">
@@ -370,7 +444,7 @@ function ResultSettingsPanel({ schoolId }: { schoolId: string }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Promotion Average */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Promotion Average (%)</label>
@@ -389,36 +463,6 @@ function ResultSettingsPanel({ schoolId }: { schoolId: string }) {
             <span className="text-sm text-muted-foreground">%</span>
           </div>
         </div>
-
-        {/* Publish Results */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Published Term (visible to students)</label>
-          <p className="text-xs text-muted-foreground">
-            Students can only view results for the published term. Set to none to hide all results.
-          </p>
-          <select
-            value={publishedTermId}
-            onChange={(e) => setPublishedTermId(e.target.value)}
-            className="border border-border rounded-lg px-3 py-2 text-sm w-full bg-background"
-          >
-            <option value="">— None (results hidden from students) —</option>
-            {terms.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.session.name} — {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Status badge */}
-      <div className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium ${
-        publishedTermId ? "bg-green-50 text-green-700 border border-green-200" : "bg-muted text-muted-foreground border border-border"
-      }`}>
-        {publishedTermId ? <FiEye size={15} /> : <FiEyeOff size={15} />}
-        {publishedTermId
-          ? `Results are open — students can view ${published ? `${published.session.name} ${published.name}` : "selected term"} results`
-          : "Results are closed — students cannot see any results"}
       </div>
 
       <button
@@ -526,42 +570,38 @@ function AdminResultsTable({ schoolId }: { schoolId: string }) {
     <div className="space-y-4">
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <select
+        <CustomSelect
           value={selectedTermId}
-          onChange={(e) => setSelectedTermId(e.target.value)}
-          className="border border-border rounded-lg px-3 py-2 text-sm bg-surface"
-        >
-          <option value="">Select Term</option>
-          {terms.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.session.name} — {t.name}
-            </option>
-          ))}
-        </select>
-        <select
+          onChange={setSelectedTermId}
+          className="w-full sm:w-56"
+          options={[
+            { value: "", label: "Select Term" },
+            ...terms.map((t) => ({ value: t.id, label: `${t.session.name} ${t.name}` })),
+          ]}
+        />
+        <CustomSelect
           value={selectedClassId}
-          onChange={(e) => { setSelectedClassId(e.target.value); setExpandedStudent(null); }}
-          className="border border-border rounded-lg px-3 py-2 text-sm bg-surface"
-        >
-          <option value="">— Select a class —</option>
-          {classes.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+          onChange={(val) => { setSelectedClassId(val); setExpandedStudent(null); }}
+          className="w-full sm:w-56"
+          options={[
+            { value: "", label: "Select a class" },
+            ...classes.map((c) => ({ value: c.id, label: c.name })),
+          ]}
+        />
       </div>
 
       {needsClassSelection ? (
-        <div className="bg-surface border border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-xl bg-muted/10 p-8 text-center text-sm text-muted">
           Select a class to view results
         </div>
       ) : !selectedTermId ? (
-        <div className="bg-surface border border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-xl bg-muted/10 p-8 text-center text-sm text-muted">
           Select a term to view results
         </div>
       ) : loading ? (
         <div className="text-sm text-muted-foreground animate-pulse p-4">Loading results…</div>
       ) : classStudents.length === 0 ? (
-        <div className="bg-surface border border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-xl bg-muted/10 p-8 text-center text-sm text-muted">
           No students found in this class.
         </div>
       ) : (
@@ -573,7 +613,7 @@ function AdminResultsTable({ schoolId }: { schoolId: string }) {
             <span><strong className="text-foreground">{classSubjects.length}</strong> subjects</span>
             {classSubjects.length === 0 && (
               <span className="text-orange-500 font-medium">
-                No subjects assigned to this class yet — teachers need to be assigned to subjects first.
+                No subjects assigned to this class yet, teachers need to be assigned to subjects first.
               </span>
             )}
           </div>
@@ -586,7 +626,7 @@ function AdminResultsTable({ schoolId }: { schoolId: string }) {
               const isOpen = expandedStudent === student.id;
 
               return (
-                <div key={student.id} className="bg-surface border border-border rounded-xl overflow-hidden">
+                <div key={student.id} className="rounded-xl bg-surface shadow-sm overflow-hidden">
                   <button
                     className="w-full flex items-center gap-4 px-5 py-3 hover:bg-muted/30 transition-colors text-left"
                     onClick={() => setExpandedStudent(isOpen ? null : student.id)}
@@ -647,15 +687,15 @@ function AdminResultsTable({ schoolId }: { schoolId: string }) {
                                   const sc = r?.scores.find((s) => s.componentId === c.id);
                                   return (
                                     <td key={c.id} className="px-3 py-2 text-center">
-                                      {sc ? sc.score : <span className="text-muted-foreground">—</span>}
+                                      {sc ? sc.score : <span className="text-muted-foreground">N/A</span>}
                                     </td>
                                   );
                                 })}
-                                <td className="px-3 py-2 text-center font-medium">{isPending ? "—" : total}</td>
-                                <td className="px-3 py-2 text-center">{isPending ? "—" : `${pct.toFixed(1)}%`}</td>
+                                <td className="px-3 py-2 text-center font-medium">{isPending ? "N/A" : total}</td>
+                                <td className="px-3 py-2 text-center">{isPending ? "N/A" : `${pct.toFixed(1)}%`}</td>
                                 <td className="px-3 py-2 text-center">
                                   {isPending ? (
-                                    <span className="text-muted-foreground text-xs">—</span>
+                                    <span className="text-muted-foreground text-xs">N/A</span>
                                   ) : (
                                     <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${g.color}`}>{g.letter}</span>
                                   )}
@@ -881,51 +921,49 @@ function TeacherResultsView({ schoolId }: { schoolId: string }) {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       <div>
         <label className="text-xs font-medium text-muted-foreground mb-1 block">Term</label>
-        <select
+        <CustomSelect
           value={selectedTermId}
-          onChange={(e) => {
-            setSelectedTermId(e.target.value);
-            const t = terms.find((t) => t.id === e.target.value);
+          onChange={(val) => {
+            setSelectedTermId(val);
+            const t = terms.find((t) => t.id === val);
             if (t) setSelectedSessionId(t.session.id);
           }}
-          className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-surface"
-        >
-          <option value="">Select term</option>
-          {terms.map((t) => (
-            <option key={t.id} value={t.id}>{t.session.name} — {t.name}</option>
-          ))}
-        </select>
+          className="w-full"
+          options={[
+            { value: "", label: "Select term" },
+            ...terms.map((t) => ({ value: t.id, label: `${t.session.name} ${t.name}` })),
+          ]}
+        />
       </div>
       <div>
         <label className="text-xs font-medium text-muted-foreground mb-1 block">Class</label>
-        <select
+        <CustomSelect
           value={selectedClassId}
-          onChange={(e) => setSelectedClassId(e.target.value)}
-          className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-surface"
-        >
-          <option value="">Select class</option>
-          {taughtClasses.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}{c.isSupervised ? " ★ Supervisor" : ""}
-            </option>
-          ))}
-        </select>
+          onChange={setSelectedClassId}
+          className="w-full"
+          options={[
+            { value: "", label: "Select class" },
+            ...taughtClasses.map((c) => ({
+              value: c.id,
+              label: `${c.name}${c.isSupervised ? " ★ Supervisor" : ""}`,
+            })),
+          ]}
+        />
       </div>
       {/* In entry mode for non-supervised class: show subject selector inline */}
       {viewMode === "entry" && !selectedClass?.isSupervised && (
         <div>
           <label className="text-xs font-medium text-muted-foreground mb-1 block">Subject</label>
-          <select
+          <CustomSelect
             value={entrySubjectId}
-            onChange={(e) => setEntrySubjectId(e.target.value)}
+            onChange={setEntrySubjectId}
             disabled={!selectedClassId}
-            className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-surface disabled:opacity-50"
-          >
-            <option value="">Select subject</option>
-            {entrySubjectOptions.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+            className="w-full"
+            options={[
+              { value: "", label: "Select subject" },
+              ...entrySubjectOptions.map((s) => ({ value: s.id, label: s.name })),
+            ]}
+          />
         </div>
       )}
     </div>
@@ -936,11 +974,11 @@ function TeacherResultsView({ schoolId }: { schoolId: string }) {
     const entrySubject = classSubjects.find((s) => s.id === entrySubjectId);
 
     return (
-      <div className="p-6 space-y-4">
+      <div className="flex flex-col bg-surface p-4 sm:p-6 m-4 mt-0 flex-1 rounded-2xl shadow-sm gap-4 font-poppins text-text [&_button:not(:disabled)]:cursor-pointer">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">
-              {entrySubjectId ? `Entering Marks — ${entrySubject?.name}` : `Class Overview — ${selectedClass.name}`}
+              {entrySubjectId ? `Entering Marks ${entrySubject?.name}` : `Class Overview ${selectedClass.name}`}
             </h1>
             {!entrySubjectId && (
               <p className="text-sm text-muted-foreground mt-0.5">
@@ -972,7 +1010,7 @@ function TeacherResultsView({ schoolId }: { schoolId: string }) {
             {entryLoading ? (
               <div className="text-sm text-muted-foreground animate-pulse">Loading…</div>
             ) : entryStudents.length === 0 ? (
-              <div className="bg-surface border border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
+              <div className="rounded-xl bg-muted/10 p-8 text-center text-sm text-muted">
                 No students in this class.
               </div>
             ) : (
@@ -1039,7 +1077,7 @@ function TeacherResultsView({ schoolId }: { schoolId: string }) {
           /* ── Full class overview table ── */
           <>
             {!selectedClassId || !selectedTermId ? (
-              <div className="bg-surface border border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
+              <div className="rounded-xl bg-muted/10 p-8 text-center text-sm text-muted">
                 Select a term and class to view the class overview.
               </div>
             ) : overviewLoading ? (
@@ -1071,7 +1109,7 @@ function TeacherResultsView({ schoolId }: { schoolId: string }) {
                     const recordedCount = classSubjects.filter((s) => !!resultLookup[student.id]?.[s.id]).length;
 
                     return (
-                      <div key={student.id} className="bg-surface border border-border rounded-xl overflow-hidden">
+                      <div key={student.id} className="rounded-xl bg-surface shadow-sm overflow-hidden">
                         <button
                           className="w-full flex items-center gap-4 px-5 py-3 hover:bg-muted/30 transition-colors text-left"
                           onClick={() => setExpandedStudent(isOpen ? null : student.id)}
@@ -1128,14 +1166,14 @@ function TeacherResultsView({ schoolId }: { schoolId: string }) {
                                         const sc = r?.scores.find((s) => s.componentId === c.id);
                                         return (
                                           <td key={c.id} className="px-3 py-2 text-center">
-                                            {sc ? sc.score : <span className="text-muted-foreground">—</span>}
+                                            {sc ? sc.score : <span className="text-muted-foreground">N/A</span>}
                                           </td>
                                         );
                                       })}
-                                      <td className="px-3 py-2 text-center font-medium">{isPending ? "—" : total}</td>
-                                      <td className="px-3 py-2 text-center">{isPending ? "—" : `${pct.toFixed(1)}%`}</td>
+                                      <td className="px-3 py-2 text-center font-medium">{isPending ? "N/A" : total}</td>
+                                      <td className="px-3 py-2 text-center">{isPending ? "N/A" : `${pct.toFixed(1)}%`}</td>
                                       <td className="px-3 py-2 text-center">
-                                        {isPending ? <span className="text-muted-foreground text-xs">—</span> : (
+                                        {isPending ? <span className="text-muted-foreground text-xs">N/A</span> : (
                                           <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${g.color}`}>{g.letter}</span>
                                         )}
                                       </td>
@@ -1175,9 +1213,9 @@ function TeacherResultsView({ schoolId }: { schoolId: string }) {
   const entrySubjectName = entrySubjectOptions.find((s) => s.id === entrySubjectId)?.name;
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="flex flex-col bg-surface p-4 sm:p-6 m-4 mt-0 flex-1 rounded-2xl shadow-sm gap-4 font-poppins text-text [&_button:not(:disabled)]:cursor-pointer">
       <h1 className="text-2xl font-bold">
-        {entrySubjectId ? `Enter Marks — ${entrySubjectName}` : "Enter Student Results"}
+        {entrySubjectId ? `Enter Marks ${entrySubjectName}` : "Enter Student Results"}
       </h1>
 
       {components.length === 0 && (
@@ -1193,7 +1231,7 @@ function TeacherResultsView({ schoolId }: { schoolId: string }) {
         entryLoading ? (
           <div className="text-sm text-muted-foreground animate-pulse">Loading…</div>
         ) : entryStudents.length === 0 ? (
-          <div className="bg-surface border border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-xl bg-muted/10 p-8 text-center text-sm text-muted">
             No students in this class.
           </div>
         ) : (
@@ -1345,12 +1383,12 @@ function StudentResultsView({ schoolId }: { schoolId: string }) {
   const pendingResults = results.filter((r) => r.isPending);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="flex flex-col bg-surface p-4 sm:p-6 m-4 mt-0 flex-1 rounded-2xl shadow-sm gap-6 font-poppins text-text [&_button:not(:disabled)]:cursor-pointer">
       <h1 className="text-2xl font-bold">My Results</h1>
 
       {/* Summary card */}
       {summary && (
-        <div className="bg-surface border border-border rounded-xl p-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="rounded-xl bg-surface p-5 shadow-sm grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="text-center">
             <div className="text-xs text-muted-foreground mb-1">Overall Average</div>
             <div className="text-2xl font-bold">{summary.overallAverage}%</div>
@@ -1384,7 +1422,7 @@ function StudentResultsView({ schoolId }: { schoolId: string }) {
             const isOpen = expandedSubject === r.id;
             const g = getGrade(r.percentage);
             return (
-              <div key={r.id} className="bg-surface border border-border rounded-xl overflow-hidden">
+              <div key={r.id} className="rounded-xl bg-surface shadow-sm overflow-hidden">
                 <button
                   className="w-full flex items-center gap-4 px-5 py-3 hover:bg-muted/30 transition-colors text-left"
                   onClick={() => setExpandedSubject(isOpen ? null : r.id)}
@@ -1426,7 +1464,7 @@ function StudentResultsView({ schoolId }: { schoolId: string }) {
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">
             Pending Subjects ({pendingResults.length})
           </h2>
-          <div className="bg-surface border border-border rounded-xl overflow-hidden">
+          <div className="rounded-xl bg-surface shadow-sm overflow-hidden">
             <table className="w-full text-sm">
               <tbody>
                 {pendingResults.map((r, i) => (
@@ -1446,7 +1484,7 @@ function StudentResultsView({ schoolId }: { schoolId: string }) {
       )}
 
       {results.length === 0 && (
-        <div className="bg-surface border border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-xl bg-muted/10 p-8 text-center text-sm text-muted">
           No subjects found for your class. Please contact your school administrator.
         </div>
       )}

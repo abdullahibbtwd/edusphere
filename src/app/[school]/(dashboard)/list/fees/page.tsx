@@ -14,7 +14,7 @@ import {
     Banknote
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import CustomSelect from "@/components/ui/CustomSelect";
 import FeeStructureModal from "@/components/FeeStructureModal";
 import { useUser } from "@/context/UserContext";
 
@@ -321,8 +321,8 @@ function StudentFeesView({ schoolId }: { schoolId: string }) {
         : fees.some((f) => f.status === "UNPAID" || f.status === "PARTIAL");
 
     return (
-        <div className="px-3 py-4 sm:p-6 max-w-7xl mx-auto space-y-5 sm:space-y-8 min-h-screen pb-20">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 bg-card p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm overflow-hidden relative">
+        <div className="flex flex-col bg-surface p-4 sm:p-6 m-4 mt-0 flex-1 rounded-2xl shadow-sm gap-5 sm:gap-6 font-poppins text-text">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 bg-surface p-4 sm:p-6 md:p-8 rounded-xl shadow-sm overflow-hidden relative">
                 <div className="absolute top-0 right-0 p-4 sm:p-8 opacity-[0.03] pointer-events-none">
                     <Wallet size={120} className="sm:w-40 sm:h-40" />
                 </div>
@@ -347,7 +347,7 @@ function StudentFeesView({ schoolId }: { schoolId: string }) {
 
             {/* Make payment CTA */}
             {hasUnpaid && (
-                <div className="bg-amber-500/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="bg-amber-500/10 rounded-xl p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                     <div className="flex items-center gap-2 sm:gap-3">
                         <div className="p-1.5 sm:p-2 bg-amber-500/20 rounded-lg shrink-0">
                             <Banknote className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
@@ -375,19 +375,19 @@ function StudentFeesView({ schoolId }: { schoolId: string }) {
                 </p>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                <div className="bg-card rounded-lg sm:rounded-xl p-3 sm:p-4">
+                <div className="bg-surface rounded-xl p-3 sm:p-4 shadow-sm">
                     <p className="text-[10px] sm:text-xs font-medium sm:font-bold uppercase tracking-wider text-muted-foreground">
                         {hasCurrentSession ? "Due (this period)" : "Total due"}
                     </p>
                     <p className="text-base sm:text-lg md:text-xl font-bold sm:font-black text-foreground mt-0.5">₦{totalDue.toLocaleString()}</p>
                 </div>
-                <div className="bg-card rounded-lg sm:rounded-xl p-3 sm:p-4">
+                <div className="bg-surface rounded-xl p-3 sm:p-4 shadow-sm">
                     <p className="text-[10px] sm:text-xs font-medium sm:font-bold uppercase tracking-wider text-muted-foreground">
                         {hasCurrentSession ? "Paid (this session)" : "Total paid"}
                     </p>
                     <p className="text-base sm:text-lg md:text-xl font-bold sm:font-black text-emerald-600 mt-0.5">₦{totalPaid.toLocaleString()}</p>
                 </div>
-                <div className="bg-card rounded-lg sm:rounded-xl p-3 sm:p-4">
+                <div className="bg-surface rounded-xl p-3 sm:p-4 shadow-sm">
                     <p className="text-[10px] sm:text-xs font-medium sm:font-bold uppercase tracking-wider text-muted-foreground">Balance</p>
                     <p className={`text-base sm:text-lg md:text-xl font-bold sm:font-black mt-0.5 ${balance > 0 ? "text-amber-600" : "text-foreground"}`}>
                         ₦{balance.toLocaleString()}
@@ -406,7 +406,7 @@ function StudentFeesView({ schoolId }: { schoolId: string }) {
                         return (
                             <div
                                 key={f.id}
-                                className="bg-card rounded-lg sm:rounded-xl p-4 sm:p-5 flex flex-col gap-3 sm:gap-4"
+                                className="bg-surface rounded-xl p-4 sm:p-5 shadow-sm flex flex-col gap-3 sm:gap-4"
                             >
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0">
@@ -452,7 +452,7 @@ function StudentFeesView({ schoolId }: { schoolId: string }) {
                     })}
                 </div>
                 {fees.length === 0 && (
-                    <div className="bg-muted/30 rounded-xl p-6 sm:p-8 text-center text-muted-foreground">
+                    <div className="bg-muted/10 rounded-xl p-6 sm:p-8 text-center text-muted-foreground">
                         <FileText className="w-8 h-8 sm:w-10 sm:h-10 mx-auto mb-2 opacity-60" />
                         <p className="text-sm sm:text-base">No fee records for you yet. Fees are added when the school sets up the structure for your class.</p>
                     </div>
@@ -574,9 +574,9 @@ export default function FeeManagementPage() {
     }).length;
 
     return (
-        <div className="px-3 py-4 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6 min-h-screen pb-20">
+        <div className="flex flex-col bg-surface p-4 sm:p-6 m-4 mt-0 flex-1 rounded-2xl shadow-sm gap-4 sm:gap-6 font-poppins text-text">
             {/* Header: compact */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-card p-4 rounded-xl shadow-sm border border-border/50">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-surface p-4 rounded-xl shadow-sm">
                 <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2 bg-blue-500/10 rounded-lg shrink-0">
                         <Wallet className="w-5 h-5 text-blue-500" />
@@ -589,18 +589,16 @@ export default function FeeManagementPage() {
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <Select value={selectedSession} onValueChange={setSelectedSession}>
-                        <SelectTrigger className="w-full sm:w-[180px] h-9 bg-background text-sm font-medium">
-                            <SelectValue placeholder="Session" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background">
-                            {sessions.map(s => (
-                                <SelectItem key={s.id} value={s.id}>
-                                    {s.name} {s.isActive ? "(Active)" : ""}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <CustomSelect
+                        value={selectedSession}
+                        onChange={setSelectedSession}
+                        className="w-full sm:w-[220px]"
+                        options={sessions.map((s) => ({
+                            value: s.id,
+                            label: `${s.name}${s.isActive ? " (Active)" : ""}`,
+                        }))}
+                        placeholder="Session"
+                    />
                     <Button
                         variant="outline"
                         size="sm"
@@ -623,7 +621,7 @@ export default function FeeManagementPage() {
                 <>
                     {/* Action bar + stats: one row */}
                     <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                        <div className="flex items-center gap-3 p-3 sm:p-4 bg-card rounded-xl border border-border/50 shadow-sm flex-1 sm:max-w-sm">
+                        <div className="flex items-center gap-3 p-3 sm:p-4 bg-surface rounded-xl shadow-sm flex-1 sm:max-w-sm">
                             <div className="p-2 bg-blue-500/10 rounded-lg shrink-0">
                                 <Settings2 className="w-5 h-5 text-blue-500" />
                             </div>
@@ -643,15 +641,15 @@ export default function FeeManagementPage() {
                         </div>
 
                         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                            <div className="flex flex-col p-3 rounded-xl bg-muted/30 border border-border/30">
+                            <div className="flex flex-col p-3 rounded-xl bg-muted/20">
                                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Levels</span>
                                 <span className="text-lg font-bold text-foreground mt-0.5">{levels.length}</span>
                             </div>
-                            <div className="flex flex-col p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                            <div className="flex flex-col p-3 rounded-xl bg-emerald-500/5">
                                 <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Configured</span>
                                 <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{configuredCount}</span>
                             </div>
-                            <div className="flex flex-col p-3 rounded-xl bg-amber-500/5 border border-amber-500/10">
+                            <div className="flex flex-col p-3 rounded-xl bg-amber-500/5">
                                 <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">Pending</span>
                                 <span className="text-lg font-bold text-amber-600 dark:text-amber-400 mt-0.5">{pendingCount}</span>
                             </div>
@@ -668,7 +666,7 @@ export default function FeeManagementPage() {
                                     return (
                                         <div
                                             key={idx}
-                                            className={`p-3 rounded-xl border flex flex-col gap-3 ${isConfigured ? "bg-card border-border/50" : "bg-muted/10 border-border/30"}`}
+                                            className={`p-3 rounded-xl shadow-sm flex flex-col gap-3 ${isConfigured ? "bg-surface" : "bg-muted/10"}`}
                                         >
                                             <div className="flex flex-wrap gap-1.5">
                                                 {tier.levels.map(l => (

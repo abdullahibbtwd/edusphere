@@ -411,23 +411,23 @@ const StudentPage = () => {
           className="md:hidden xl:block w-10 h-10 rounded-full object-cover shadow-sm bg-muted/20"
         />
         <div className="flex flex-col">
-          <h3 className="font-bold text-sm">
+          <h3 className="font-semibold text-sm text-foreground">
             {item.firstName} {item.lastName}
           </h3>
-          <h3 className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{item.levelName} - {item.className}</h3>
+          <h3 className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">{item.levelName} - {item.className}</h3>
         </div>
       </td>
-      <td className="hidden md:table-cell font-mono text-primary font-bold">{item.registrationNumber || "---"}</td>
-      <td className="hidden lg:table-cell font-bold">{item.levelName}</td>
-      <td className="hidden md:table-cell font-bold">{item.className}</td>
+      <td className="hidden md:table-cell font-mono text-primary text-xs font-semibold">{item.registrationNumber || "---"}</td>
+      <td className="hidden lg:table-cell text-[12px] font-medium text-foreground/90">{item.levelName}</td>
+      <td className="hidden md:table-cell text-[12px] font-medium text-foreground/90">{item.className}</td>
       <td className="hidden md:table-cell ">
         <div className="flex flex-col gap-1">
-          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest w-max ${item.isRegistered ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+          <span className={`px-2 py-0.5 rounded-full border text-[9px] font-semibold uppercase tracking-wide w-max ${item.isRegistered ? "bg-green-100 border-green-200 text-green-800 dark:bg-green-700 dark:border-green-600 dark:text-green-100" : "bg-yellow-800 border-yellow-500 text-yellow-50 dark:bg-yellow-600 dark:border-yellow-500 dark:text-yellow-950"
             }`}>
             {item.isRegistered ? "Registered" : "Admitted"}
           </span>
           {item.paymentPlan && (
-            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
+            <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-tight">
               Plan: {item.paymentPlan}
             </span>
           )}
@@ -437,12 +437,12 @@ const StudentPage = () => {
         <div className="flex flex-col gap-1">
           {item.feeStatus && (
             <span
-              className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tight w-max ${
+              className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-tight w-max ${
                 item.feeStatus.isFullSessionPaid || item.feeStatus.label === "Full session paid"
-                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
+                  ? "bg-emerald-100 border border-emerald-200 text-emerald-800 dark:bg-emerald-700 dark:border-emerald-600 dark:text-emerald-100"
                   : item.feeStatus.label === "Unpaid"
-                  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-                  : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                  ? "bg-red-400 border border-red-500 text-red-950 dark:bg-red-700 dark:border-red-600 dark:text-red-100"
+                  : "bg-yellow-400 border border-yellow-500 text-yellow-950 dark:bg-yellow-600 dark:border-yellow-500 dark:text-yellow-950"
               }`}
             >
               {item.feeStatus.label}

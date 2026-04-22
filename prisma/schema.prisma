@@ -37,8 +37,6 @@ model User {
   @@map("users")
 }
 
-
-
 model School {
   id                    String                @id @default(cuid())
   name                  String                @unique
@@ -321,6 +319,7 @@ model TeacherSubjectClass {
   @@index([subjectId])
   @@index([classId])
   @@index([schoolId])
+  @@index([schoolId, classId])
   @@map("teacher_subject_classes")
 }
 
@@ -378,6 +377,8 @@ model Student {
 
   @@index([schoolId])
   @@index([classId])
+  @@index([status])
+  @@index([isActive])
   @@map("students")
 }
 
@@ -420,6 +421,8 @@ model ExamTimetable {
   subject       Subject  @relation(fields: [subjectId], references: [id])
   teacher       Teacher  @relation("ExamTimetable_Teacher", fields: [teacherId], references: [id])
 
+  @@index([date])
+  @@index([classId, term])
   @@map("exam_timetables")
 }
 
@@ -436,6 +439,7 @@ model Announcement {
   school      School   @relation(fields: [schoolId], references: [id])
 
   @@index([schoolId])
+  @@index([createdAt])
   @@map("announcements")
 }
 
@@ -454,6 +458,7 @@ model Event {
   school      School   @relation(fields: [schoolId], references: [id])
 
   @@index([schoolId])
+  @@index([createdAt])
   @@map("events")
 }
 
@@ -524,6 +529,8 @@ model StudentApplication {
   user               User?             @relation(fields: [userId], references: [id])
   screeningSlot      ScreeningSlot?    @relation(fields: [screeningSlotId], references: [id])
 
+  @@index([schoolId])
+  @@index([status])
   @@map("student_applications")
 }
 
@@ -547,28 +554,30 @@ model AcademicSession {
 
   @@unique([name, schoolId])
   @@index([schoolId])
+  @@index([isActive])
   @@map("academic_sessions")
 }
 
 model AcademicTerm {
-  id        String          @id @default(cuid())
-  name      Term
-  startDate DateTime
-  endDate   DateTime
-  sessionId String
-  schoolId  String
-  isActive  Boolean         @default(false)
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id             String           @id @default(cuid())
+  name           Term
+  startDate      DateTime
+  endDate        DateTime
+  sessionId      String
+  schoolId       String
+  isActive       Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
   events         AcademicEvent[]
-  school         School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  session        AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  school         School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  session        AcademicSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   results        Result[]
   resultSettings ResultSettings[]
 
   @@unique([name, sessionId])
   @@index([sessionId])
   @@index([schoolId])
+  @@index([isActive])
   @@map("academic_terms")
 }
 
@@ -655,6 +664,9 @@ model StudentFee {
   payments FeePayment[]
 
   @@unique([studentId, sessionId, term])
+  @@index([studentId])
+  @@index([status])
+  @@index([studentId, status])
   @@map("student_fees")
 }
 
@@ -669,6 +681,8 @@ model FeePayment {
 
   studentFee StudentFee @relation(fields: [studentFeeId], references: [id], onDelete: Cascade)
 
+  @@index([studentFeeId])
+  @@index([paymentDate])
   @@map("fee_payments")
 }
 
@@ -685,37 +699,38 @@ model AssessmentComponent {
 
   @@unique([name, schoolId])
   @@index([schoolId])
+  @@index([schoolId, order])
   @@map("assessment_components")
 }
 
 model ResultSettings {
-  id                String        @id @default(cuid())
-  schoolId          String        @unique
-  promotionAverage  Float         @default(50)
-  publishedTermId   String?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  school            School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  publishedTerm     AcademicTerm? @relation(fields: [publishedTermId], references: [id])
+  id               String        @id @default(cuid())
+  schoolId         String        @unique
+  promotionAverage Float         @default(50)
+  publishedTermId  String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  school           School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  publishedTerm    AcademicTerm? @relation(fields: [publishedTermId], references: [id])
 
   @@map("result_settings")
 }
 
 model Result {
-  id        String        @id @default(cuid())
+  id        String          @id @default(cuid())
   studentId String
   subjectId String
   termId    String
   sessionId String
   classId   String
   schoolId  String
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  student   Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  subject   Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  term      AcademicTerm  @relation(fields: [termId], references: [id], onDelete: Cascade)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  student   Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject   Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  term      AcademicTerm    @relation(fields: [termId], references: [id], onDelete: Cascade)
   session   AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school    School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   scores    ResultScore[]
 
   @@unique([studentId, subjectId, termId])
@@ -723,6 +738,9 @@ model Result {
   @@index([subjectId])
   @@index([termId])
   @@index([schoolId])
+  @@index([studentId, termId])
+  @@index([classId])
+  @@index([sessionId])
   @@map("results")
 }
 
@@ -738,6 +756,7 @@ model ResultScore {
 
   @@unique([resultId, componentId])
   @@index([resultId])
+  @@index([componentId])
   @@map("result_scores")
 }
 
