@@ -2,22 +2,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { Term } from '@prisma/client';
 import { getSchool } from '@/lib/school';
+import { requireAuth, requireRole } from '@/lib/auth-middleware';
 
 // GET - Fetch terms for a specific session
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ schoolId: string; sessionId: string }> }
 ) {
+    const sessionUser = requireAuth(request);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     try {
         const { schoolId, sessionId } = await params;
-        const school = await getSchool(schoolId);
-        if (!school) {
+        const resolvedSchool = await getSchool(schoolId);
+        const actualSchoolId = resolvedSchool?.id;
+        if (!actualSchoolId) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchoolId) {
+            return NextResponse.json({ error: 'Forbidden - You can only access your school calendar' }, { status: 403 });
         }
 
         const terms = await prisma.academicTerm.findMany({
             where: {
-                schoolId: school.id,
+                schoolId: actualSchoolId,
                 sessionId: sessionId
             },
             include: {
@@ -44,11 +52,18 @@ export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ schoolId: string; sessionId: string }> }
 ) {
+    const sessionUser = requireRole(request, ['ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     try {
         const { schoolId, sessionId } = await params;
-        const school = await getSchool(schoolId);
-        if (!school) {
+        const resolvedSchool = await getSchool(schoolId);
+        const actualSchoolId = resolvedSchool?.id;
+        if (!actualSchoolId) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchoolId) {
+            return NextResponse.json({ error: 'Forbidden - You can only manage your school calendar' }, { status: 403 });
         }
 
         const body = await request.json();
@@ -64,7 +79,7 @@ export async function POST(
             where: { id: sessionId }
         });
 
-        if (!session || session.schoolId !== school.id) {
+        if (!session || session.schoolId !== actualSchoolId) {
             return NextResponse.json({ error: 'Invalid session' }, { status: 400 });
         }
 
@@ -77,7 +92,7 @@ export async function POST(
             if (isActive) {
                 // Deactivate all other terms in this session (and maybe school?)
                 await tx.academicTerm.updateMany({
-                    where: { schoolId: school.id },
+                    where: { schoolId: actualSchoolId },
                     data: { isActive: false }
                 });
             }
@@ -89,7 +104,7 @@ export async function POST(
                     endDate: new Date(endDate),
                     isActive: isActive || false,
                     sessionId,
-                    schoolId: school.id
+                    schoolId: actualSchoolId
                 }
             });
         });
@@ -99,6 +114,7 @@ export async function POST(
             term
         }, { status: 201 });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         if (error.code === 'P2002') {
             return NextResponse.json({ error: 'Term already exists for this session' }, { status: 409 });

@@ -1,26 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth-middleware';
 
 export async function GET(request: NextRequest) {
-    try {
-        // Get user ID from session cookie
-        let userId: string | null = null;
-        try {
-            const sessionCookie = request.cookies.get('user-session')?.value;
-            if (sessionCookie) {
-                const session = JSON.parse(decodeURIComponent(sessionCookie));
-                userId = session.userId;
-            }
-        } catch (error) {
-            console.error('Error parsing user session:', error);
-        }
+    const authUser = requireAuth(request);
+    if (authUser instanceof NextResponse) return authUser;
 
-        if (!userId) {
-            return NextResponse.json(
-                { error: 'User session not found' },
-                { status: 401 }
-            );
-        }
+    try {
+        const userId = authUser.userId;
 
         // Get total count of applications submitted by this user
         const totalApplications = await prisma.schoolApplication.count({

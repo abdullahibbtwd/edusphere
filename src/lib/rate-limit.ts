@@ -111,6 +111,7 @@ export const loginIpLimiter = new RateLimiter(5, 60000); // 5 requests per minut
 export const loginSchoolLimiter = new RateLimiter(10, 60000); // 10 requests per minute
 export const otpLimiter = new RateLimiter(3, 60000); // 3 requests per minute
 export const registerLimiter = new RateLimiter(5, 60000); // 5 requests per minute
+export const subdomainCheckLimiter = new RateLimiter(30, 60000); // 30 checks per minute
 export const resultUploadLimiter = new RateLimiter(20, 60000); // 20 requests per minute
 export const schoolFreeRequestLimiter = new RateLimiter(500, 60000);
 export const schoolPremiumRequestLimiter = new RateLimiter(1500, 60000);

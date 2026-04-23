@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { otpLimiter, getClientIp, createRateLimitResponse } from "@/lib/rate-limit";
+import { hashOneTimeCode, normalizeEmail } from "@/lib/auth-security";
 
 export async function POST(req: Request) {
     try {
@@ -28,9 +29,19 @@ export async function POST(req: Request) {
             );
         }
 
+        const normalizedEmail = normalizeEmail(email);
+
+        const accountRateLimit = otpLimiter.check(`forgot:${normalizedEmail}`);
+        if (!accountRateLimit.success) {
+            return createRateLimitResponse(
+                accountRateLimit.retryAfter!,
+                'Too many password reset requests for this account. Please try again later.'
+            );
+        }
+
         // Find user
         const user = await prisma.user.findUnique({
-            where: { email },
+            where: { email: normalizedEmail },
         });
 
         if (!user) {
@@ -46,13 +57,14 @@ export async function POST(req: Request) {
 
         // Generate reset code (6 digits)
         const resetCode = crypto.randomInt(100000, 999999).toString();
+        const resetCodeHash = hashOneTimeCode(resetCode);
         const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
         // Update user with reset code
         await prisma.user.update({
-            where: { email },
+            where: { email: normalizedEmail },
             data: {
-                passwordResetCode: resetCode,
+                passwordResetCode: resetCodeHash,
                 passwordResetExpires: resetExpires,
             },
         });
@@ -60,8 +72,8 @@ export async function POST(req: Request) {
         // Send reset code via email
         try {
             const { sendPasswordResetEmail } = await import("@/lib/email-service");
-            await sendPasswordResetEmail(email, user.name || "User", resetCode);
-            console.log("✅ Password reset email sent to:", email);
+            await sendPasswordResetEmail(normalizedEmail, user.name || "User", resetCode);
+            console.log("✅ Password reset email sent to:", normalizedEmail);
         } catch (emailError) {
             console.error("⚠️ Failed to send password reset email:", emailError);
             // Continue anyway - better user experience

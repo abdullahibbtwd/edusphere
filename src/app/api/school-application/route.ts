@@ -1,39 +1,46 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { encryptSchoolIdentifiers } from '@/lib/encryption';
+import { registerLimiter, getClientIp, createRateLimitResponse } from '@/lib/rate-limit';
+import { normalizeEmail } from '@/lib/auth-security';
+import { Prisma, SchoolApplicationStatus } from '@prisma/client';
+import { requireAuth } from '@/lib/auth-middleware';
+
+const RESERVED_SUBDOMAINS = new Set([
+  'www',
+  'api',
+  'admin',
+  'app',
+  'mail',
+  'support',
+  'help',
+  'status',
+  'dashboard',
+  'auth',
+  'cdn',
+  'static',
+  'assets',
+  'docs',
+  'blog',
+  'ftp',
+  'localhost',
+  'root',
+]);
 
 export async function POST(request: NextRequest) {
+  const authUser = requireAuth(request);
+  if (authUser instanceof NextResponse) return authUser;
+
   try {
+    const clientIp = getClientIp(request);
+    const ipRateLimit = registerLimiter.check(`school-application-ip:${clientIp}`);
+    if (!ipRateLimit.success) {
+      return createRateLimitResponse(ipRateLimit.retryAfter!, 'Too many school application attempts. Please try again later.');
+    }
+
     const body = await request.json();
 
-    // Get authenticated user from cookies
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // Get user ID from session cookie
-    let userId: string | null = null;
-    try {
-      const sessionCookie = request.cookies.get('user-session')?.value;
-      if (sessionCookie) {
-        const session = JSON.parse(decodeURIComponent(sessionCookie));
-        userId = session.userId; // Changed from session.id to session.userId
-      }
-    } catch (error) {
-      console.error('Error parsing user session:', error);
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User session not found' },
-        { status: 401 }
-      );
-    }
+    const userId = authUser.userId;
 
     // Validate required fields
     const requiredFields = [
@@ -61,16 +68,30 @@ export async function POST(request: NextRequest) {
 
     // Validate subdomain format
     const subdomainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
-    if (!subdomainRegex.test(body.subdomain)) {
+    const normalizedSubdomain = String(body.subdomain).trim().toLowerCase();
+    if (!subdomainRegex.test(normalizedSubdomain)) {
       return NextResponse.json(
         { error: 'Invalid subdomain format. Only lowercase letters, numbers, and hyphens are allowed.' },
         { status: 400 }
       );
     }
 
+    if (RESERVED_SUBDOMAINS.has(normalizedSubdomain)) {
+      return NextResponse.json(
+        { error: 'This subdomain is reserved. Please choose another one.' },
+        { status: 400 }
+      );
+    }
+
+    const normalizedSchoolEmail = normalizeEmail(String(body.schoolEmail));
+    const accountRateLimit = registerLimiter.check(`school-application:${normalizedSchoolEmail}`);
+    if (!accountRateLimit.success) {
+      return createRateLimitResponse(accountRateLimit.retryAfter!, 'Too many school application attempts for this email. Please try again later.');
+    }
+
     // Check if email already exists
     const existingApplication = await prisma.schoolApplication.findFirst({
-      where: { schoolEmail: body.schoolEmail }
+      where: { schoolEmail: normalizedSchoolEmail }
     });
 
     if (existingApplication) {
@@ -82,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     // Check if subdomain already exists in applications or schools
     const existingSubdomain = await prisma.schoolApplication.findUnique({
-      where: { subdomain: body.subdomain }
+      where: { subdomain: normalizedSubdomain }
     });
 
     if (existingSubdomain) {
@@ -94,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     // Check if subdomain exists in schools table
     const existingSchool = await prisma.school.findUnique({
-      where: { subdomain: body.subdomain }
+      where: { subdomain: normalizedSubdomain }
     });
 
     if (existingSchool) {
@@ -116,7 +137,7 @@ export async function POST(request: NextRequest) {
     const schoolApplication = await prisma.schoolApplication.create({
       data: {
         schoolName: body.schoolName,
-        subdomain: body.subdomain,
+        subdomain: normalizedSubdomain,
         state: body.state,
         lga: body.lga,
         address: body.address,
@@ -128,7 +149,7 @@ export async function POST(request: NextRequest) {
         stateApprovalNumber: encryptedIdentifiers.stateApprovalNumber,
         principalName: body.principalName,
         officialPhone: body.officialPhone,
-        schoolEmail: body.schoolEmail,
+        schoolEmail: normalizedSchoolEmail,
         establishmentYear: body.establishmentYear,
         totalStudents: body.totalStudents ? parseInt(body.totalStudents) : null,
         totalTeachers: body.totalTeachers ? parseInt(body.totalTeachers) : null,
@@ -158,20 +179,38 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const authUser = requireAuth(request);
+  if (authUser instanceof NextResponse) return authUser;
+  if (authUser.role !== 'SUPER_ADMIN') {
+    return NextResponse.json(
+      { error: 'Forbidden - Super Admin access required' },
+      { status: 403 }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const pageParam = Number.parseInt(searchParams.get('page') || '1', 10);
+    const limitParam = Number.parseInt(searchParams.get('limit') || '10', 10);
+    const page = Number.isFinite(pageParam) ? Math.max(pageParam, 1) : 1;
+    const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 50) : 10;
     const search = searchParams.get('search') || '';
 
     const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: any = {};
+    const where: Prisma.SchoolApplicationWhereInput = {};
 
     if (status && status !== 'ALL') {
-      where.status = status;
+      if ((Object.values(SchoolApplicationStatus) as string[]).includes(status)) {
+        where.status = status as SchoolApplicationStatus;
+      } else {
+        return NextResponse.json(
+          { error: 'Invalid status filter' },
+          { status: 400 }
+        );
+      }
     }
 
     if (search) {

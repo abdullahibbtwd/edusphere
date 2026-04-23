@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { matchesOneTimeCode, normalizeEmail } from "@/lib/auth-security";
 
 export async function POST(req: Request) {
     try {
@@ -13,9 +14,11 @@ export async function POST(req: Request) {
             );
         }
 
+        const normalizedEmail = normalizeEmail(email);
+
         // Find user
         const user = await prisma.user.findUnique({
-            where: { email },
+            where: { email: normalizedEmail },
             select: {
                 passwordResetCode: true,
                 passwordResetExpires: true,
@@ -31,9 +34,9 @@ export async function POST(req: Request) {
         }
 
         // Check reset code
-        if (user.passwordResetCode !== code) {
+        if (!matchesOneTimeCode(code, user.passwordResetCode)) {
             return NextResponse.json(
-                { error: "Invalid reset code" },
+                { error: "Invalid code" },
                 { status: 400 }
             );
         }
@@ -41,7 +44,7 @@ export async function POST(req: Request) {
         // Check validity
         if (user.passwordResetExpires && new Date() > user.passwordResetExpires) {
             return NextResponse.json(
-                { error: "Reset code has expired" },
+                { error: "Invalid code" },
                 { status: 400 }
             );
         }

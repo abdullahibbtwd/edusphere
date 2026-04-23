@@ -1,8 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { subdomainCheckLimiter, getClientIp, createRateLimitResponse } from '@/lib/rate-limit';
+
+const RESERVED_SUBDOMAINS = new Set([
+  'www',
+  'api',
+  'admin',
+  'app',
+  'mail',
+  'support',
+  'help',
+  'status',
+  'dashboard',
+  'auth',
+  'cdn',
+  'static',
+  'assets',
+  'docs',
+  'blog',
+  'ftp',
+  'localhost',
+  'root',
+]);
 
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = getClientIp(request);
+    const rateLimit = subdomainCheckLimiter.check(clientIp);
+    if (!rateLimit.success) {
+      return createRateLimitResponse(rateLimit.retryAfter!, 'Too many subdomain checks. Please try again later.');
+    }
+
     const { subdomain } = await request.json();
 
     if (!subdomain) {
@@ -12,9 +40,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedSubdomain = String(subdomain).trim().toLowerCase();
+
     // Validate subdomain format
     const subdomainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
-    if (!subdomainRegex.test(subdomain)) {
+    if (!subdomainRegex.test(normalizedSubdomain)) {
       return NextResponse.json(
         {
           available: false,
@@ -25,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if subdomain is too short or too long
-    if (subdomain.length < 3) {
+    if (normalizedSubdomain.length < 3) {
       return NextResponse.json(
         {
           available: false,
@@ -35,7 +65,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (subdomain.length > 30) {
+    if (normalizedSubdomain.length > 30) {
       return NextResponse.json(
         {
           available: false,
@@ -45,15 +75,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (RESERVED_SUBDOMAINS.has(normalizedSubdomain)) {
+      return NextResponse.json(
+        {
+          available: false,
+          subdomain: normalizedSubdomain,
+          error: 'This subdomain is reserved. Please choose another one.'
+        },
+        { status: 200 }
+      );
+    }
+
     // Check if subdomain exists in database
     const existingSchool = await prisma.school.findUnique({
-      where: { subdomain }
+      where: { subdomain: normalizedSubdomain }
     });
 
     // Check if subdomain exists in school applications (excluding rejected ones)
     const activeApplication = await prisma.schoolApplication.findFirst({
       where: {
-        subdomain: subdomain,
+        subdomain: normalizedSubdomain,
         status: {
           not: 'REJECTED'
         }
@@ -64,7 +105,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       available: isAvailable,
-      subdomain: subdomain,
+      subdomain: normalizedSubdomain,
       message: isAvailable
         ? 'Subdomain is available!'
         : 'This subdomain is already taken'

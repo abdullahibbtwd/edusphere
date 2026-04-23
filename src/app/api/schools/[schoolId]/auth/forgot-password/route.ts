@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import { getSchool } from '@/lib/school';
+import { otpLimiter, getClientIp, createRateLimitResponse } from '@/lib/rate-limit';
+import { hashOneTimeCode, normalizeEmail } from '@/lib/auth-security';
 
 export async function POST(
   request: NextRequest,
@@ -9,12 +11,18 @@ export async function POST(
 ) {
   try {
     const { schoolId } = await params;
+    const clientIp = getClientIp(request);
+    const ipRateLimit = otpLimiter.check(`school-forgot-ip:${clientIp}`);
+    if (!ipRateLimit.success) {
+      return createRateLimitResponse(ipRateLimit.retryAfter!, 'Too many password reset requests. Please try again later.');
+    }
 
     // Get the base URL from the request
     const url = new URL(request.url);
     const baseUrl = `${url.protocol}//${url.host}`;
 
     const { email } = await request.json();
+    const normalizedEmail = normalizeEmail(email);
 
     if (!email) {
       return NextResponse.json({
@@ -27,10 +35,15 @@ export async function POST(
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
+    const accountRateLimit = otpLimiter.check(`school-forgot:${schoolId}:${normalizedEmail}`);
+    if (!accountRateLimit.success) {
+      return createRateLimitResponse(accountRateLimit.retryAfter!, 'Too many password reset requests for this account. Please try again later.');
+    }
+
     // Find user
     const user = await prisma.user.findUnique({
       where: {
-        email,
+        email: normalizedEmail,
         schoolId: school.id
       }
     });
@@ -45,13 +58,14 @@ export async function POST(
 
     // Generate reset code
     const resetCode = crypto.randomInt(100000, 999999).toString();
+    const resetCodeHash = hashOneTimeCode(resetCode);
     const resetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     // Update user with reset code
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        passwordResetCode: resetCode,
+        passwordResetCode: resetCodeHash,
         passwordResetExpires: resetExpires
       }
     });
@@ -64,7 +78,7 @@ export async function POST(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          to: email,
+          to: normalizedEmail,
           subject: `Reset your ${school.name} password`,
           type: 'password-reset',
           html: `

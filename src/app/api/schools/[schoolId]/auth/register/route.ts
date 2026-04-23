@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { getSchool } from '@/lib/school';
+import { registerLimiter, getClientIp, createRateLimitResponse } from '@/lib/rate-limit';
+import { hashOneTimeCode, normalizeEmail } from '@/lib/auth-security';
 
 export async function POST(
   request: NextRequest,
@@ -10,11 +12,17 @@ export async function POST(
 ) {
   try {
     const { schoolId } = await params;
+    const clientIp = getClientIp(request);
+    const ipRateLimit = registerLimiter.check(`school-register-ip:${clientIp}`);
+    if (!ipRateLimit.success) {
+      return createRateLimitResponse(ipRateLimit.retryAfter!, 'Too many registration attempts. Please try again later.');
+    }
 
     // Get the base URL from the request
     const url = new URL(request.url);
     const baseUrl = `${url.protocol}//${url.host}`;
     const { name, email, password, role = 'STUDENT' } = await request.json();
+    const normalizedEmail = normalizeEmail(email);
 
     // Validate required fields
     if (!name || !email || !password) {
@@ -36,9 +44,14 @@ export async function POST(
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
+    const accountRateLimit = registerLimiter.check(`school-register:${schoolId}:${normalizedEmail}`);
+    if (!accountRateLimit.success) {
+      return createRateLimitResponse(accountRateLimit.retryAfter!, 'Too many registration attempts for this account. Please try again later.');
+    }
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email: normalizedEmail }
     });
 
     if (existingUser) {
@@ -53,17 +66,18 @@ export async function POST(
 
     // Generate verification code
     const verificationCode = crypto.randomInt(100000, 999999).toString();
+    const verificationCodeHash = hashOneTimeCode(verificationCode);
     const verificationExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     // Create user
     const user = await prisma.user.create({
       data: {
         name,
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
         role,
         schoolId: school.id,
-        emailVerificationCode: verificationCode,
+        emailVerificationCode: verificationCodeHash,
         emailVerificationExpires: verificationExpires,
         isEmailVerified: false
       },
@@ -81,17 +95,17 @@ export async function POST(
     // Send verification email
     let emailSent = false;
     try {
-      console.log('Sending verification email to:', email);
+      console.log('Sending verification email to:', normalizedEmail);
       console.log('Using base URL for email API:', baseUrl);
 
       // For testing: always send to your verified email in development
       const testEmail = process.env.NODE_ENV === 'development'
         ? 'abdullahibashirtwd@gmail.com'
-        : email;
+        : normalizedEmail;
 
       if (process.env.NODE_ENV === 'development') {
         console.log('Development mode: sending to verified email:', testEmail);
-        console.log('Original user email:', email);
+        console.log('Original user email:', normalizedEmail);
       }
 
       const emailResponse = await fetch(`${baseUrl}/api/send-email`, {
@@ -106,7 +120,7 @@ export async function POST(
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #333;">Welcome to ${school.name}!</h2>
-              <p>Thank you for registering with email: <strong>${email}</strong></p>
+              <p>Thank you for registering with email: <strong>${normalizedEmail}</strong></p>
               <p>Please verify your email address by entering the code below:</p>
               
               <div style="background: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">

@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { createToken, getCookieOptions } from "@/lib/jwt";
 import { loginIpLimiter, loginSchoolLimiter, getClientIp, createRateLimitResponse } from "@/lib/rate-limit";
+import { normalizeEmail } from "@/lib/auth-security";
 
 export async function POST(req: Request) {
     try {
@@ -29,9 +30,20 @@ export async function POST(req: Request) {
             );
         }
 
+        const normalizedEmail = normalizeEmail(email);
+
+        // Per-account limiter complements IP limiter for distributed attacks
+        const accountRateLimit = loginIpLimiter.check(`login:${normalizedEmail}`);
+        if (!accountRateLimit.success) {
+            return createRateLimitResponse(
+                accountRateLimit.retryAfter!,
+                'Too many login attempts for this account. Please try again later.'
+            );
+        }
+
         // Find user (include student/teacher for profile image fallback)
         const user = await prisma.user.findUnique({
-            where: { email },
+            where: { email: normalizedEmail },
             include: {
                 school: {
                     select: {

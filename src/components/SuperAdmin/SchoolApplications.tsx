@@ -7,23 +7,23 @@ import CustomSelect from '@/components/ui/CustomSelect';
 interface SchoolApplication {
   id: string;
   schoolName: string;
-  subdomain: string;
-  state: string;
-  lga: string;
-  address: string;
-  principalName: string;
-  schoolEmail: string;
-  officialPhone: string;
-  schoolType: string;
-  educationLevel: string;
-  establishmentYear: string;
+  subdomain?: string;
+  state?: string;
+  lga?: string;
+  address?: string;
+  principalName?: string;
+  schoolEmail?: string;
+  officialPhone?: string;
+  schoolType?: string;
+  educationLevel?: string;
+  establishmentYear?: string;
   rcNumber?: string | null;
   nemisId?: string | null;
   stateApprovalNumber?: string | null;
   waecNecoNumber?: string | null;
   totalStudents?: number;
   totalTeachers?: number;
-  facilities: string[];
+  facilities?: string[];
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   submittedAt: string;
   reviewedAt?: string;
@@ -49,7 +49,9 @@ const SchoolApplications = () => {
         page: currentPage.toString(),
         limit: '10',
         status: statusFilter,
-        search: searchTerm
+        search: searchTerm,
+        includeSensitive: 'true',
+        includeTotal: 'true',
       });
 
       // Use admin endpoint that returns decrypted data
@@ -58,7 +60,7 @@ const SchoolApplications = () => {
 
       if (response.ok) {
         setApplications(data.applications);
-        setTotalPages(data.pagination.totalPages);
+        setTotalPages(data.pagination?.totalPages || 1);
       }
     } catch (error) {
       console.error('Error fetching applications:', error);
@@ -113,6 +115,11 @@ const SchoolApplications = () => {
       default:
         return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300';
     }
+  };
+
+  const formatEducationLevel = (value?: string) => {
+    if (!value) return 'Not specified';
+    return value.replace(/_/g, ' ');
   };
 
   if (loading) {
@@ -189,7 +196,7 @@ const SchoolApplications = () => {
                         {application.subdomain}.edusphere.com
                       </div>
                       <div className="text-xs text-[var(--text)] opacity-70">
-                        {application.schoolType} • {application.educationLevel.replace('_', ' ')}
+                        {application.schoolType || 'Not specified'} • {formatEducationLevel(application.educationLevel)}
                       </div>
                     </div>
                   </td>
@@ -265,7 +272,9 @@ const SchoolApplications = () => {
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <h3 className="font-semibold text-[var(--text)]">{application.schoolName}</h3>
-                  <p className="text-sm text-[var(--primary)]">{application.subdomain}.edusphere.com</p>
+                  <p className="text-sm text-[var(--primary)]">
+                    {application.subdomain ? `${application.subdomain}.edusphere.com` : 'No subdomain'}
+                  </p>
                 </div>
                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(application.status)}`}>
                   {getStatusIcon(application.status)}
@@ -281,11 +290,11 @@ const SchoolApplications = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[var(--text)] opacity-70">Location:</span>
-                  <span className="text-[var(--text)]">{application.state}, {application.lga}</span>
+                  <span className="text-[var(--text)]">{application.state || '-'}, {application.lga || '-'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[var(--text)] opacity-70">Principal:</span>
-                  <span className="text-[var(--text)]">{application.principalName}</span>
+                  <span className="text-[var(--text)]">{application.principalName || '-'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[var(--text)] opacity-70">Submitted:</span>
@@ -376,31 +385,33 @@ const SchoolApplications = () => {
                     </div>
                     <div>
                       <p className="text-[var(--text)] opacity-70">Subdomain</p>
-                      <p className="font-medium text-[var(--primary)]">{selectedApplication.subdomain}.edusphere.com</p>
+                      <p className="font-medium text-[var(--primary)]">
+                        {selectedApplication.subdomain ? `${selectedApplication.subdomain}.edusphere.com` : 'No subdomain'}
+                      </p>
                     </div>
                     <div>
                       <p className="text-[var(--text)] opacity-70">State</p>
-                      <p className="font-medium text-[var(--text)]">{selectedApplication.state}</p>
+                      <p className="font-medium text-[var(--text)]">{selectedApplication.state || 'Not provided'}</p>
                     </div>
                     <div>
                       <p className="text-[var(--text)] opacity-70">LGA</p>
-                      <p className="font-medium text-[var(--text)]">{selectedApplication.lga}</p>
+                      <p className="font-medium text-[var(--text)]">{selectedApplication.lga || 'Not provided'}</p>
                     </div>
                     <div className="md:col-span-2">
                       <p className="text-[var(--text)] opacity-70">Address</p>
-                      <p className="font-medium text-[var(--text)]">{selectedApplication.address}</p>
+                      <p className="font-medium text-[var(--text)]">{selectedApplication.address || 'Not provided'}</p>
                     </div>
                     <div>
                       <p className="text-[var(--text)] opacity-70">Type</p>
-                      <p className="font-medium text-[var(--text)]">{selectedApplication.schoolType}</p>
+                      <p className="font-medium text-[var(--text)]">{selectedApplication.schoolType || 'Not specified'}</p>
                     </div>
                     <div>
                       <p className="text-[var(--text)] opacity-70">Education Level</p>
-                      <p className="font-medium text-[var(--text)]">{selectedApplication.educationLevel.replace('_', ' ')}</p>
+                      <p className="font-medium text-[var(--text)]">{formatEducationLevel(selectedApplication.educationLevel)}</p>
                     </div>
                     <div>
                       <p className="text-[var(--text)] opacity-70">Established</p>
-                      <p className="font-medium text-[var(--text)]">{selectedApplication.establishmentYear}</p>
+                      <p className="font-medium text-[var(--text)]">{selectedApplication.establishmentYear || 'Not specified'}</p>
                     </div>
                   </div>
                 </div>
@@ -434,15 +445,15 @@ const SchoolApplications = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div>
                       <p className="text-[var(--text)] opacity-70">Principal Name</p>
-                      <p className="font-medium text-[var(--text)]">{selectedApplication.principalName}</p>
+                      <p className="font-medium text-[var(--text)]">{selectedApplication.principalName || 'Not provided'}</p>
                     </div>
                     <div>
                       <p className="text-[var(--text)] opacity-70">School Email</p>
-                      <p className="font-medium text-[var(--text)]">{selectedApplication.schoolEmail}</p>
+                      <p className="font-medium text-[var(--text)]">{selectedApplication.schoolEmail || 'Not provided'}</p>
                     </div>
                     <div>
                       <p className="text-[var(--text)] opacity-70">Official Phone</p>
-                      <p className="font-medium text-[var(--text)]">{selectedApplication.officialPhone}</p>
+                      <p className="font-medium text-[var(--text)]">{selectedApplication.officialPhone || 'Not provided'}</p>
                     </div>
                   </div>
                 </div>
@@ -463,11 +474,11 @@ const SchoolApplications = () => {
                 </div>
 
                 {/* Facilities */}
-                {selectedApplication.facilities.length > 0 && (
+                {(selectedApplication.facilities?.length || 0) > 0 && (
                   <div className="bg-[var(--bg)] rounded-lg p-4 border border-[var(--border)]">
                     <h3 className="font-semibold text-[var(--text)] mb-3 border-b border-[var(--border)] pb-2">Facilities</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                      {selectedApplication.facilities.map((facility, index) => (
+                      {(selectedApplication.facilities || []).map((facility, index) => (
                         <div key={index} className="flex items-center">
                           <CheckCircle className="w-3 h-3 text-green-500 mr-2" />
                           <span className="text-[var(--text)]">{facility}</span>

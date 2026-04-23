@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { registerLimiter, getClientIp, createRateLimitResponse } from "@/lib/rate-limit";
+import { hashOneTimeCode, normalizeEmail } from "@/lib/auth-security";
 
 export async function POST(req: Request) {
     try {
@@ -36,16 +37,27 @@ export async function POST(req: Request) {
             );
         }
 
-        if (password.length < 6) {
+        if (password.length < 8) {
             return NextResponse.json(
-                { error: "Password must be at least 6 characters long" },
+                { error: "Password must be at least 8 characters long" },
                 { status: 400 }
+            );
+        }
+
+        const normalizedEmail = normalizeEmail(email);
+
+        // Additional per-account rate limiting to reduce distributed abuse
+        const accountRateLimit = registerLimiter.check(`register:${normalizedEmail}`);
+        if (!accountRateLimit.success) {
+            return createRateLimitResponse(
+                accountRateLimit.retryAfter!,
+                "Too many registration attempts for this account. Please try again later."
             );
         }
 
         // Check if user already exists
         const existingUser = await prisma.user.findUnique({
-            where: { email },
+            where: { email: normalizedEmail },
         });
 
         if (existingUser) {
@@ -60,15 +72,16 @@ export async function POST(req: Request) {
 
         // Generate verification code (6 digits)
         const verificationCode = crypto.randomInt(100000, 999999).toString();
+        const verificationCodeHash = hashOneTimeCode(verificationCode);
         const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
         // Create user
         const user = await prisma.user.create({
             data: {
-                email,
+                email: normalizedEmail,
                 name,
                 password: hashedPassword,
-                emailVerificationCode: verificationCode,
+                emailVerificationCode: verificationCodeHash,
                 emailVerificationExpires: verificationExpires,
                 isEmailVerified: false,
                 role: "USER", // Default role
@@ -87,8 +100,8 @@ export async function POST(req: Request) {
         // Send verification email
         try {
             const { sendVerificationEmail } = await import("@/lib/email-service");
-            await sendVerificationEmail(email, name, verificationCode);
-            console.log("✅ Verification email sent to:", email);
+            await sendVerificationEmail(normalizedEmail, name, verificationCode);
+            console.log("✅ Verification email sent to:", normalizedEmail);
         } catch (emailError) {
             console.error("⚠️ Failed to send verification email:", emailError);
             // Don't fail registration if email fails - user can request resend

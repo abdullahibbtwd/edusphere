@@ -1,17 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSchool } from '@/lib/school';
+import { requireRole } from '@/lib/auth-middleware';
 
 // PUT - Update a specific Academic Session
 export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ schoolId: string; sessionId: string }> }
 ) {
+    const sessionUser = requireRole(request, ['ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     try {
         const { schoolId, sessionId } = await params;
-        const school = await getSchool(schoolId);
-        if (!school) {
+        const resolvedSchool = await getSchool(schoolId);
+        const actualSchoolId = resolvedSchool?.id;
+        if (!actualSchoolId) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchoolId) {
+            return NextResponse.json({ error: 'Forbidden - You can only manage your school calendar' }, { status: 403 });
         }
 
         const body = await request.json();
@@ -22,12 +30,20 @@ export async function PUT(
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
+        const existingSession = await prisma.academicSession.findUnique({
+            where: { id: sessionId },
+            select: { id: true, schoolId: true }
+        });
+        if (!existingSession || existingSession.schoolId !== actualSchoolId) {
+            return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+        }
+
         const session = await prisma.$transaction(async (tx) => {
             // If setting this session as active, deactivate others
             if (isActive) {
                 await tx.academicSession.updateMany({
                     where: {
-                        schoolId: school.id,
+                        schoolId: actualSchoolId,
                         id: { not: sessionId }
                     },
                     data: { isActive: false }
@@ -50,6 +66,7 @@ export async function PUT(
             session
         });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         console.error('Error updating session:', error);
         if (error.code === 'P2002') {
@@ -64,11 +81,26 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ schoolId: string; sessionId: string }> }
 ) {
+    const sessionUser = requireRole(request, ['ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     try {
         const { schoolId, sessionId } = await params;
-        const school = await getSchool(schoolId);
-        if (!school) {
+        const resolvedSchool = await getSchool(schoolId);
+        const actualSchoolId = resolvedSchool?.id;
+        if (!actualSchoolId) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchoolId) {
+            return NextResponse.json({ error: 'Forbidden - You can only manage your school calendar' }, { status: 403 });
+        }
+
+        const existingSession = await prisma.academicSession.findUnique({
+            where: { id: sessionId },
+            select: { id: true, schoolId: true }
+        });
+        if (!existingSession || existingSession.schoolId !== actualSchoolId) {
+            return NextResponse.json({ error: 'Session not found' }, { status: 404 });
         }
 
         await prisma.academicSession.delete({

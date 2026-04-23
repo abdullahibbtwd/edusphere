@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { otpLimiter, getClientIp, createRateLimitResponse } from "@/lib/rate-limit";
+import { matchesOneTimeCode, normalizeEmail } from "@/lib/auth-security";
 
 export async function POST(req: Request) {
     try {
@@ -28,16 +29,25 @@ export async function POST(req: Request) {
             );
         }
 
-        if (newPassword.length < 6) {
+        if (newPassword.length < 8) {
             return NextResponse.json(
-                { error: "Password must be at least 6 characters long" },
+                { error: "Password must be at least 8 characters long" },
                 { status: 400 }
+            );
+        }
+
+        const normalizedEmail = normalizeEmail(email);
+        const accountRateLimit = otpLimiter.check(`reset:${normalizedEmail}`);
+        if (!accountRateLimit.success) {
+            return createRateLimitResponse(
+                accountRateLimit.retryAfter!,
+                'Too many password reset attempts for this account. Please try again later.'
             );
         }
 
         // Find user
         const user = await prisma.user.findUnique({
-            where: { email },
+            where: { email: normalizedEmail },
         });
 
         if (!user) {
@@ -48,9 +58,9 @@ export async function POST(req: Request) {
         }
 
         // Check reset code
-        if (user.passwordResetCode !== code) {
+        if (!matchesOneTimeCode(code, user.passwordResetCode)) {
             return NextResponse.json(
-                { error: "Invalid reset code" },
+                { error: "Invalid email or reset code" },
                 { status: 400 }
             );
         }
@@ -58,7 +68,7 @@ export async function POST(req: Request) {
         // Check if code has expired
         if (user.passwordResetExpires && new Date() > user.passwordResetExpires) {
             return NextResponse.json(
-                { error: "Reset code has expired. Please request a new one." },
+                { error: "Invalid email or reset code" },
                 { status: 400 }
             );
         }
@@ -68,7 +78,7 @@ export async function POST(req: Request) {
 
         // Update user password and clear reset code
         await prisma.user.update({
-            where: { email },
+            where: { email: normalizedEmail },
             data: {
                 password: hashedPassword,
                 passwordResetCode: null,
@@ -76,7 +86,7 @@ export async function POST(req: Request) {
             },
         });
 
-        console.log(`✅ Password reset successfully for: ${email}`);
+        console.log(`✅ Password reset successfully for: ${normalizedEmail}`);
 
         return NextResponse.json(
             {

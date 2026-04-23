@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { matchesOneTimeCode, normalizeEmail } from "@/lib/auth-security";
 
 export async function POST(req: Request) {
     try {
@@ -14,30 +15,24 @@ export async function POST(req: Request) {
             );
         }
 
+        const normalizedEmail = normalizeEmail(email);
+
         // Find user
         const user = await prisma.user.findUnique({
-            where: { email },
+            where: { email: normalizedEmail },
         });
 
-        if (!user) {
+        if (!user || user.isEmailVerified) {
             return NextResponse.json(
-                { error: "User not found" },
-                { status: 404 }
-            );
-        }
-
-        // Check if already verified
-        if (user.isEmailVerified) {
-            return NextResponse.json(
-                { error: "Email is already verified" },
+                { error: "Invalid or expired verification code" },
                 { status: 400 }
             );
         }
 
         // Check verification code
-        if (user.emailVerificationCode !== code) {
+        if (!matchesOneTimeCode(code, user.emailVerificationCode)) {
             return NextResponse.json(
-                { error: "Invalid verification code" },
+                { error: "Invalid or expired verification code" },
                 { status: 400 }
             );
         }
@@ -45,14 +40,14 @@ export async function POST(req: Request) {
         // Check if code has expired
         if (user.emailVerificationExpires && new Date() > user.emailVerificationExpires) {
             return NextResponse.json(
-                { error: "Verification code has expired. Please request a new one." },
+                { error: "Invalid or expired verification code" },
                 { status: 400 }
             );
         }
 
         // Update user as verified
         const updatedUser = await prisma.user.update({
-            where: { email },
+            where: { email: normalizedEmail },
             data: {
                 isEmailVerified: true,
                 emailVerificationCode: null,

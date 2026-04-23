@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSchool } from '@/lib/school';
+import { matchesOneTimeCode, normalizeEmail } from '@/lib/auth-security';
 
 export async function POST(
   request: NextRequest,
@@ -9,6 +10,7 @@ export async function POST(
   try {
     const { schoolId } = await params;
     const { email, verificationCode } = await request.json();
+    const normalizedEmail = normalizeEmail(email);
 
     if (!email || !verificationCode) {
       return NextResponse.json({
@@ -24,42 +26,35 @@ export async function POST(
     // Find user
     const user = await prisma.user.findUnique({
       where: {
-        email,
+        email: normalizedEmail,
         schoolId: school.id
       }
     });
 
-    if (!user) {
+    if (!user || user.isEmailVerified) {
       return NextResponse.json({
-        error: 'User not found'
-      }, { status: 404 });
-    }
-
-    // Check if already verified
-    if (user.isEmailVerified) {
-      return NextResponse.json({
-        error: 'Email is already verified'
+        error: 'Invalid or expired verification code'
       }, { status: 400 });
     }
 
     // Check verification code
     if (!user.emailVerificationCode || !user.emailVerificationExpires) {
       return NextResponse.json({
-        error: 'No verification code found. Please request a new one.'
+        error: 'Invalid or expired verification code'
       }, { status: 400 });
     }
 
     // Check if code is expired
     if (new Date() > user.emailVerificationExpires) {
       return NextResponse.json({
-        error: 'Verification code has expired. Please request a new one.'
+        error: 'Invalid or expired verification code'
       }, { status: 400 });
     }
 
     // Check if code matches
-    if (user.emailVerificationCode !== verificationCode) {
+    if (!matchesOneTimeCode(String(verificationCode), user.emailVerificationCode)) {
       return NextResponse.json({
-        error: 'Invalid verification code'
+        error: 'Invalid or expired verification code'
       }, { status: 400 });
     }
 

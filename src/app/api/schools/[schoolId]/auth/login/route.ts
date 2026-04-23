@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { getSchool } from '@/lib/school';
+import { loginIpLimiter, getClientIp, createRateLimitResponse } from '@/lib/rate-limit';
+import { normalizeEmail } from '@/lib/auth-security';
 
 export async function POST(
   request: NextRequest,
@@ -10,6 +12,12 @@ export async function POST(
 ) {
   try {
     const { schoolId } = await params;
+    const clientIp = getClientIp(request);
+    const ipRateLimit = loginIpLimiter.check(`school-login-ip:${clientIp}`);
+    if (!ipRateLimit.success) {
+      return createRateLimitResponse(ipRateLimit.retryAfter!, 'Too many login attempts from this IP. Please try again later.');
+    }
+
     const body = await request.json();
     const emailOrPhone = body.email ?? body.emailOrPhone ?? '';
     const password = body.password;
@@ -27,12 +35,18 @@ export async function POST(
 
     // Find user by email or phone (students can login with either)
     const isEmail = String(emailOrPhone).includes('@');
+    const normalizedEmailOrPhone = isEmail ? normalizeEmail(String(emailOrPhone)) : String(emailOrPhone).trim();
+    const accountRateLimit = loginIpLimiter.check(`school-login:${schoolId}:${normalizedEmailOrPhone}`);
+    if (!accountRateLimit.success) {
+      return createRateLimitResponse(accountRateLimit.retryAfter!, 'Too many login attempts for this account. Please try again later.');
+    }
+
     const user = await prisma.user.findFirst({
       where: {
         schoolId: school.id,
         ...(isEmail
-          ? { email: emailOrPhone }
-          : { phone: emailOrPhone })
+          ? { email: normalizedEmailOrPhone }
+          : { phone: normalizedEmailOrPhone })
       },
       include: {
         school: {

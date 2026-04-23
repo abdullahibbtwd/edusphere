@@ -1,18 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { Term } from '@prisma/client';
 import { getSchool } from '@/lib/school';
+import { requireRole } from '@/lib/auth-middleware';
 
 // PUT - Update a term
 export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ schoolId: string; sessionId: string; termId: string }> }
 ) {
+    const sessionUser = requireRole(request, ['ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     try {
         const { schoolId, sessionId, termId } = await params;
-        const school = await getSchool(schoolId);
-        if (!school) {
+        const resolvedSchool = await getSchool(schoolId);
+        const actualSchoolId = resolvedSchool?.id;
+        if (!actualSchoolId) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchoolId) {
+            return NextResponse.json({ error: 'Forbidden - You can only manage your school calendar' }, { status: 403 });
         }
 
         const body = await request.json();
@@ -28,10 +35,20 @@ export async function PUT(
             where: { id: sessionId }
         });
 
-        if (session) {
-            if (new Date(startDate) < session.startDate || new Date(endDate) > session.endDate) {
-                return NextResponse.json({ error: 'Term dates must be within Session dates' }, { status: 400 });
-            }
+        if (!session || session.schoolId !== actualSchoolId) {
+            return NextResponse.json({ error: 'Invalid session' }, { status: 400 });
+        }
+
+        if (new Date(startDate) < session.startDate || new Date(endDate) > session.endDate) {
+            return NextResponse.json({ error: 'Term dates must be within Session dates' }, { status: 400 });
+        }
+
+        const existingTerm = await prisma.academicTerm.findUnique({
+            where: { id: termId },
+            select: { id: true, schoolId: true, sessionId: true }
+        });
+        if (!existingTerm || existingTerm.schoolId !== actualSchoolId || existingTerm.sessionId !== sessionId) {
+            return NextResponse.json({ error: 'Term not found' }, { status: 404 });
         }
 
         const term = await prisma.$transaction(async (tx) => {

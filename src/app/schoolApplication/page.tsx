@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { useState, useEffect, useCallback } from 'react';
@@ -173,9 +174,12 @@ const SchoolApplicationForm = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    const normalizedValue = name === 'subdomain'
+      ? value.trim().toLowerCase().replace(/\s+/g, '-')
+      : value;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: normalizedValue
     }));
   };
 
@@ -224,6 +228,7 @@ const SchoolApplicationForm = () => {
         },
         body: JSON.stringify({
           ...formData,
+          subdomain: formData.subdomain.trim().toLowerCase(),
           schoolType: formData.schoolType.toUpperCase(),
           educationLevel: formData.educationLevel.toUpperCase().replace(' ', '_')
         }),
@@ -500,7 +505,7 @@ const SchoolApplicationForm = () => {
               </div>
               <div className="mt-1 text-sm">
                 <span className="text-[var(--text)] opacity-70">
-                  This will be your school's URL:
+                  This will be your school&apos;s URL:
                 </span>
                 <span className="font-mono text-[var(--primary)]">
                   {formData.subdomain ? `${formData.subdomain}.edusphere.com` : 'your-school-name.edusphere.com'}

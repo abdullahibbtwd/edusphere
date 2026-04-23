@@ -1,13 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/auth-middleware';
+import { SchoolApplicationStatus, SchoolType } from '@prisma/client';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authUser = requireAuth(request);
+  if (authUser instanceof NextResponse) return authUser;
+  if (authUser.role !== 'SUPER_ADMIN') {
+    return NextResponse.json(
+      { error: 'Forbidden - Super Admin access required' },
+      { status: 403 }
+    );
+  }
+
   try {
     const { id } = await params;
     const { status, reviewedBy } = await request.json();
+    if (status !== SchoolApplicationStatus.APPROVED && status !== SchoolApplicationStatus.REJECTED) {
+      return NextResponse.json(
+        { error: 'Invalid status. Must be APPROVED or REJECTED' },
+        { status: 400 }
+      );
+    }
 
     // Find the school application
     const application = await prisma.schoolApplication.findUnique({
@@ -42,6 +59,10 @@ export async function PATCH(
         );
       }
 
+      const schoolTypeValue = (Object.values(SchoolType) as string[]).includes(application.schoolType)
+        ? application.schoolType as SchoolType
+        : SchoolType.PRIVATE;
+
       // Create the school record
       const school = await prisma.school.create({
         data: {
@@ -49,7 +70,7 @@ export async function PATCH(
           subdomain: application.subdomain,
           address: `${application.address}, ${application.lga}, ${application.state}`,
           rcNumber: application.rcNumber,
-          schoolType: application.schoolType as any, // Convert string to enum
+          schoolType: schoolTypeValue,
           principalName: application.principalName,
           phoneNumber: application.officialPhone,
           email: application.schoolEmail,
@@ -81,7 +102,7 @@ export async function PATCH(
         data: {
           status: 'APPROVED',
           reviewedAt: new Date(),
-          reviewedBy: reviewedBy || 'system'
+          reviewedBy: reviewedBy || authUser.userId || 'system'
         },
         include: {
           submittedByUser: true // Get the user who submitted
@@ -132,7 +153,7 @@ export async function PATCH(
         data: {
           status: 'REJECTED',
           reviewedAt: new Date(),
-          reviewedBy: reviewedBy || 'system'
+          reviewedBy: reviewedBy || authUser.userId || 'system'
         },
         include: {
           submittedByUser: true // Get the user who submitted
