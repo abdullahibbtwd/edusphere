@@ -31,6 +31,20 @@ export async function GET(
         if (!actualSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchool.id) {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view fee status for your school' },
+                { status: 403 }
+            );
+        }
+
+        const student = await prisma.student.findFirst({
+            where: { id: studentId, schoolId: actualSchool.id },
+            select: { id: true }
+        });
+        if (!student) {
+            return NextResponse.json({ error: 'Student not found for this school' }, { status: 404 });
+        }
 
         const fees = await prisma.studentFee.findMany({
             where: {

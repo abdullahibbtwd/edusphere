@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
 import { getSchool } from '@/lib/school';
 
 // GET - Fetch school subjects with class assignments
@@ -8,10 +9,13 @@ export async function GET(
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
+    const sessionUser = requireRole(request, ['ADMIN', 'TEACHER', 'SUPER_ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     const { schoolId } = await params;
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.min(100, Math.max(1, Number.parseInt(searchParams.get('limit') || '10', 10)));
     const levelId = searchParams.get('levelId');
     const classId = searchParams.get('classId');
     const skip = (page - 1) * limit;
@@ -19,6 +23,12 @@ export async function GET(
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only view subjects for your school' },
+        { status: 403 }
+      );
     }
 
     // Build query filter
@@ -219,6 +229,9 @@ export async function POST(
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
+    const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     const { schoolId } = await params;
     const body = await request.json();
     const { name, subjectType, classIds } = body; // Expect classIds instead of classNames
@@ -232,6 +245,12 @@ export async function POST(
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only manage subjects for your school' },
+        { status: 403 }
+      );
     }
 
     let levelIdsToConnect: string[] = [];

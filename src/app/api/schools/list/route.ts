@@ -20,7 +20,24 @@ export async function GET(request: NextRequest) {
     }
 
     try {
+        const { searchParams } = new URL(request.url);
+        const includeInactive = searchParams.get('includeInactive') === 'true';
+        const query = (searchParams.get('query') || '').trim();
+        const limitParam = Number.parseInt(searchParams.get('limit') || '200', 10);
+        const limit = Number.isFinite(limitParam) ? Math.min(500, Math.max(1, limitParam)) : 200;
+
         const schools = await prisma.school.findMany({
+            where: {
+                ...(includeInactive ? {} : { isActive: true }),
+                ...(query
+                    ? {
+                          OR: [
+                              { name: { contains: query, mode: 'insensitive' } },
+                              { subdomain: { contains: query, mode: 'insensitive' } },
+                          ],
+                      }
+                    : {}),
+            },
             select: {
                 id: true,
                 name: true,
@@ -30,6 +47,7 @@ export async function GET(request: NextRequest) {
             orderBy: {
                 name: 'asc',
             },
+            take: limit,
         });
 
         return NextResponse.json({ schools });

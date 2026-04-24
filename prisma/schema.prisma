@@ -440,6 +440,7 @@ model Announcement {
 
   @@index([schoolId])
   @@index([createdAt])
+  @@index([schoolId, createdAt])
   @@map("announcements")
 }
 

@@ -20,6 +20,12 @@ export async function GET(
 
         const school = await getSchool(identifier);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view teachers for your school' },
+                { status: 403 }
+            );
+        }
 
         const userId = (sessionUser as { userId: string }).userId;
 

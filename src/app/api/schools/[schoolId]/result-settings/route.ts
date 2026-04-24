@@ -15,6 +15,12 @@ export async function GET(
 
         const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (user.schoolId && user.schoolId !== school.id && user.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view result settings for your school' },
+                { status: 403 }
+            );
+        }
 
         const settings = await prisma.resultSettings.findUnique({
             where: { schoolId: school.id },
@@ -48,9 +54,30 @@ export async function PUT(
 
         const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (user.schoolId && user.schoolId !== school.id) {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only manage result settings for your school' },
+                { status: 403 }
+            );
+        }
 
         const body = await request.json();
         const { promotionAverage, publishedTermId } = body;
+        if (promotionAverage !== undefined) {
+            const parsedPromotionAverage = Number.parseFloat(String(promotionAverage));
+            if (!Number.isFinite(parsedPromotionAverage) || parsedPromotionAverage < 0 || parsedPromotionAverage > 100) {
+                return NextResponse.json({ error: 'promotionAverage must be between 0 and 100' }, { status: 400 });
+            }
+        }
+        if (publishedTermId) {
+            const termExists = await prisma.academicTerm.findFirst({
+                where: { id: publishedTermId, schoolId: school.id },
+                select: { id: true }
+            });
+            if (!termExists) {
+                return NextResponse.json({ error: 'Published term is invalid for this school' }, { status: 400 });
+            }
+        }
 
         const settings = await prisma.resultSettings.upsert({
             where: { schoolId: school.id },

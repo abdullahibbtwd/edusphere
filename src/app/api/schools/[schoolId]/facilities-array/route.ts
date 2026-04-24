@@ -1,37 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma as db } from '@/lib/prisma';
+import { requireRole } from '@/lib/auth-middleware';
+import { getSchool } from '@/lib/school';
 
 // PUT - Update school facilities array
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
-  let sId = '';
-  let fData: any = null;
+  const sessionUser = requireRole(request, ['ADMIN']);
+  if (sessionUser instanceof NextResponse) return sessionUser;
 
   try {
-    const { schoolId } = await params;
-    sId = schoolId;
+    const { schoolId: schoolIdentifier } = await params;
     const body = await request.json();
     const { facilities } = body;
-    fData = facilities;
 
-    if (!schoolId) {
-      return NextResponse.json({ error: 'School ID is required' }, { status: 400 });
+    const resolvedSchool = await getSchool(schoolIdentifier);
+    const schoolId = resolvedSchool?.id;
+    if (!schoolId) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    if (sessionUser.schoolId && sessionUser.schoolId !== schoolId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only manage facilities for your school' },
+        { status: 403 }
+      );
     }
 
     if (!Array.isArray(facilities)) {
       return NextResponse.json({ error: 'Facilities must be an array' }, { status: 400 });
-    }
-
-    // Check if school exists
-    const schoolExists = await db.school.findUnique({
-      where: { id: schoolId },
-      select: { id: true }
-    });
-
-    if (!schoolExists) {
-      return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
     // Update the school's facilities array
@@ -50,11 +46,6 @@ export async function PUT(
     return NextResponse.json(updatedSchool);
   } catch (error) {
     console.error('Error updating school facilities:', error);
-    console.error('SchoolId:', sId);
-    console.error('Facilities data:', fData);
-    return NextResponse.json({
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

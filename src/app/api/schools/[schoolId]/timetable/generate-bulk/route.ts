@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { generateTimetableForClass, convertScheduleToJson } from '@/lib/timetable/generator';
+import { requireRole } from '@/lib/auth-middleware';
+import { getSchool } from '@/lib/school';
 
 /**
  * Bulk generate timetables for all classes in a level
@@ -10,6 +12,9 @@ export async function POST(
     { params }: { params: Promise<{ schoolId: string }> }
 ) {
     try {
+        const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+        if (sessionUser instanceof NextResponse) return sessionUser;
+
         const { schoolId } = await params;
         const body = await request.json();
         const { levelId, term } = body;
@@ -19,6 +24,17 @@ export async function POST(
                 { error: 'Missing levelId or term' },
                 { status: 400 }
             );
+        }
+        if (!['FIRST', 'SECOND', 'THIRD'].includes(term)) {
+            return NextResponse.json({ error: 'Invalid term' }, { status: 400 });
+        }
+
+        const school = await getSchool(schoolId);
+        if (!school) {
+            return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+        if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         // Get all classes for this level
@@ -45,7 +61,7 @@ export async function POST(
         // Generate timetable for each class
         for (const classData of classes) {
             try {
-                const schedule = await generateTimetableForClass(schoolId, classData.id, term);
+                const schedule = await generateTimetableForClass(school.id, classData.id, term);
                 const scheduleJson = convertScheduleToJson(schedule);
 
                 // Save or update timetable
@@ -54,8 +70,8 @@ export async function POST(
                         // Create a composite unique identifier
                         classId_term_schoolId: {
                             classId: classData.id,
-                            term: term as any,
-                            schoolId
+                            term: term as 'FIRST' | 'SECOND' | 'THIRD',
+                            schoolId: school.id
                         }
                     },
                     update: {
@@ -65,9 +81,9 @@ export async function POST(
                     create: {
                         classId: classData.id,
                         levelId: classData.levelId,
-                        term: term as any,
+                        term: term as 'FIRST' | 'SECOND' | 'THIRD',
                         schedule: scheduleJson,
-                        schoolId
+                        schoolId: school.id
                     }
                 });
 

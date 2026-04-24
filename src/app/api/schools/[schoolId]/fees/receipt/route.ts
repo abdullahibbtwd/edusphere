@@ -21,6 +21,12 @@ export async function GET(
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
         const actualSchoolId = resolvedSchool.id;
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchoolId) {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view receipt for your school' },
+                { status: 403 }
+            );
+        }
 
         const { searchParams } = new URL(request.url);
         const sessionId = searchParams.get('sessionId');

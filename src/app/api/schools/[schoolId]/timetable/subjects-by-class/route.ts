@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
 import { getSchool } from '@/lib/school';
 
 export async function GET(
@@ -7,11 +8,17 @@ export async function GET(
     { params }: { params: Promise<{ schoolId: string }> }
 ) {
     try {
+        const sessionUser = requireRole(request, ['ADMIN', 'TEACHER', 'SUPER_ADMIN']);
+        if (sessionUser instanceof NextResponse) return sessionUser;
+
         const { schoolId } = await params;
 
         const school = await getSchool(schoolId);
         if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+        if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         // Fetch all active teaching assignments

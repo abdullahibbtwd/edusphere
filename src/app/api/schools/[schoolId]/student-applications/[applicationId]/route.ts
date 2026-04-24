@@ -11,19 +11,22 @@ export async function GET(
 ) {
   try {
     const { schoolId, applicationId } = await params;
+    const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
 
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only view applications for your school' },
+        { status: 403 }
+      );
+    }
 
-    const actualSchoolId = school.id;
-
-    const application = await prisma.studentApplication.findUnique({
-      where: {
-        id: applicationId,
-        schoolId: actualSchoolId
-      },
+    const application = await prisma.studentApplication.findFirst({
+      where: { id: applicationId, schoolId: school.id },
       include: {
         class: {
           include: {
@@ -99,7 +102,7 @@ export async function PUT(
     const { schoolId, applicationId } = await params;
 
     // Security check - Admin role required
-    const sessionUser = requireRole(request, ['ADMIN']);
+    const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
     if (sessionUser instanceof NextResponse) return sessionUser;
 
     const body = await request.json();
@@ -115,13 +118,16 @@ export async function PUT(
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only manage applications for your school' },
+        { status: 403 }
+      );
+    }
 
     // Find application
-    const application = await prisma.studentApplication.findUnique({
-      where: {
-        id: applicationId,
-        schoolId: school.id
-      },
+    const application = await prisma.studentApplication.findFirst({
+      where: { id: applicationId, schoolId: school.id },
       include: {
         class: {
           include: {
@@ -334,20 +340,23 @@ export async function DELETE(
     const { schoolId, applicationId } = await params;
 
     // Security check - Admin role required
-    const sessionUser = requireRole(request, ['ADMIN']);
+    const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
     if (sessionUser instanceof NextResponse) return sessionUser;
 
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only delete applications for your school' },
+        { status: 403 }
+      );
+    }
 
     // Check if application exists
-    const application = await prisma.studentApplication.findUnique({
-      where: {
-        id: applicationId,
-        schoolId: school.id
-      }
+    const application = await prisma.studentApplication.findFirst({
+      where: { id: applicationId, schoolId: school.id }
     });
 
     if (!application) {

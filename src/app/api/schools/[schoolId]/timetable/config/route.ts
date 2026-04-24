@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
 import { getSchool } from '@/lib/school';
 
 export async function GET(
@@ -7,6 +8,9 @@ export async function GET(
     { params }: { params: Promise<{ schoolId: string }> }
 ) {
     try {
+        const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+        if (sessionUser instanceof NextResponse) return sessionUser;
+
         const { schoolId: schoolIdentifier } = await params;
 
         // Resolve to actual school UUID
@@ -15,6 +19,12 @@ export async function GET(
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
         const schoolId = resolvedSchool.id;
+        if (sessionUser.schoolId && sessionUser.schoolId !== schoolId && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view timetable config for your school' },
+                { status: 403 }
+            );
+        }
 
         const config = await prisma.timetableConfig.findUnique({
             where: { schoolId }
@@ -47,6 +57,9 @@ export async function POST(
     { params }: { params: Promise<{ schoolId: string }> }
 ) {
     try {
+        const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+        if (sessionUser instanceof NextResponse) return sessionUser;
+
         const { schoolId: schoolIdentifier } = await params;
 
         const resolvedSchool2 = await getSchool(schoolIdentifier);
@@ -54,6 +67,12 @@ export async function POST(
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
         const schoolId = resolvedSchool2.id;
+        if (sessionUser.schoolId && sessionUser.schoolId !== schoolId && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only manage timetable config for your school' },
+                { status: 403 }
+            );
+        }
 
         const body = await request.json();
 

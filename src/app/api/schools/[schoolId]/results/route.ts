@@ -18,12 +18,21 @@ export async function GET(
         const user = requireAuth(request);
         if (user instanceof NextResponse) return user;
 
+        if (!['ADMIN', 'TEACHER', 'SUPER_ADMIN'].includes(user.role)) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         if (user.role === 'STUDENT') {
             return NextResponse.json({ error: 'Use /results/my for your results' }, { status: 403 });
         }
 
         const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (user.schoolId && user.schoolId !== school.id && user.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view results for your school' },
+                { status: 403 }
+            );
+        }
 
         const { searchParams } = new URL(request.url);
         const termId = searchParams.get('termId');
@@ -134,12 +143,18 @@ export async function POST(
         const user = requireAuth(request);
         if (user instanceof NextResponse) return user;
 
-        if (user.role === 'STUDENT') {
+        if (!['ADMIN', 'TEACHER', 'SUPER_ADMIN'].includes(user.role)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (user.schoolId && user.schoolId !== school.id && user.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only manage results for your school' },
+                { status: 403 }
+            );
+        }
 
         const body = await request.json();
         const { termId, sessionId, classId, entries } = body;

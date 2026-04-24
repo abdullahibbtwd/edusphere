@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma as db } from '@/lib/prisma';
+import { requireRole } from '@/lib/auth-middleware';
+import { getSchool } from '@/lib/school';
 
 // GET - Fetch school facilities
 export async function GET(
@@ -29,8 +31,22 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
+  const sessionUser = requireRole(request, ['ADMIN']);
+  if (sessionUser instanceof NextResponse) return sessionUser;
+
   try {
-    const { schoolId } = await params;
+    const { schoolId: schoolIdentifier } = await params;
+    const school = await getSchool(schoolIdentifier);
+    const schoolId = school?.id;
+    if (!schoolId) {
+      return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (sessionUser.schoolId && sessionUser.schoolId !== schoolId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only manage facilities for your school' },
+        { status: 403 }
+      );
+    }
     const body = await request.json();
 
     const { name, imageUrl, description, order } = body;
@@ -61,8 +77,22 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
+  const sessionUser = requireRole(request, ['ADMIN']);
+  if (sessionUser instanceof NextResponse) return sessionUser;
+
   try {
-    const { schoolId } = await params;
+    const { schoolId: schoolIdentifier } = await params;
+    const school = await getSchool(schoolIdentifier);
+    const schoolId = school?.id;
+    if (!schoolId) {
+      return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (sessionUser.schoolId && sessionUser.schoolId !== schoolId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only manage facilities for your school' },
+        { status: 403 }
+      );
+    }
     const body = await request.json();
 
     const { id, name, imageUrl, description, order, isActive } = body;

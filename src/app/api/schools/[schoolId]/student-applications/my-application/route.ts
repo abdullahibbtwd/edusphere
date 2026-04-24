@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getUserSession } from '@/lib/client-auth';
-import { cookies } from 'next/headers';
+import { requireAuth } from '@/lib/auth-middleware';
 import { getSchool } from '@/lib/school';
 
 export async function GET(
@@ -10,31 +9,23 @@ export async function GET(
 ) {
     try {
         const { schoolId } = await params;
-
-        // In App Router, we should use a server-side session check
-        // Since we're using cookies and a custom auth, let's try to get it from cookies
-        const cookieStore = await cookies();
-        const sessionCookie = cookieStore.get('user-session');
-
-        if (!sessionCookie) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const session = JSON.parse(sessionCookie.value);
-        const userId = session.userId;
-
-        if (!userId) {
-            return NextResponse.json({ error: 'User ID not found' }, { status: 401 });
-        }
+        const user = requireAuth(request);
+        if (user instanceof NextResponse) return user;
 
         const school = await getSchool(schoolId);
         if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
+        if (user.schoolId && user.schoolId !== school.id && user.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view applications for your school' },
+                { status: 403 }
+            );
+        }
 
         const application = await prisma.studentApplication.findFirst({
             where: {
-                userId: userId,
+                userId: user.userId,
                 schoolId: school.id
             },
             include: {

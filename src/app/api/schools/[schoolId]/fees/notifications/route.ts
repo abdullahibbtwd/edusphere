@@ -25,6 +25,12 @@ export async function POST(
         if (!actualSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchool.id) {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only send notifications for your school' },
+                { status: 403 }
+            );
+        }
 
         // Find students with outstanding fees for this session and term
         // If classId is provided, filter by class

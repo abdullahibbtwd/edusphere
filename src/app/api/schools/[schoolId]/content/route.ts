@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma as db } from '@/lib/prisma';
+import { requireRole } from '@/lib/auth-middleware';
+import { getSchool } from '@/lib/school';
 
 // GET - Fetch school content
 export async function GET(
@@ -7,7 +9,12 @@ export async function GET(
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    const { schoolId } = await params;
+    const { schoolId: schoolIdentifier } = await params;
+    const school = await getSchool(schoolIdentifier);
+    const schoolId = school?.id;
+    if (!schoolId) {
+      return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
 
     // Get school content
     const content = await db.schoolContent.findUnique({
@@ -45,13 +52,21 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
-  try {
-    const { schoolId } = await params;
-    const body = await request.json();
+  const sessionUser = requireRole(request, ['ADMIN']);
+  if (sessionUser instanceof NextResponse) return sessionUser;
 
-    // Debug logging
-    console.log('Received classes data:', body.classes);
-    console.log('School ID:', schoolId);
+  try {
+    const { schoolId: schoolIdentifier } = await params;
+    const school = await getSchool(schoolIdentifier);
+    const schoolId = school?.id;
+    if (!schoolId) {
+      return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (sessionUser.schoolId && sessionUser.schoolId !== schoolId) {
+      return NextResponse.json({ error: 'Forbidden - You can only manage your school content' }, { status: 403 });
+    }
+
+    const body = await request.json();
 
     const {
       heroTitle,
@@ -79,8 +94,6 @@ export async function PUT(
       linkedinUrl,
     } = body;
 
-    // Update or create school content
-    console.log('Saving classes to database:', classes);
     const content = await db.schoolContent.upsert({
       where: { schoolId },
       update: {
@@ -150,7 +163,6 @@ export async function PUT(
       }
     });
 
-    console.log('Saved content with classes:', content.classes);
     return NextResponse.json(content);
   } catch (error) {
     console.error('Error updating school content:', error);

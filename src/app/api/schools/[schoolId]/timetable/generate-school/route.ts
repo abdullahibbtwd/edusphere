@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
 import { hasConflict, type ScheduleEntry } from '@/lib/timetable/conflict-checker';
 import { convertScheduleToJson } from '@/lib/timetable/generator';
 import { getSchool } from '@/lib/school';
@@ -358,17 +359,8 @@ export async function POST(
 ) {
     try {
         const { schoolId: schoolIdentifier } = await params;
-
-        // Role-based access control
-        const sessionCookie = request.cookies.get('user-session');
-        if (!sessionCookie) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const user = JSON.parse(decodeURIComponent(sessionCookie.value));
-        if (user.role.toLowerCase() !== 'admin') {
-            return NextResponse.json({ error: 'Forbidden: Only admins can generate school-wide timetables' }, { status: 403 });
-        }
+        const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+        if (sessionUser instanceof NextResponse) return sessionUser;
 
         const body = await request.json();
         const { term } = body;
@@ -376,12 +368,18 @@ export async function POST(
         if (!term) {
             return NextResponse.json({ error: 'Missing term' }, { status: 400 });
         }
+        if (!['FIRST', 'SECOND', 'THIRD'].includes(term)) {
+            return NextResponse.json({ error: 'Invalid term' }, { status: 400 });
+        }
 
         const resolvedSchool = await getSchool(schoolIdentifier);
         if (!resolvedSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
         const schoolId = resolvedSchool.id;
+        if (sessionUser.schoolId && sessionUser.schoolId !== schoolId && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
 
         // Fetch config
         const config = await prisma.timetableConfig.findUnique({ where: { schoolId } });
@@ -610,7 +608,7 @@ export async function POST(
                 where: {
                     classId_term_schoolId: {
                         classId,
-                        term: term as any,
+                        term: term as 'FIRST' | 'SECOND' | 'THIRD',
                         schoolId
                     }
                 },
@@ -621,7 +619,7 @@ export async function POST(
                 create: {
                     classId,
                     levelId: classInfo.levelId,
-                    term: term as any,
+                    term: term as 'FIRST' | 'SECOND' | 'THIRD',
                     schedule: scheduleJson,
                     schoolId
                 }

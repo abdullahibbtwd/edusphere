@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSchool } from '@/lib/school';
+import { requireAuth, requireRole } from '@/lib/auth-middleware';
+import { Prisma } from '@prisma/client';
 
 // GET - Fetch school classes with counts
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
+  const sessionUser = requireAuth(request);
+  if (sessionUser instanceof NextResponse) return sessionUser;
+
   try {
     const { schoolId } = await params;
     const { searchParams } = new URL(request.url);
@@ -19,8 +24,11 @@ export async function GET(
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Forbidden - You can only view classes for your school' }, { status: 403 });
+    }
 
-    const where: any = { schoolId: school.id };
+    const where: Prisma.ClassWhereInput = { schoolId: school.id };
     if (levelId) {
       where.levelId = levelId;
     }
@@ -95,6 +103,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
+  const sessionUser = requireRole(request, ['ADMIN']);
+  if (sessionUser instanceof NextResponse) return sessionUser;
+
   try {
     const { schoolId } = await params;
     const body = await request.json();
@@ -138,6 +149,9 @@ export async function POST(
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id) {
+      return NextResponse.json({ error: 'Forbidden - You can only manage classes for your school' }, { status: 403 });
     }
 
     let classesToCreate: Array<{ name: string; levelId: string; schoolId: string }> = [];

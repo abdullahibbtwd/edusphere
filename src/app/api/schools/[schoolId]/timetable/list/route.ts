@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
 import { getSchool } from '@/lib/school';
 
 /**
@@ -11,6 +12,9 @@ export async function GET(
     { params }: { params: Promise<{ schoolId: string }> }
 ) {
     try {
+        const sessionUser = requireRole(request, ['ADMIN', 'TEACHER', 'SUPER_ADMIN']);
+        if (sessionUser instanceof NextResponse) return sessionUser;
+
         const { schoolId: schoolIdentifier } = await params;
 
         // Resolve school ID (handle both subdomain and UUID)
@@ -23,8 +27,12 @@ export async function GET(
                 { status: 404 }
             );
         }
-
-        console.log(`📋 Fetching timetables for school ID: ${schoolId}`);
+        if (sessionUser.schoolId && sessionUser.schoolId !== schoolId && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view timetables for your school' },
+                { status: 403 }
+            );
+        }
 
         // Fetch all timetables for this school
         const timetables = await prisma.timetable.findMany({
@@ -43,7 +51,6 @@ export async function GET(
             ]
         });
 
-        console.log(`✅ Found ${timetables.length} timetable(s)`);
 
         // Format the response
         const formattedTimetables = timetables.map(tt => ({

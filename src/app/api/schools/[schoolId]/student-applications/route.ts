@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
 import { getSchool } from '@/lib/school';
 
 // GET - Fetch student applications for a school
@@ -8,25 +9,38 @@ export async function GET(
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
+    const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     const { schoolId } = await params;
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.min(100, Math.max(1, Number.parseInt(searchParams.get('limit') || '10', 10)));
     const skip = (page - 1) * limit;
 
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only view applications for your school' },
+        { status: 403 }
+      );
+    }
 
     const actualSchoolId = school.id;
     const status = searchParams.get('status');
+    const allowedStatuses = ['PROGRESS', 'ADMITTED', 'REJECTED'] as const;
+    if (status && !allowedStatuses.includes(status as (typeof allowedStatuses)[number])) {
+      return NextResponse.json({ error: 'Invalid status filter' }, { status: 400 });
+    }
 
     // Get student applications
     const applications = await prisma.studentApplication.findMany({
       where: {
         schoolId: actualSchoolId,
-        ...(status ? { status: status as any } : {})
+        ...(status ? { status } : {})
       },
       include: {
         class: {
@@ -55,7 +69,7 @@ export async function GET(
     const totalCount = await prisma.studentApplication.count({
       where: {
         schoolId: actualSchoolId,
-        ...(status ? { status: status as any } : {})
+        ...(status ? { status } : {})
       }
     });
 
@@ -154,12 +168,9 @@ export async function POST(
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    // Verify class exists
-    const classExists = await prisma.class.findUnique({
-      where: {
-        id: classId,
-        schoolId: school.id
-      }
+    // Verify class exists in this school
+    const classExists = await prisma.class.findFirst({
+      where: { id: classId, schoolId: school.id }
     });
 
     if (!classExists) {

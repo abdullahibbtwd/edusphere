@@ -113,7 +113,7 @@ const TimetablePage = () => {
     if (!user?.name) return;
     try {
       setLoadingSchedule(true);
-      const response = await fetch(`/api/schools/${schoolId}/timetable/list`);
+      const response = await fetch(`/api/schools/${schoolId}/timetable/list?term=${selectedTerm}`);
       const data = await response.json();
       if (!response.ok || !data.timetables) {
         setTeacherSchedule(null);
@@ -129,7 +129,8 @@ const TimetablePage = () => {
       data.timetables.forEach((tt: any) => {
         Object.keys(tt.schedule || {}).forEach((day) => {
           (tt.schedule[day] || []).forEach((entry: any) => {
-            if (entry.teacher === user.name) {
+            const entryTeacherName = entry.teacherName ?? entry.teacher;
+            if (entryTeacherName === user.name) {
               const period = entry.period;
               if (!filteredSchedule[day][period - 1]) {
                 filteredSchedule[day][period - 1] = { ...entry, className: tt.className };
@@ -153,7 +154,7 @@ const TimetablePage = () => {
     } finally {
       setLoadingSchedule(false);
     }
-  }, [schoolId, user?.name]);
+  }, [schoolId, selectedTerm, user?.name]);
 
   const fetchStudentTimetable = useCallback(async (term: string) => {
     try {

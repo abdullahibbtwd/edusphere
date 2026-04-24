@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
 import { getSchool } from '@/lib/school';
 
 /**
@@ -23,16 +24,20 @@ export async function GET(
         const { schoolId, teacherId } = await params;
         const { searchParams } = new URL(request.url);
         const byUserId = searchParams.get('byUserId') === 'true';
-
-        console.log(`[API] Fetching my-classes for ${teacherId} (byUserId: ${byUserId}) in school ${schoolId}`);
+        const sessionUser = requireRole(request, ['ADMIN', 'TEACHER', 'SUPER_ADMIN']);
+        if (sessionUser instanceof NextResponse) return sessionUser;
 
         // ── Resolve school ──────────────────────────────────────────────────────
         const school = await getSchool(schoolId);
         if (!school) {
-            console.warn(`[API] School not found: ${schoolId}`);
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
-        console.log(`[API] Resolved school.id: ${school.id}`);
+        if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view classes for your school' },
+                { status: 403 }
+            );
+        }
 
         // ── Resolve teacher ─────────────────────────────────────────────────────
         const teacher = await prisma.teacher.findFirst({
@@ -45,15 +50,16 @@ export async function GET(
                 email: true,
                 img: true,
                 teacherId: true,
+                userId: true,
             },
         });
 
         if (!teacher) {
-            console.warn(`[API] Teacher not found for userId/teacherId: ${teacherId} in school ${school.id}`);
             return NextResponse.json({ error: 'Teacher not found' }, { status: 404 });
         }
-
-        console.log(`[API] Resolved teacher: ${teacher.name} (ID: ${teacher.id})`);
+        if (sessionUser.role === 'TEACHER' && sessionUser.userId !== teacher.userId) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
 
         // ── Taught classes ──────────────────────────────────────────────────────
         // Fetch all TeacherSubjectClass rows for this teacher, group by class

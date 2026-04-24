@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSchool } from '@/lib/school';
+import { requireAuth, requireRole } from '@/lib/auth-middleware';
 
 // GET - Fetch single class
 // GET - Fetch single class
@@ -8,12 +9,18 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ schoolId: string; id: string }> }
 ) {
+  const sessionUser = requireAuth(request);
+  if (sessionUser instanceof NextResponse) return sessionUser;
+
   try {
     const { schoolId, id } = await params;
 
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Forbidden - You can only view classes for your school' }, { status: 403 });
     }
 
     const classData = await prisma.class.findFirst({
@@ -68,6 +75,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ schoolId: string; id: string }> }
 ) {
+  const sessionUser = requireRole(request, ['ADMIN']);
+  if (sessionUser instanceof NextResponse) return sessionUser;
+
   try {
     const { schoolId, id } = await params;
     const body = await request.json();
@@ -82,6 +92,9 @@ export async function PATCH(
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id) {
+      return NextResponse.json({ error: 'Forbidden - You can only manage classes for your school' }, { status: 403 });
     }
 
     // Find the class
@@ -178,12 +191,18 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ schoolId: string; id: string }> }
 ) {
+  const sessionUser = requireRole(request, ['ADMIN']);
+  if (sessionUser instanceof NextResponse) return sessionUser;
+
   try {
     const { schoolId, id } = await params;
 
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id) {
+      return NextResponse.json({ error: 'Forbidden - You can only manage classes for your school' }, { status: 403 });
     }
 
     // Find the class with student count

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth-middleware';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { normalizeEmail, hashOneTimeCode } from '@/lib/auth-security';
 import { getSchool } from '@/lib/school';
 
 // GET - Fetch students for a school
@@ -11,10 +13,13 @@ export async function GET(
     { params }: { params: Promise<{ schoolId: string }> }
 ) {
     try {
+        const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+        if (sessionUser instanceof NextResponse) return sessionUser;
+
         const { schoolId } = await params;
         const { searchParams } = new URL(request.url);
-        const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '10');
+        const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10));
+        const limit = Math.min(100, Math.max(1, Number.parseInt(searchParams.get('limit') || '10', 10)));
         const query = searchParams.get('query');
         const classId = searchParams.get('classId');
         const levelId = searchParams.get('levelId');
@@ -27,8 +32,14 @@ export async function GET(
         if (!actualSchoolId) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchoolId.id && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view students for your school' },
+                { status: 403 }
+            );
+        }
 
-        const where: any = { schoolId: actualSchoolId.id };
+        const where: Prisma.StudentWhereInput = { schoolId: actualSchoolId.id };
 
         if (query) {
             where.OR = [
@@ -53,6 +64,9 @@ export async function GET(
         }
 
         if (paymentPlan) {
+            if (!['TERM', 'SESSION'].includes(paymentPlan)) {
+                return NextResponse.json({ error: 'Invalid paymentPlan filter' }, { status: 400 });
+            }
             where.paymentPlan = paymentPlan as 'TERM' | 'SESSION';
         }
 
@@ -150,7 +164,7 @@ export async function POST(
     try {
         const { schoolId } = await params;
 
-        const sessionUser = requireRole(request, ['ADMIN']);
+        const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
         if (sessionUser instanceof NextResponse) return sessionUser;
 
         const body = await request.json();
@@ -167,7 +181,7 @@ export async function POST(
             password
         } = body;
 
-        const email = typeof rawEmail === 'string' ? rawEmail.trim() : '';
+        const email = typeof rawEmail === 'string' && rawEmail.trim() ? normalizeEmail(rawEmail) : '';
         const phoneTrimmed = typeof phone === 'string' ? phone.trim() : '';
 
         if (!firstName?.trim() || !lastName?.trim()) {
@@ -176,8 +190,8 @@ export async function POST(
         if (!phoneTrimmed && !email) {
             return NextResponse.json({ error: 'At least email or phone is required' }, { status: 400 });
         }
-        if (!password || String(password).length < 6) {
-            return NextResponse.json({ error: 'Password is required and must be at least 6 characters' }, { status: 400 });
+        if (!password || String(password).length < 8) {
+            return NextResponse.json({ error: 'Password is required and must be at least 8 characters' }, { status: 400 });
         }
         if (!classId) {
             return NextResponse.json({ error: 'Class is required' }, { status: 400 });
@@ -186,6 +200,12 @@ export async function POST(
         const actualSchool = await getSchool(schoolId);
         if (!actualSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchool.id && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only manage students for your school' },
+                { status: 403 }
+            );
         }
 
         const activeSession = await prisma.academicSession.findFirst({
@@ -196,6 +216,9 @@ export async function POST(
             where: { id: classId },
             include: { level: true }
         });
+        if (!studentClass || studentClass.schoolId !== actualSchool.id) {
+            return NextResponse.json({ error: 'Class not found for this school' }, { status: 404 });
+        }
 
         const hasRealEmail = email.length > 0 && email.includes('@');
 
@@ -231,7 +254,7 @@ export async function POST(
                     name: studentName,
                     password: hashedPassword,
                     isEmailVerified: false,
-                    emailVerificationCode: verificationCode,
+                    emailVerificationCode: hashOneTimeCode(verificationCode),
                     emailVerificationExpires: verificationExpires,
                     role: 'STUDENT',
                     schoolId: actualSchool.id

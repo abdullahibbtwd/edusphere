@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
+import { normalizeEmail } from '@/lib/auth-security';
 import { getSchool } from '@/lib/school';
 
 // POST - Check if user exists by email
@@ -8,8 +10,12 @@ export async function POST(
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
+    const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     const { schoolId } = await params;
-    const { email } = await request.json();
+    const body = await request.json();
+    const email = normalizeEmail(String(body?.email || ''));
 
     if (!email) {
       return NextResponse.json({ 
@@ -20,6 +26,12 @@ export async function POST(
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only manage teachers for your school' },
+        { status: 403 }
+      );
     }
 
     // Check if user exists

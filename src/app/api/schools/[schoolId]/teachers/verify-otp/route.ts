@@ -1,9 +1,30 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
+import { matchesOneTimeCode, normalizeEmail } from '@/lib/auth-security';
+import { getSchool } from '@/lib/school';
 
-export async function POST(req: Request) {
+export async function POST(
+    req: NextRequest,
+    { params }: { params: Promise<{ schoolId: string }> }
+) {
     try {
-        const { email, otp } = await req.json();
+        const sessionUser = requireRole(req, ['ADMIN', 'SUPER_ADMIN']);
+        if (sessionUser instanceof NextResponse) return sessionUser;
+
+        const { schoolId } = await params;
+        const school = await getSchool(schoolId);
+        if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only manage teachers for your school' },
+                { status: 403 }
+            );
+        }
+
+        const body = await req.json();
+        const email = normalizeEmail(String(body?.email || ''));
+        const otp = String(body?.otp || '').trim();
 
         if (!email || !otp) {
             return NextResponse.json(
@@ -12,8 +33,8 @@ export async function POST(req: Request) {
             );
         }
 
-        const user = await prisma.user.findUnique({
-            where: { email },
+        const user = await prisma.user.findFirst({
+            where: { email, schoolId: school.id, role: 'TEACHER' },
         });
 
         if (!user) {
@@ -37,7 +58,7 @@ export async function POST(req: Request) {
             );
         }
 
-        if (user.emailVerificationCode !== otp) {
+        if (!matchesOneTimeCode(otp, user.emailVerificationCode)) {
             return NextResponse.json(
                 { error: "Invalid OTP" },
                 { status: 400 }

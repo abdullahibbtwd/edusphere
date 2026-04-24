@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
 import { getSchool } from '@/lib/school';
 
 // GET - Fetch subjects for a specific student based on their class
@@ -8,16 +9,25 @@ export async function GET(
   { params }: { params: Promise<{ schoolId: string; studentId: string }> }
 ) {
   try {
+    const sessionUser = requireRole(request, ['ADMIN', 'TEACHER', 'SUPER_ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     const { schoolId, studentId } = await params;
 
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only view subjects for your school' },
+        { status: 403 }
+      );
+    }
 
     // Get student's class information
-    const student = await prisma.student.findUnique({
-      where: { id: studentId },
+    const student = await prisma.student.findFirst({
+      where: { id: studentId, schoolId: school.id },
       include: { 
         class: {
           include: {

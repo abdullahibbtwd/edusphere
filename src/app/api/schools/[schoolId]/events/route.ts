@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { requireRole } from '@/lib/auth-middleware';
+import { requireAuth, requireRole } from '@/lib/auth-middleware';
 import { getSchool } from '@/lib/school';
 
 /**
@@ -10,6 +10,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
+  const sessionUser = requireAuth(request);
+  if (sessionUser instanceof NextResponse) return sessionUser;
+
   try {
     const { schoolId } = await params;
     const resolvedSchool = await getSchool(schoolId);
@@ -17,6 +20,12 @@ export async function GET(
 
     if (!actualSchoolId) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (sessionUser.schoolId && sessionUser.schoolId !== actualSchoolId && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only view events for your school' },
+        { status: 403 }
+      );
     }
 
     const events = await prisma.event.findMany({
@@ -90,6 +99,16 @@ export async function POST(
     const dateOnly = new Date(date);
     const start = new Date(`${date}T${startTime}`);
     const end = new Date(`${date}T${endTime}`);
+    if (
+      Number.isNaN(dateOnly.getTime()) ||
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime())
+    ) {
+      return NextResponse.json(
+        { error: 'Invalid date or time format' },
+        { status: 400 }
+      );
+    }
     if (end <= start) {
       return NextResponse.json(
         { error: 'End time must be after start time' },

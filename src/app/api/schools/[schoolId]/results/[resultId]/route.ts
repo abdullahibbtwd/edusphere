@@ -15,6 +15,12 @@ export async function GET(
 
         const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (user.schoolId && user.schoolId !== school.id && user.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view results for your school' },
+                { status: 403 }
+            );
+        }
 
         const result = await prisma.result.findFirst({
             where: { id: resultId, schoolId: school.id },
@@ -50,12 +56,18 @@ export async function PUT(
         const user = requireAuth(request);
         if (user instanceof NextResponse) return user;
 
-        if (user.role === 'STUDENT') {
+        if (!['ADMIN', 'TEACHER', 'SUPER_ADMIN'].includes(user.role)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (user.schoolId && user.schoolId !== school.id && user.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only manage results for your school' },
+                { status: 403 }
+            );
+        }
 
         const result = await prisma.result.findFirst({
             where: { id: resultId, schoolId: school.id },
@@ -133,7 +145,19 @@ export async function DELETE(
 
         const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
-
+        if (user.schoolId && user.schoolId !== school.id) {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only delete results for your school' },
+                { status: 403 }
+            );
+        }
+        const existing = await prisma.result.findFirst({
+            where: { id: resultId, schoolId: school.id },
+            select: { id: true }
+        });
+        if (!existing) {
+            return NextResponse.json({ error: 'Result not found' }, { status: 404 });
+        }
         await prisma.result.delete({ where: { id: resultId } });
 
         return NextResponse.json({ message: 'Result deleted' });

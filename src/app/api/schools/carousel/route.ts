@@ -1,8 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const limitParam = Number.parseInt(searchParams.get('limit') || '24', 10);
+    const limit = Number.isFinite(limitParam) ? Math.min(100, Math.max(1, limitParam)) : 24;
+
     const schools = await prisma.school.findMany({
       where: { isActive: true },
       select: {
@@ -18,6 +22,7 @@ export async function GET() {
       orderBy: {
         name: 'asc',
       },
+      take: limit,
     });
 
     return NextResponse.json({

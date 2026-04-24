@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSchool } from '@/lib/school';
+import { requireRole } from '@/lib/auth-middleware';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
+  const sessionUser = requireRole(request, ['ADMIN']);
+  if (sessionUser instanceof NextResponse) return sessionUser;
+
   try {
     const { schoolId } = await params;
     const school = await getSchool(schoolId);
@@ -15,6 +19,12 @@ export async function GET(
     }
 
     const actualSchoolId = school.id;
+    if (sessionUser.schoolId && sessionUser.schoolId !== actualSchoolId) {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only view dashboard summary for your school' },
+        { status: 403 }
+      );
+    }
 
     const [studentTotal, teacherTotal, activeSession, classes] = await Promise.all([
       prisma.student.count({ where: { schoolId: actualSchoolId } }),
@@ -49,7 +59,7 @@ export async function GET(
     const classEnrollment = classes
       .map((c) => ({
         id: c.id,
-        name: `${c.level?.name ?? ''}${c.name}`,
+        name: `${c.level?.name ?? ''} ${c.name}`.trim(),
         count: countByClassId.get(c.id) ?? 0,
       }))
       .sort((a, b) => b.count - a.count)

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { requireRole } from '@/lib/auth-middleware';
+import { hashOneTimeCode, normalizeEmail } from '@/lib/auth-security';
 import { getSchool } from '@/lib/school';
 
 // GET - Fetch school teachers with their assignments
@@ -10,16 +12,25 @@ export async function GET(
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
+    const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     const { schoolId } = await params;
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.min(100, Math.max(1, Number.parseInt(searchParams.get('limit') || '10', 10)));
     const search = searchParams.get('search') || '';
     const skip = (page - 1) * limit;
 
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only view teachers for your school' },
+        { status: 403 }
+      );
     }
 
     // Build where clause
@@ -165,6 +176,9 @@ export async function POST(
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
+    const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     const { schoolId } = await params;
     const body = await request.json();
     const {
@@ -190,10 +204,21 @@ export async function POST(
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only manage teachers for your school' },
+        { status: 403 }
+      );
+    }
+
+    const normalizedEmail = normalizeEmail(String(email || ''));
+    if (!normalizedEmail) {
+      return NextResponse.json({ error: 'Valid email is required' }, { status: 400 });
+    }
 
     // Check if user exists with this email
     let existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       include: { teacher: true }
     });
 
@@ -206,9 +231,9 @@ export async function POST(
       }
     } else if (password) {
       // Create new user if password is provided
-      if (password.length < 6) {
+      if (password.length < 8) {
         return NextResponse.json({
-          error: 'Password must be at least 6 characters long'
+          error: 'Password must be at least 8 characters long'
         }, { status: 400 });
       }
 
@@ -220,11 +245,11 @@ export async function POST(
 
       existingUser = await prisma.user.create({
         data: {
-          email,
+          email: normalizedEmail,
           name,
           password: hashedPassword,
           isEmailVerified: false, // Require verification
-          emailVerificationCode: verificationCode,
+          emailVerificationCode: hashOneTimeCode(verificationCode),
           emailVerificationExpires: verificationExpires,
           role: "TEACHER", // Set role to TEACHER
           schoolId: school.id
@@ -235,7 +260,7 @@ export async function POST(
       // Send verification email
       try {
         const { sendVerificationEmail } = await import("@/lib/email-service");
-        await sendVerificationEmail(email, name, verificationCode);
+        await sendVerificationEmail(normalizedEmail, name, verificationCode);
       } catch (emailError) {
         console.error("Failed to send verification email:", emailError);
       }
@@ -243,7 +268,7 @@ export async function POST(
 
     // Check if teacher already exists (double check, though unlikely if user check passed)
     const existingTeacher = await prisma.teacher.findUnique({
-      where: { email }
+      where: { email: normalizedEmail }
     });
 
     if (existingTeacher) {
@@ -262,7 +287,7 @@ export async function POST(
     const teacher = await prisma.teacher.create({
       data: {
         name,
-        email,
+        email: normalizedEmail,
         phone,
         address,
         birthday,

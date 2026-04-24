@@ -12,7 +12,7 @@ export async function PATCH(
         const { schoolId, studentId } = await params;
 
         // Security Check
-        const sessionUser = requireRole(request, ['ADMIN']);
+        const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
         if (sessionUser instanceof NextResponse) return sessionUser;
 
         const body = await request.json();
@@ -22,14 +22,29 @@ export async function PATCH(
         if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
+        if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only manage students for your school' },
+                { status: 403 }
+            );
+        }
 
         // Verify student belongs to school
-        const student = await prisma.student.findUnique({
+        const student = await prisma.student.findFirst({
             where: { id: studentId, schoolId: school.id }
         });
 
         if (!student) {
             return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+        }
+        if (classId) {
+            const cls = await prisma.class.findFirst({
+                where: { id: classId, schoolId: school.id },
+                select: { id: true }
+            });
+            if (!cls) {
+                return NextResponse.json({ error: 'Class not found for this school' }, { status: 404 });
+            }
         }
 
         // Handle initial registration logic if being registered for the first time
@@ -92,9 +107,22 @@ export async function GET(
 ) {
     try {
         const { schoolId, studentId } = await params;
+        const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+        if (sessionUser instanceof NextResponse) return sessionUser;
 
-        const student = await prisma.student.findUnique({
-            where: { id: studentId },
+        const school = await getSchool(schoolId);
+        if (!school) {
+            return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+        if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view students for your school' },
+                { status: 403 }
+            );
+        }
+
+        const student = await prisma.student.findFirst({
+            where: { id: studentId, schoolId: school.id },
             include: {
                 class: {
                     include: { level: true }

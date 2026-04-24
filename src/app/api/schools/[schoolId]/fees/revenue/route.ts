@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSchool } from '@/lib/school';
+import { requireRole } from '@/lib/auth-middleware';
 
 const TERM_ORDER = ['FIRST', 'SECOND', 'THIRD'] as const;
 const TERM_LABELS: Record<string, string> = {
@@ -17,12 +18,21 @@ export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ schoolId: string }> }
 ) {
+    const sessionUser = requireRole(request, ['ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     try {
         const { schoolId } = await params;
 
         const school = await getSchool(schoolId);
         if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+        if (sessionUser.schoolId && sessionUser.schoolId !== school.id) {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view revenue for your school' },
+                { status: 403 }
+            );
         }
 
         const payments = await prisma.feePayment.findMany({

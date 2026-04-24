@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth-middleware';
+import { getSchool } from '@/lib/school';
 
 // POST - Record a student fee payment
 export async function POST(
@@ -13,6 +14,17 @@ export async function POST(
         // Security Check
         const sessionUser = requireRole(request, ['ADMIN']);
         if (sessionUser instanceof NextResponse) return sessionUser;
+        const resolvedSchool = await getSchool(schoolId);
+        if (!resolvedSchool) {
+            return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+        const actualSchoolId = resolvedSchool.id;
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchoolId) {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only record payments for your school' },
+                { status: 403 }
+            );
+        }
 
         const body = await request.json();
         const { studentId, sessionId, term, amount, method, reference } = body;
@@ -29,6 +41,9 @@ export async function POST(
         });
 
         if (!student) return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+        if (student.schoolId !== actualSchoolId) {
+            return NextResponse.json({ error: 'Student does not belong to this school' }, { status: 403 });
+        }
 
         const structure = await prisma.feeStructure.findFirst({
             where: {
@@ -83,7 +98,7 @@ export async function POST(
                     amount,
                     method,
                     reference,
-                    recordedBy: (sessionUser as any).id
+                    recordedBy: sessionUser.userId
                 }
             });
 

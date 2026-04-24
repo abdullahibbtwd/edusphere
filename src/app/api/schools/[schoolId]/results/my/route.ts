@@ -19,6 +19,12 @@ export async function GET(
 
         const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (user.schoolId && user.schoolId !== school.id && user.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view results for your school' },
+                { status: 403 }
+            );
+        }
 
         // Find the student record linked to this user
         const student = await prisma.student.findFirst({

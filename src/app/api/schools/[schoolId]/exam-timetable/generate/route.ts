@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSchool } from '@/lib/school';
+import { requireRole } from '@/lib/auth-middleware';
+import { Term } from '@prisma/client';
 
 type TimeSlotDef = { startTime: string; endTime: string };
 
@@ -41,21 +43,27 @@ export async function POST(
     req: NextRequest,
     { params }: { params: Promise<{ schoolId: string }> }
 ) {
+    const sessionUser = requireRole(req, ['ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     try {
         const { schoolId: identifier } = await params;
         const resolvedSchool = await getSchool(identifier);
         if (!resolvedSchool) return NextResponse.json({ error: 'School not found' }, { status: 404 });
         const schoolId = resolvedSchool.id;
-
-        // Admin-only guard
-        const sessionCookie = req.cookies.get('user-session');
-        if (!sessionCookie) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        const user = JSON.parse(decodeURIComponent(sessionCookie.value));
-        if (user.role?.toLowerCase() !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        if (sessionUser.schoolId && sessionUser.schoolId !== schoolId) {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only generate exam timetable for your school' },
+                { status: 403 }
+            );
+        }
 
         const body = await req.json();
         const { term } = body;
         if (!term) return NextResponse.json({ error: 'Missing term' }, { status: 400 });
+        if (!(Object.values(Term) as string[]).includes(term)) {
+            return NextResponse.json({ error: 'Invalid term value' }, { status: 400 });
+        }
 
         // 1. Load exam config
         const config = await prisma.examTimetableConfig.findUnique({ where: { schoolId } });

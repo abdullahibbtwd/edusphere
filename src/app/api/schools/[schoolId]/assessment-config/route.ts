@@ -15,6 +15,9 @@ export async function GET(
 
         const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (user.schoolId && user.schoolId !== school.id && user.role !== 'SUPER_ADMIN') {
+            return NextResponse.json({ error: 'Forbidden - You can only access your school config' }, { status: 403 });
+        }
 
         const components = await prisma.assessmentComponent.findMany({
             where: { schoolId: school.id },
@@ -40,12 +43,23 @@ export async function POST(
 
         const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (user.schoolId && user.schoolId !== school.id) {
+            return NextResponse.json({ error: 'Forbidden - You can only manage your school config' }, { status: 403 });
+        }
 
         const body = await request.json();
         const { name, maxScore, order } = body;
 
         if (!name || maxScore === undefined || maxScore === null) {
             return NextResponse.json({ error: 'Name and maxScore are required' }, { status: 400 });
+        }
+        const parsedMaxScore = Number.parseFloat(String(maxScore));
+        if (!Number.isFinite(parsedMaxScore) || parsedMaxScore <= 0) {
+            return NextResponse.json({ error: 'maxScore must be a positive number' }, { status: 400 });
+        }
+        const parsedOrder = order !== undefined ? Number.parseInt(String(order), 10) : undefined;
+        if (parsedOrder !== undefined && (!Number.isFinite(parsedOrder) || parsedOrder < 0)) {
+            return NextResponse.json({ error: 'order must be a non-negative integer' }, { status: 400 });
         }
 
         const existing = await prisma.assessmentComponent.findUnique({
@@ -64,9 +78,9 @@ export async function POST(
 
         const component = await prisma.assessmentComponent.create({
             data: {
-                name,
-                maxScore: parseFloat(maxScore),
-                order: nextOrder,
+                name: String(name).trim(),
+                maxScore: parsedMaxScore,
+                order: parsedOrder ?? nextOrder,
                 schoolId: school.id,
             },
         });
@@ -90,19 +104,34 @@ export async function PUT(
 
         const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (user.schoolId && user.schoolId !== school.id) {
+            return NextResponse.json({ error: 'Forbidden - You can only manage your school config' }, { status: 403 });
+        }
 
         const body = await request.json();
 
         // Bulk update (array)
         if (Array.isArray(body.components)) {
+            const componentIds = body.components.map((c: { id: string }) => c.id);
+            const ownedCount = await prisma.assessmentComponent.count({
+                where: { schoolId: school.id, id: { in: componentIds } }
+            });
+            if (ownedCount !== componentIds.length) {
+                return NextResponse.json({ error: 'One or more components do not belong to this school' }, { status: 403 });
+            }
+
             const updated = await prisma.$transaction(
                 body.components.map((c: { id: string; name?: string; maxScore?: number; order?: number }) =>
                     prisma.assessmentComponent.update({
                         where: { id: c.id },
                         data: {
-                            ...(c.name !== undefined && { name: c.name }),
-                            ...(c.maxScore !== undefined && { maxScore: parseFloat(String(c.maxScore)) }),
-                            ...(c.order !== undefined && { order: c.order }),
+                            ...(c.name !== undefined && { name: String(c.name).trim() }),
+                            ...(c.maxScore !== undefined && {
+                                maxScore: Number.isFinite(Number.parseFloat(String(c.maxScore)))
+                                    ? Number.parseFloat(String(c.maxScore))
+                                    : undefined
+                            }),
+                            ...(c.order !== undefined && { order: Number.parseInt(String(c.order), 10) }),
                         },
                     })
                 )
@@ -114,12 +143,33 @@ export async function PUT(
         const { id, name, maxScore, order } = body;
         if (!id) return NextResponse.json({ error: 'Component id is required' }, { status: 400 });
 
+        const owned = await prisma.assessmentComponent.findFirst({
+            where: { id, schoolId: school.id },
+            select: { id: true }
+        });
+        if (!owned) {
+            return NextResponse.json({ error: 'Component not found for this school' }, { status: 404 });
+        }
+
+        if (maxScore !== undefined) {
+            const parsed = Number.parseFloat(String(maxScore));
+            if (!Number.isFinite(parsed) || parsed <= 0) {
+                return NextResponse.json({ error: 'maxScore must be a positive number' }, { status: 400 });
+            }
+        }
+        if (order !== undefined) {
+            const parsed = Number.parseInt(String(order), 10);
+            if (!Number.isFinite(parsed) || parsed < 0) {
+                return NextResponse.json({ error: 'order must be a non-negative integer' }, { status: 400 });
+            }
+        }
+
         const component = await prisma.assessmentComponent.update({
             where: { id },
             data: {
-                ...(name !== undefined && { name }),
-                ...(maxScore !== undefined && { maxScore: parseFloat(maxScore) }),
-                ...(order !== undefined && { order }),
+                ...(name !== undefined && { name: String(name).trim() }),
+                ...(maxScore !== undefined && { maxScore: Number.parseFloat(String(maxScore)) }),
+                ...(order !== undefined && { order: Number.parseInt(String(order), 10) }),
             },
         });
 
@@ -142,10 +192,21 @@ export async function DELETE(
 
         const school = await getSchool(schoolId);
         if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (user.schoolId && user.schoolId !== school.id) {
+            return NextResponse.json({ error: 'Forbidden - You can only manage your school config' }, { status: 403 });
+        }
 
         const { searchParams } = new URL(request.url);
         const id = searchParams.get('id');
         if (!id) return NextResponse.json({ error: 'Component id is required' }, { status: 400 });
+
+        const owned = await prisma.assessmentComponent.findFirst({
+            where: { id, schoolId: school.id },
+            select: { id: true }
+        });
+        if (!owned) {
+            return NextResponse.json({ error: 'Component not found for this school' }, { status: 404 });
+        }
 
         await prisma.assessmentComponent.delete({ where: { id } });
 

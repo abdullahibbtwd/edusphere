@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
+import { normalizeEmail } from '@/lib/auth-security';
 import { getSchool } from '@/lib/school';
 
 // GET - Get single teacher with assignments
@@ -8,11 +10,20 @@ export async function GET(
   { params }: { params: Promise<{ schoolId: string; teacherId: string }> }
 ) {
   try {
+    const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     const { schoolId, teacherId } = await params;
 
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only view teachers for your school' },
+        { status: 403 }
+      );
     }
 
     const teacher = await prisma.teacher.findUnique({
@@ -105,6 +116,9 @@ export async function PUT(
   { params }: { params: Promise<{ schoolId: string; teacherId: string }> }
 ) {
   try {
+    const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     const { schoolId, teacherId } = await params;
     const body = await request.json();
     const { 
@@ -128,6 +142,13 @@ export async function PUT(
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only manage teachers for your school' },
+        { status: 403 }
+      );
+    }
+    const normalizedEmail = normalizeEmail(String(email || ''));
 
     // Check if teacher exists
     const existingTeacher = await prisma.teacher.findUnique({
@@ -142,10 +163,10 @@ export async function PUT(
     }
 
     // Check if email is already used by another teacher
-    if (email !== existingTeacher.email) {
+    if (normalizedEmail !== existingTeacher.email) {
       const emailExists = await prisma.teacher.findFirst({
         where: { 
-          email,
+          email: normalizedEmail,
           id: { not: teacherId }
         }
       });
@@ -162,7 +183,7 @@ export async function PUT(
       where: { id: teacherId },
       data: {
         name,
-        email,
+        email: normalizedEmail,
         phone,
         address,
         birthday,
@@ -278,11 +299,20 @@ export async function DELETE(
   { params }: { params: Promise<{ schoolId: string; teacherId: string }> }
 ) {
   try {
+    const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     const { schoolId, teacherId } = await params;
 
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only delete teachers for your school' },
+        { status: 403 }
+      );
     }
 
     // Check if teacher exists

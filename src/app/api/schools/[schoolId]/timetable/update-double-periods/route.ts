@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
 import { getSchool } from '@/lib/school';
 
 export async function POST(
@@ -7,6 +8,9 @@ export async function POST(
     { params }: { params: Promise<{ schoolId: string }> }
 ) {
     try {
+        const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+        if (sessionUser instanceof NextResponse) return sessionUser;
+
         const { schoolId } = await params;
         const body = await request.json();
         const { updates } = body; // Array of { id: string, requiresDoublePeriod: boolean }
@@ -19,13 +23,16 @@ export async function POST(
         if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
+        if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
 
         // Process updates
         // Using transaction for atomicity
         const results = await prisma.$transaction(
             updates.map((update: { id: string; requiresDoublePeriod: boolean }) =>
-                prisma.teacherSubjectClass.update({
-                    where: { id: update.id },
+                prisma.teacherSubjectClass.updateMany({
+                    where: { id: update.id, schoolId: school.id },
                     data: { requiresDoublePeriod: update.requiresDoublePeriod }
                 })
             )
@@ -33,7 +40,7 @@ export async function POST(
 
         return NextResponse.json({
             message: 'Updated successfully',
-            updatedCount: results.length
+            updatedCount: results.reduce((sum, r) => sum + r.count, 0)
         });
 
     } catch (error) {

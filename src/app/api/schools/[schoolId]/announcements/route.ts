@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { requireRole } from '@/lib/auth-middleware';
-import { Role } from '@prisma/client';
+import { requireAuth, requireRole } from '@/lib/auth-middleware';
+import { Prisma, Role } from '@prisma/client';
 import { getSchool } from '@/lib/school';
 
 /**
@@ -12,6 +12,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
+  const sessionUser = requireAuth(request);
+  if (sessionUser instanceof NextResponse) return sessionUser;
+
   try {
     const { schoolId } = await params;
     const resolvedSchool = await getSchool(schoolId);
@@ -21,28 +24,62 @@ export async function GET(
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
+    if (
+      sessionUser.schoolId &&
+      sessionUser.schoolId !== actualSchoolId &&
+      sessionUser.role !== 'SUPER_ADMIN'
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only view announcements for your school' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const viewerRole = searchParams.get('viewerRole')?.toLowerCase();
+    const cursor = searchParams.get('cursor');
+    const includeTotal = searchParams.get('includeTotal') === 'true';
+    const limitParam = Number.parseInt(searchParams.get('limit') || '20', 10);
+    const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 50) : 20;
+
+    let roleFilter: Role | null = null;
+    if (sessionUser.role === 'STUDENT') {
+      roleFilter = Role.STUDENT;
+    } else if (sessionUser.role === 'TEACHER') {
+      roleFilter = Role.TEACHER;
+    } else if (viewerRole === 'student') {
+      roleFilter = Role.STUDENT;
+    } else if (viewerRole === 'teacher') {
+      roleFilter = Role.TEACHER;
+    }
+
+    const where: Prisma.AnnouncementWhereInput = {
+      schoolId: actualSchoolId,
+      ...(roleFilter ? { targetRoles: { has: roleFilter } } : {}),
+    };
 
     const announcements = await prisma.announcement.findMany({
-      where: { schoolId: actualSchoolId },
-      orderBy: { createdAt: 'desc' },
+      where,
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       include: {
         creator: { select: { name: true } },
       },
     });
 
-    let filtered = announcements;
-    if (viewerRole === 'student') {
-      filtered = announcements.filter((a) => a.targetRoles.includes('STUDENT'));
-    } else if (viewerRole === 'teacher') {
-      filtered = announcements.filter((a) => a.targetRoles.includes('TEACHER'));
+    const hasNextPage = announcements.length > limit;
+    const pageItems = hasNextPage ? announcements.slice(0, limit) : announcements;
+    const nextCursor = hasNextPage ? pageItems[pageItems.length - 1]?.id ?? null : null;
+
+    let total: number | undefined;
+    if (includeTotal) {
+      total = await prisma.announcement.count({ where });
     }
-    // admin or no filter: show all
 
     return NextResponse.json({
       success: true,
-      announcements: filtered.map((a) => ({
+      announcements: pageItems.map((a) => ({
         id: a.id,
         title: a.title,
         content: a.content,
@@ -50,6 +87,12 @@ export async function GET(
         createdBy: a.creator?.name ?? null,
         createdAt: a.createdAt.toISOString(),
       })),
+      pagination: {
+        limit,
+        nextCursor,
+        hasNextPage,
+        ...(typeof total === 'number' ? { total } : {}),
+      },
     });
   } catch (error) {
     console.error('Error fetching announcements:', error);

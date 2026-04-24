@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
+import { matchesOneTimeCode, normalizeEmail } from '@/lib/auth-security';
 import { getSchool } from '@/lib/school';
 
 export async function POST(
@@ -7,8 +9,13 @@ export async function POST(
     { params }: { params: Promise<{ schoolId: string }> }
 ) {
     try {
+        const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+        if (sessionUser instanceof NextResponse) return sessionUser;
+
         const { schoolId } = await params;
-        const { email, otp } = await request.json();
+        const body = await request.json();
+        const email = normalizeEmail(String(body?.email || ''));
+        const otp = String(body?.otp || '').trim();
 
         if (!email || !otp) {
             return NextResponse.json(
@@ -20,6 +27,12 @@ export async function POST(
         const school = await getSchool(schoolId);
         if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+        if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only manage students for your school' },
+                { status: 403 }
+            );
         }
 
         const user = await prisma.user.findFirst({
@@ -47,7 +60,7 @@ export async function POST(
             );
         }
 
-        if (user.emailVerificationCode !== String(otp)) {
+        if (!matchesOneTimeCode(otp, user.emailVerificationCode)) {
             return NextResponse.json(
                 { error: 'Invalid OTP' },
                 { status: 400 }

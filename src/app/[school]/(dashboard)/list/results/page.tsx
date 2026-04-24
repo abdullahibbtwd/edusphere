@@ -68,6 +68,13 @@ function computeTotal(scores: ResultScore[]) {
   return scores.reduce((s, r) => s + r.score, 0);
 }
 
+function clampScoreInput(value: string, maxScore: number) {
+  if (value === "") return "";
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) return "";
+  return String(Math.min(Math.max(parsed, 0), maxScore));
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ResultsPage() {
@@ -491,7 +498,12 @@ function AdminResultsTable({ schoolId }: { schoolId: string }) {
   const [selectedTermId, setSelectedTermId] = useState("");
   const [selectedClassId, setSelectedClassId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
+  const [editingRows, setEditingRows] = useState<Record<string, boolean>>({});
+  const [dirtyRows, setDirtyRows] = useState<Record<string, boolean>>({});
+  const [draftScores, setDraftScores] = useState<Record<string, Record<string, string>>>({});
+  const [lastEditingRowKey, setLastEditingRowKey] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadFilters() {
@@ -541,8 +553,163 @@ function AdminResultsTable({ schoolId }: { schoolId: string }) {
   }, [schoolId, selectedTermId, selectedClassId]);
 
   useEffect(() => { loadResults(); }, [loadResults]);
+  useEffect(() => {
+    setEditingRows({});
+    setDirtyRows({});
+    setDraftScores({});
+    setLastEditingRowKey(null);
+  }, [selectedTermId, selectedClassId]);
 
   const totalMax = components.reduce((s, c) => s + c.maxScore, 0);
+  const selectedTerm = terms.find((t) => t.id === selectedTermId);
+
+  function setDraftScore(rowKey: string, componentId: string, value: string) {
+    const component = components.find((c) => c.id === componentId);
+    const safeValue = component ? clampScoreInput(value, component.maxScore) : value;
+    setDraftScores((prev) => ({
+      ...prev,
+      [rowKey]: { ...(prev[rowKey] || {}), [componentId]: safeValue },
+    }));
+    setDirtyRows((prev) => ({ ...prev, [rowKey]: true }));
+  }
+
+  function rowKey(studentId: string, subjectId: string) {
+    return `${studentId}:${subjectId}`;
+  }
+
+  function startRowEdit(studentId: string, subjectId: string, existing?: Result) {
+    const key = rowKey(studentId, subjectId);
+    const initial: Record<string, string> = {};
+    for (const component of components) {
+      const sc = existing?.scores.find((s) => s.componentId === component.id);
+      initial[component.id] = sc ? String(sc.score) : "";
+    }
+    setDraftScores((prev) => ({ ...prev, [key]: prev[key] ?? initial }));
+    setEditingRows((prev) => ({ ...prev, [key]: true }));
+    setLastEditingRowKey(key);
+  }
+
+  function cancelRowEdit(key: string) {
+    setEditingRows((prev) => ({ ...prev, [key]: false }));
+    setDirtyRows((prev) => ({ ...prev, [key]: false }));
+    setLastEditingRowKey((prev) => (prev === key ? null : prev));
+  }
+
+  async function saveRow(studentId: string, subjectId: string) {
+    const key = rowKey(studentId, subjectId);
+    if (!selectedTermId || !selectedClassId || !selectedTerm?.session?.id) {
+      toast.error("Missing required selection");
+      return;
+    }
+    setSaving(true);
+    const rowScores = draftScores[key] || {};
+    for (const c of components) {
+      const raw = rowScores[c.id];
+      if (raw === "" || raw === undefined) continue;
+      const score = Number.parseFloat(raw);
+      if (!Number.isFinite(score) || score < 0 || score > c.maxScore) {
+        toast.error(`${c.name} must be between 0 and ${c.maxScore}`);
+        setSaving(false);
+        return;
+      }
+    }
+    const entries = [{
+      studentId,
+      subjectId,
+      scores: components.map((c) => ({
+        componentId: c.id,
+        score: parseFloat(rowScores[c.id] || "0") || 0,
+      })),
+    }];
+
+    const res = await fetch(`/api/schools/${schoolId}/results`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        termId: selectedTermId,
+        sessionId: selectedTerm.session.id,
+        classId: selectedClassId,
+        entries,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      toast.error(data.error || "Failed to save");
+      setSaving(false);
+      return;
+    }
+    toast.success("Scores saved");
+    setEditingRows((prev) => ({ ...prev, [key]: false }));
+    setDirtyRows((prev) => ({ ...prev, [key]: false }));
+    setLastEditingRowKey((prev) => (prev === key ? null : prev));
+    setSaving(false);
+    loadResults();
+  }
+
+  async function saveAllEditedRows() {
+    if (!selectedTermId || !selectedClassId || !selectedTerm?.session?.id) {
+      toast.error("Missing required selection");
+      return;
+    }
+    const dirtyKeys = Object.entries(dirtyRows)
+      .filter(([, isDirty]) => isDirty)
+      .map(([key]) => key);
+    if (dirtyKeys.length === 0) return;
+
+    setSaving(true);
+    for (const key of dirtyKeys) {
+      for (const c of components) {
+        const raw = (draftScores[key] || {})[c.id];
+        if (raw === "" || raw === undefined) continue;
+        const score = Number.parseFloat(raw);
+        if (!Number.isFinite(score) || score < 0 || score > c.maxScore) {
+          toast.error(`${c.name} must be between 0 and ${c.maxScore}`);
+          setSaving(false);
+          return;
+        }
+      }
+    }
+    const entries = dirtyKeys.map((key) => {
+      const [studentId, subjectId] = key.split(":");
+      return {
+        studentId,
+        subjectId,
+        scores: components.map((c) => ({
+          componentId: c.id,
+          score: parseFloat((draftScores[key] || {})[c.id] || "0") || 0,
+        })),
+      };
+    });
+
+    const res = await fetch(`/api/schools/${schoolId}/results`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        termId: selectedTermId,
+        sessionId: selectedTerm.session.id,
+        classId: selectedClassId,
+        entries,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      toast.error(data.error || "Failed to save all");
+      setSaving(false);
+      return;
+    }
+    toast.success("All edited scores saved");
+    const resetDirty = { ...dirtyRows };
+    const resetEditing = { ...editingRows };
+    for (const key of dirtyKeys) {
+      resetDirty[key] = false;
+      resetEditing[key] = false;
+    }
+    setDirtyRows(resetDirty);
+    setEditingRows(resetEditing);
+    setLastEditingRowKey(null);
+    setSaving(false);
+    loadResults();
+  }
 
   // Build a lookup: resultsByStudentAndSubject[studentId][subjectId] = Result
   const resultLookup = results.reduce((acc, r) => {
@@ -666,20 +833,31 @@ function AdminResultsTable({ schoolId }: { schoolId: string }) {
                             <th className="px-3 py-2 text-center font-semibold">Total</th>
                             <th className="px-3 py-2 text-center font-semibold">%</th>
                             <th className="px-3 py-2 text-center font-semibold">Grade</th>
+                            <th className="px-3 py-2 text-center font-semibold">Action</th>
                           </tr>
                         </thead>
                         <tbody>
                           {classSubjects.map((subj) => {
                             const r = resultLookup[student.id]?.[subj.id];
+                            const key = rowKey(student.id, subj.id);
+                            const isEditing = !!editingRows[key];
+                            const rowDraft = draftScores[key] || {};
+                            const editedRowCount = Object.values(editingRows).filter(Boolean).length;
+                            const dirtyRowCount = Object.values(dirtyRows).filter(Boolean).length;
+                            const useSaveAllOnThisRow = isEditing && editedRowCount > 1 && key === lastEditingRowKey;
+                            const disableSingleSave = isEditing && editedRowCount > 1 && key !== lastEditingRowKey;
+                            const disableSaveAll = useSaveAllOnThisRow && dirtyRowCount === 0;
                             const isPending = !r;
-                            const total = r ? computeTotal(r.scores) : 0;
-                            const pct = r && totalMax > 0 ? (total / totalMax) * 100 : 0;
+                            const total = isEditing
+                              ? components.reduce((sum, c) => sum + (parseFloat(rowDraft[c.id] || "0") || 0), 0)
+                              : r ? computeTotal(r.scores) : 0;
+                            const pct = totalMax > 0 ? (total / totalMax) * 100 : 0;
                             const g = getGrade(pct);
                             return (
-                              <tr key={subj.id} className={`border-b border-border ${isPending ? "opacity-50" : "hover:bg-muted/20"}`}>
+                              <tr key={subj.id} className={`border-b border-border ${!isEditing && isPending ? "opacity-50" : "hover:bg-muted/20"}`}>
                                 <td className="px-4 py-2 font-medium">
                                   {subj.name}
-                                  {isPending && (
+                                  {!isEditing && isPending && (
                                     <span className="ml-2 text-xs bg-muted text-muted-foreground rounded px-1.5 py-0.5">Pending</span>
                                   )}
                                 </td>
@@ -687,18 +865,64 @@ function AdminResultsTable({ schoolId }: { schoolId: string }) {
                                   const sc = r?.scores.find((s) => s.componentId === c.id);
                                   return (
                                     <td key={c.id} className="px-3 py-2 text-center">
-                                      {sc ? sc.score : <span className="text-muted-foreground">N/A</span>}
+                                      {isEditing ? (
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          max={c.maxScore}
+                                          step={0.5}
+                                          value={rowDraft[c.id] ?? ""}
+                                          onChange={(e) => setDraftScore(key, c.id, e.target.value)}
+                                          className="w-16 border border-border rounded px-2 py-1 text-center text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                                        />
+                                      ) : (
+                                        sc ? sc.score : <span className="text-muted-foreground">N/A</span>
+                                      )}
                                     </td>
                                   );
                                 })}
-                                <td className="px-3 py-2 text-center font-medium">{isPending ? "N/A" : total}</td>
-                                <td className="px-3 py-2 text-center">{isPending ? "N/A" : `${pct.toFixed(1)}%`}</td>
+                                <td className="px-3 py-2 text-center font-medium">{!isEditing && isPending ? "N/A" : total.toFixed(1)}</td>
+                                <td className="px-3 py-2 text-center">{!isEditing && isPending ? "N/A" : `${pct.toFixed(1)}%`}</td>
                                 <td className="px-3 py-2 text-center">
-                                  {isPending ? (
-                                    <span className="text-muted-foreground text-xs">N/A</span>
-                                  ) : (
+                                  {!isEditing && isPending ? <span className="text-muted-foreground text-xs">N/A</span> : (
                                     <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${g.color}`}>{g.letter}</span>
                                   )}
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  <div className="inline-flex items-center gap-1">
+                                    <button
+                                      onClick={() => {
+                                        if (isEditing) {
+                                          if (useSaveAllOnThisRow) {
+                                            saveAllEditedRows();
+                                          } else {
+                                            saveRow(student.id, subj.id);
+                                          }
+                                        } else {
+                                          startRowEdit(student.id, subj.id, r);
+                                          setExpandedStudent(student.id);
+                                        }
+                                      }}
+                                      disabled={disableSingleSave || disableSaveAll || saving}
+                                      className="text-xs px-2.5 py-1 bg-primary text-white rounded hover:opacity-80 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
+                                    >
+                                      <span className="inline-flex items-center gap-1">
+                                        {isEditing ? <FiSave size={12} /> : <FiEdit2 size={12} />}
+                                        {isEditing ? (useSaveAllOnThisRow ? "Save All" : "Save") : (isPending ? "Enter Marks" : "Edit")}
+                                      </span>
+                                    </button>
+                                    {isEditing && (
+                                      <button
+                                        onClick={() => {
+                                          cancelRowEdit(key);
+                                        }}
+                                        className="text-xs px-2 py-1 bg-muted text-foreground rounded hover:bg-muted/70"
+                                        aria-label="Cancel editing"
+                                      >
+                                        <FiX size={12} />
+                                      </button>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -847,9 +1071,11 @@ function TeacherResultsView({ schoolId }: { schoolId: string }) {
   }, [schoolId, selectedTermId, selectedClassId, entrySubjectId, taughtClasses, classStudents]);
 
   function setScore(studentId: string, componentId: string, value: string) {
+    const component = components.find((c) => c.id === componentId);
+    const safeValue = component ? clampScoreInput(value, component.maxScore) : value;
     setScores((prev) => ({
       ...prev,
-      [studentId]: { ...(prev[studentId] || {}), [componentId]: value },
+      [studentId]: { ...(prev[studentId] || {}), [componentId]: safeValue },
     }));
   }
 
@@ -859,6 +1085,18 @@ function TeacherResultsView({ schoolId }: { schoolId: string }) {
       return;
     }
     setSaving(true);
+    for (const student of entryStudents) {
+      for (const c of components) {
+        const raw = scores[student.id]?.[c.id];
+        if (raw === "" || raw === undefined) continue;
+        const score = Number.parseFloat(raw);
+        if (!Number.isFinite(score) || score < 0 || score > c.maxScore) {
+          toast.error(`${c.name} must be between 0 and ${c.maxScore}`);
+          setSaving(false);
+          return;
+        }
+      }
+    }
     const entries = entryStudents.map((student) => ({
       studentId: student.id,
       subjectId: entrySubjectId,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSchool } from '@/lib/school';
+import { requireAuth } from '@/lib/auth-middleware';
 
 const MAX_CLASSES = 10;
 
@@ -8,6 +9,9 @@ export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ schoolId: string }> }
 ) {
+    const sessionUser = requireAuth(request);
+    if (sessionUser instanceof NextResponse) return sessionUser;
+
     try {
         const { schoolId } = await params;
         const limit = Math.min(
@@ -18,6 +22,9 @@ export async function GET(
         const school = await getSchool(schoolId);
         if (!school) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+        if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json({ error: 'Forbidden - You can only view enrollment for your school' }, { status: 403 });
         }
 
         const byClass = await prisma.student.groupBy({

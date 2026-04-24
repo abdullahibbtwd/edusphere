@@ -21,6 +21,12 @@ export async function GET(
         if (!actualSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
         }
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchool.id) {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only view fee structures for your school' },
+                { status: 403 }
+            );
+        }
 
         const structures = await prisma.feeStructure.findMany({
             where: {
@@ -79,6 +85,12 @@ export async function POST(
         const actualSchool = await getSchool(schoolId);
         if (!actualSchool) {
             return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        }
+        if (sessionUser.schoolId && sessionUser.schoolId !== actualSchool.id) {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only manage fee structures for your school' },
+                { status: 403 }
+            );
         }
 
         let structuresToProcess = explicitStructures || [];

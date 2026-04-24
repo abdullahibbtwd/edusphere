@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth-middleware';
+import { getSchool } from '@/lib/school';
 
 /**
  * DELETE - Delete a subject
@@ -9,11 +11,22 @@ export async function DELETE(
     { params }: { params: Promise<{ schoolId: string; subjectId: string }> }
 ) {
     try {
+        const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+        if (sessionUser instanceof NextResponse) return sessionUser;
+
         const { schoolId, subjectId } = await params;
+        const school = await getSchool(schoolId);
+        if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only manage subjects for your school' },
+                { status: 403 }
+            );
+        }
 
         // Check if subject exists
-        const subject = await prisma.subject.findUnique({
-            where: { id: subjectId },
+        const subject = await prisma.subject.findFirst({
+            where: { id: subjectId, schoolId: school.id },
             include: {
                 _count: {
                     select: {
@@ -62,7 +75,18 @@ export async function PATCH(
     { params }: { params: Promise<{ schoolId: string; subjectId: string }> }
 ) {
     try {
+        const sessionUser = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
+        if (sessionUser instanceof NextResponse) return sessionUser;
+
         const { schoolId, subjectId } = await params;
+        const school = await getSchool(schoolId);
+        if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 });
+        if (sessionUser.schoolId && sessionUser.schoolId !== school.id && sessionUser.role !== 'SUPER_ADMIN') {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only manage subjects for your school' },
+                { status: 403 }
+            );
+        }
         const body = await request.json();
         const { name, subjectType, classIds } = body; // Expect classIds
 
@@ -79,7 +103,7 @@ export async function PATCH(
             isGeneral = true;
             // Fetch all levels for the school
             const schoolLevels = await prisma.level.findMany({
-                where: { schoolId },
+                where: { schoolId: school.id },
                 select: { id: true }
             });
             levelIdsToConnect = schoolLevels.map(l => l.id);
@@ -92,7 +116,7 @@ export async function PATCH(
             // 1. Find the classes by ID to verify and get level IDs
             const classes = await prisma.class.findMany({
                 where: {
-                    schoolId,
+                    schoolId: school.id,
                     id: { in: classIds }
                 },
                 select: { id: true, levelId: true }
@@ -112,8 +136,16 @@ export async function PATCH(
         }
 
         // Update the subject
+        const existingSubject = await prisma.subject.findFirst({
+            where: { id: subjectId, schoolId: school.id },
+            select: { id: true }
+        });
+        if (!existingSubject) {
+            return NextResponse.json({ error: 'Subject not found' }, { status: 404 });
+        }
+
         const updatedSubject = await prisma.subject.update({
-            where: { id: subjectId },
+            where: { id: existingSubject.id },
             data: {
                 name,
                 isGeneral,

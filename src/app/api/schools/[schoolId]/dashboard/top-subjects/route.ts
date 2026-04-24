@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { getSchool } from '@/lib/school';
-import { requireAuth } from '@/lib/auth-middleware';
+import { requireRole } from '@/lib/auth-middleware';
 
 const TOP_N = 10;
 
@@ -15,13 +15,19 @@ export async function GET(
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    const user = requireAuth(request);
+    const user = requireRole(request, ['ADMIN']);
     if (user instanceof NextResponse) return user;
 
     const { schoolId } = await params;
     const school = await getSchool(schoolId);
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
+    }
+    if (user.schoolId && user.schoolId !== school.id && user.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden - You can only view dashboard data for your school' },
+        { status: 403 }
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -108,8 +114,16 @@ export async function GET(
       termId,
     };
     if (classId) {
+      const isClassInSchool = classes.some((c) => c.id === classId);
+      if (!isClassInSchool) {
+        return NextResponse.json({ error: 'Invalid class filter for this school' }, { status: 400 });
+      }
       where.classId = classId;
     } else if (levelId) {
+      const isLevelInSchool = levels.some((l) => l.id === levelId);
+      if (!isLevelInSchool) {
+        return NextResponse.json({ error: 'Invalid level filter for this school' }, { status: 400 });
+      }
       const classesInLevel = await prisma.class.findMany({
         where: { schoolId: school.id, levelId },
         select: { id: true },
