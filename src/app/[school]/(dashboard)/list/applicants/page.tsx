@@ -7,10 +7,12 @@ import {
   XMarkIcon,
   DocumentArrowDownIcon,
   UserIcon,
+  Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import generateApplicationPdf from "@/components/ApplicationPdfGenerator";
+import DynamicFormBuilder from "@/components/DynamicFormBuilder";
 
 type Application = {
   id: string;
@@ -95,6 +97,7 @@ const ApplicantsList = () => {
   const [generatingPdf, setGeneratingPdf] = useState<string | null>(null);
   const [isAdmissionsOpen, setIsAdmissionsOpen] = useState(true);
   const [updatingSettings, setUpdatingSettings] = useState(false);
+  const [activeTab, setActiveTab] = useState<"applicants" | "formSettings">("applicants");
 
   // Admission Dialog state
   const [admitDialog, setAdmitDialog] = useState<{
@@ -296,7 +299,6 @@ const ApplicantsList = () => {
     <div className="flex flex-col bg-surface p-4 sm:p-6 m-4 mt-0 flex-1 rounded-2xl shadow-sm gap-4 font-poppins text-text [&_button:not(:disabled)]:cursor-pointer">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
         <h2 className="text-xl font-bold text-text">Admission Applicants</h2>
-
         <div className="flex items-center gap-3 bg-muted/20 px-4 py-2 rounded-lg">
           <span className="text-sm font-medium text-text">
             Admissions: {isAdmissionsOpen ? 'Open' : 'Closed'}
@@ -311,137 +313,177 @@ const ApplicantsList = () => {
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isAdmissionsOpen ? 'translate-x-6' : 'translate-x-1'
                 }`}
             />
+          </button> 
+          <button
+            onClick={() =>
+              setActiveTab((previous) =>
+                previous === "formSettings" ? "applicants" : "formSettings"
+              )
+            }
+            className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors ${
+              activeTab === "formSettings"
+                ? "bg-primary/15 text-primary"
+                : "text-text/70 hover:bg-muted/50 hover:text-text"
+            }`}
+            title="Dynamic form settings"
+            aria-label="Dynamic form settings"
+          >
+            <Cog6ToothIcon className="h-5 w-5" />
           </button>
         </div>
       </div>
 
-      {/* Search */}
-      <input
-        type="text"
-        placeholder="Search by Application Number, Name, or Email"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="mb-4 w-full h-10 px-4 rounded-lg bg-bg text-text text-sm focus:outline-none transition-all"
-      />
+      {activeTab === "applicants" ? (
+        <>
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="Search by Application Number, Name, or Email"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="mb-4 w-full h-10 px-4 rounded-lg bg-bg text-text text-sm focus:outline-none transition-all"
+          />
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-xl bg-surface shadow-sm">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center min-h-[220px]">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
-            <p className="text-xs text-muted">Loading applications...</p>
-          </div>
-        ) : (
-          <table className="min-w-full divide-y divide-border">
-            <thead className="bg-muted/20">
-              <tr>
-                {["Applicant", "Application #", "Email", "Phone", "Class", "Status", "Actions"].map((h) => (
-                  <th
-                    key={h}
-                    className="px-6 py-3 text-left text-[11px] font-semibold text-text/60 uppercase tracking-[0.08em]"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filteredApplications.map((application, i) => (
-                <tr
-                  key={application.id}
-                  className={`${i % 2 === 0 ? "bg-surface" : "bg-bg"} hover:bg-muted/10 transition-colors`}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="ml-4">
-                        <div className="text-sm font-semibold text-text leading-5">
-                          {application.firstName} {application.lastName}
-                        </div>
-                        <div className="text-xs text-muted mt-0.5">
-                          Applied: {new Date(application.applicationDate).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text/80 font-medium">
-                    {application.applicationNumber}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text/70">
-                    {application.email}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text/70">
-                    {application.phone}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text/70">
-                    {application.class.fullName}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2.5 py-1 text-[11px] font-semibold rounded-full tracking-wide ${application.status === 'ADMITTED'
-                      ? 'bg-green-100 text-green-800'
-                      : application.status === 'REJECTED'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                      {application.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="grid grid-cols-2 gap-1.5 w-fit">
-                      <button
-                        onClick={() => fetchApplicationDetails(application.id)}
-                        className="inline-flex items-center justify-center w-9 h-9 rounded-md text-primary hover:bg-primary/10"
-                        title="View applicant"
-                        aria-label="View applicant"
+          {/* Table */}
+          <div className="overflow-x-auto rounded-xl bg-surface shadow-sm">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center min-h-[220px]">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
+                <p className="text-xs text-muted">Loading applications...</p>
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-border">
+                <thead className="bg-muted/20">
+                  <tr>
+                    {["Applicant", "Application #", "Email", "Phone", "Class", "Status", "Actions"].map((h) => (
+                      <th
+                        key={h}
+                        className="px-6 py-3 text-left text-[11px] font-semibold text-text/60 uppercase tracking-[0.08em]"
                       >
-                        <EyeIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => generatePdf(application)}
-                        disabled={generatingPdf === application.id}
-                        className="inline-flex items-center justify-center w-9 h-9 rounded-md text-blue-600 hover:bg-blue-500/10 disabled:opacity-50"
-                        title="Generate PDF"
-                        aria-label="Generate PDF"
-                      >
-                        {generatingPdf === application.id ? (
-                          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                          <DocumentArrowDownIcon className="h-5 w-5" />
-                        )}
-                      </button>
-                      {application.status === 'PROGRESS' && (
-                        <>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredApplications.map((application, i) => (
+                    <tr
+                      key={application.id}
+                      className={`${i % 2 === 0 ? "bg-surface" : "bg-bg"} hover:bg-muted/10 transition-colors`}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="ml-4">
+                            <div className="text-sm font-semibold text-text leading-5">
+                              {application.firstName} {application.lastName}
+                            </div>
+                            <div className="text-xs text-muted mt-0.5">
+                              Applied: {new Date(application.applicationDate).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-text/80 font-medium">
+                        {application.applicationNumber}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-text/70">
+                        {application.email}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-text/70">
+                        {application.phone}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-text/70">
+                        {application.class.fullName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2.5 py-1 text-[11px] font-semibold rounded-full tracking-wide ${application.status === 'ADMITTED'
+                          ? 'bg-green-100 text-green-800'
+                          : application.status === 'REJECTED'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                          {application.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="grid grid-cols-2 gap-1.5 w-fit">
                           <button
-                            onClick={() => openAdmitDialog(application.id, application.class.id, `${application.firstName} ${application.lastName}`)}
-                            disabled={processingApplication === application.id}
-                            className="inline-flex items-center justify-center w-9 h-9 rounded-md text-green-600 hover:bg-green-500/10 disabled:opacity-50"
-                            title="Admit applicant"
-                            aria-label="Admit applicant"
+                            onClick={() => fetchApplicationDetails(application.id)}
+                            className="inline-flex items-center justify-center w-9 h-9 rounded-md text-primary hover:bg-primary/10"
+                            title="View applicant"
+                            aria-label="View applicant"
                           >
-                            {processingApplication === application.id ? (
-                              <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                            <EyeIcon className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => generatePdf(application)}
+                            disabled={generatingPdf === application.id}
+                            className="inline-flex items-center justify-center w-9 h-9 rounded-md text-blue-600 hover:bg-blue-500/10 disabled:opacity-50"
+                            title="Generate PDF"
+                            aria-label="Generate PDF"
+                          >
+                            {generatingPdf === application.id ? (
+                              <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                             ) : (
-                              <CheckIcon className="h-5 w-5" />
+                              <DocumentArrowDownIcon className="h-5 w-5" />
                             )}
                           </button>
-                          <button
-                            onClick={() => handleStatusUpdate(application.id, "REJECTED")}
-                            disabled={processingApplication === application.id}
-                            className="inline-flex items-center justify-center w-9 h-9 rounded-md text-red-600 hover:bg-red-500/10 disabled:opacity-50"
-                            title="Reject applicant"
-                            aria-label="Reject applicant"
-                          >
-                            <XMarkIcon className="h-5 w-5" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+                          {application.status === 'PROGRESS' && (
+                            <>
+                              <button
+                                onClick={() => openAdmitDialog(application.id, application.class.id, `${application.firstName} ${application.lastName}`)}
+                                disabled={processingApplication === application.id}
+                                className="inline-flex items-center justify-center w-9 h-9 rounded-md text-green-600 hover:bg-green-500/10 disabled:opacity-50"
+                                title="Admit applicant"
+                                aria-label="Admit applicant"
+                              >
+                                {processingApplication === application.id ? (
+                                  <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                  <CheckIcon className="h-5 w-5" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleStatusUpdate(application.id, "REJECTED")}
+                                disabled={processingApplication === application.id}
+                                className="inline-flex items-center justify-center w-9 h-9 rounded-md text-red-600 hover:bg-red-500/10 disabled:opacity-50"
+                                title="Reject applicant"
+                                aria-label="Reject applicant"
+                              >
+                                <XMarkIcon className="h-5 w-5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="w-full md:w-3/5 mx-auto">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-text">Application Form Settings</h3>
+            <button
+              onClick={() => setActiveTab("applicants")}
+              className="px-2.5 py-1 text-xs rounded-md bg-muted/40 hover:bg-muted/60 text-text"
+            >
+              Back to Applicants
+            </button>
+          </div>
+          <DynamicFormBuilder
+            onSchemaChange={() => {
+              // This is where you can persist schema to your API later.
+            }}
+            onCreateForm={() => {
+              toast.success("Form created successfully.");
+            }}
+          />
+        </div>
+      )}
 
       {/* Admit Confirmation Modal */}
       {admitDialog.isOpen && (
@@ -692,6 +734,7 @@ const ApplicantsList = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };
